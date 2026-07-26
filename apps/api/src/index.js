@@ -3,6 +3,8 @@ import express from 'express';
 import cors from 'cors';
 import { supabase } from './config/supabase.js';
 import authRoutes from './routes/auth.js';
+import clientRoutes from './routes/clients.js';
+import jobRoutes from './routes/jobs.js';
 
 const app = express();
 const port = process.env.PORT || 4000;
@@ -13,6 +15,8 @@ app.use(express.json());
 
 // Routes
 app.use('/api/auth', authRoutes);
+app.use('/api/clients', clientRoutes);
+app.use('/api/jobs', jobRoutes);
 
 // Health Check Endpoint
 app.get('/api/health', (req, res) => {
