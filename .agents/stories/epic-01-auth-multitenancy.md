@@ -1,8 +1,10 @@
-# Epic 01: Auth & Multi-Tenancy
+# Epic 01: Authentication & Multi-Tenancy
 
-- [ ] Implement Google Authentication.
-- [ ] Create Tenant registration and setup flow.
-- [ ] Implement user roles (Admin vs Client).
-- [ ] Configure Row-Level Security (RLS) policies for `tenant_id` on all tables.
-- [ ] Build login and protected routing on the frontend.
-- [ ] Secure API endpoints to require valid auth tokens and verify `tenant_id`.
+- [ ] **Task 1.1: Google OAuth Supabase Integration**
+  - Implement Supabase Auth Google login flow on backend/frontend.
+  - Create `users` table linked to `auth.users` via triggers.
+
+- [ ] **Task 1.2: Tenant Provisioning & RBAC**
+  - Automatically create a `tenants` record upon new admin sign-up.
+  - Assign roles (`admin` for business owner/manager, `client` for customer portal).
+  - Implement authorization middleware `requireRole(['admin'])` on restricted API endpoints.

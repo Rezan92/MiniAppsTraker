@@ -1,15 +1,8 @@
-# Tech Stack Rules
+# Tech Stack & Coding Standards
 
-## Backend (Node.js/Express)
-- **ES Modules ONLY**: Use `import`/`export`. No `require`, no `module.exports`. Set `"type": "module"` in `package.json`.
-- **No Deprecated Practices**: Do NOT use `var`. Use `const` and `let`. Do NOT use deprecated libraries like `request`.
-- **Error Handling**: Strict error handling must be implemented using middleware and try/catch blocks. Do not swallow errors.
-
-## Frontend (React)
-- **Styling**: Material UI (MUI v6+). No other UI libraries unless explicitly requested.
-
-## Validation
-- **Zod**: Use Zod schemas for all validation. Schemas MUST be shared between frontend and backend in the `packages/` directory.
-
-## General
-- **Monorepo**: Adhere strictly to the workspace structure (`apps/web`, `apps/api`, `packages/`).
+- **Runtime & Syntax:** Node.js v20+ with native ES Modules (`import/export` only). Prohibit `require()`, `module.exports`, `var`, or callback-based async code.
+- **Backend:** Express.js or Fastify. Use standard `axios` or native `fetch`. Strictly forbidden: deprecated libraries (e.g., `request`).
+- **Frontend:** React 18+ with Material UI (MUI v6+). Use functional components and custom React hooks.
+- **Database:** PostgreSQL on Supabase using versioned `.sql` migration files. Every table must include `tenant_id` for multi-tenancy with Row Level Security (RLS).
+- **Validation:** Zod for all API query/body validations and shared TypeScript/JS types.
+- **Error Handling:** Standardized API response wrappers `{ success: boolean, data?: any, error?: string }`.
