@@ -2,6 +2,7 @@ import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
 import { supabase } from './config/supabase.js';
+import authRoutes from './routes/auth.js';
 
 const app = express();
 const port = process.env.PORT || 4000;
@@ -9,6 +10,9 @@ const port = process.env.PORT || 4000;
 // Middleware
 app.use(cors());
 app.use(express.json());
+
+// Routes
+app.use('/api/auth', authRoutes);
 
 // Health Check Endpoint
 app.get('/api/health', (req, res) => {
