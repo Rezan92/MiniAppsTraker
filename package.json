@@ -1,0 +1,8 @@
+{
+  "name": "handyman-saas",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ]
+}
