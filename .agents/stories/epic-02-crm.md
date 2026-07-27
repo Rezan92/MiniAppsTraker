@@ -18,3 +18,4 @@
 - Created isolated CRM API endpoints for Clients and Jobs under /api/clients and /api/jobs.
 - Added Materials as sub-routes under Jobs to streamline relational queries.
 - Built unified Dashboard UI with MUI Tabs rendering ClientList and JobList views.
+- [x] Created 00002_add_notes_to_clients.sql migration and updated API Zod schemas to handle the notes field.

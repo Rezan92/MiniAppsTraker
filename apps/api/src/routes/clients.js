@@ -41,9 +41,11 @@ router.post('/', async (req, res, next) => {
       return res.status(400).json({ success: false, error: result.error.errors[0].message });
     }
 
+    const { name, email, phone, address, notes } = result.data;
+
     const { data, error } = await supabase
       .from('clients')
-      .insert([{ ...result.data, tenant_id: req.user.tenant_id }])
+      .insert([{ name, email, phone, address, notes, tenant_id: req.user.tenant_id }])
       .select()
       .single();
 
@@ -61,9 +63,11 @@ router.put('/:id', async (req, res, next) => {
       return res.status(400).json({ success: false, error: result.error.errors[0].message });
     }
 
+    const { name, email, phone, address, notes } = result.data;
+
     const { data, error } = await supabase
       .from('clients')
-      .update(result.data)
+      .update({ name, email, phone, address, notes })
       .eq('id', req.params.id)
       .eq('tenant_id', req.user.tenant_id)
       .select()
