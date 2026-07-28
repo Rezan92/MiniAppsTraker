@@ -7,9 +7,10 @@ const router = express.Router();
 router.use(authenticate);
 
 const clientSchema = z.object({
-  name: z.string().min(1, "Name is required"),
+  name: z.string().min(1, "Name is required").regex(/^[a-zA-Z\s\-\']+$/, "Full name cannot contain numbers"),
+  client_type: z.enum(['residential', 'commercial', 'property_manager']).default('residential'),
   email: z.string().email().optional().or(z.literal('')),
-  phone: z.string().optional(),
+  phone: z.string().regex(/^\+?[\d\s\-\(\)]+$/, "Phone number must contain only numbers and formatting characters"),
   address: z.string().optional(),
   notes: z.string().optional()
 });
@@ -50,11 +51,11 @@ router.post('/', async (req, res, next) => {
       return res.status(400).json({ success: false, error: result.error.errors[0].message });
     }
 
-    const { name, email, phone, address, notes } = result.data;
+    const { name, client_type, email, phone, address, notes } = result.data;
 
     const { data, error } = await supabase
       .from('clients')
-      .insert([{ name, email, phone, address, notes, tenant_id: req.user.tenant_id }])
+      .insert([{ name, client_type, email, phone, address, notes, tenant_id: req.user.tenant_id }])
       .select();
 
     if (error) return next(error);
@@ -79,11 +80,11 @@ router.put('/:id', async (req, res, next) => {
       return res.status(400).json({ success: false, error: result.error.errors[0].message });
     }
 
-    const { name, email, phone, address, notes } = result.data;
+    const { name, client_type, email, phone, address, notes } = result.data;
 
     const { data, error } = await supabase
       .from('clients')
-      .update({ name, email, phone, address, notes })
+      .update({ name, client_type, email, phone, address, notes })
       .eq('id', req.params.id)
       .eq('tenant_id', req.user.tenant_id)
       .select();
