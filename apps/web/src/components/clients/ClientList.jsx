@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
+import { useToast } from '../../contexts/ToastContext';
 import { AddClientModal } from './AddClientModal';
 
 export const ClientList = () => {
   const { session } = useAuth();
+  const { showSuccess, showError } = useToast();
   const [clients, setClients] = useState([]);
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
@@ -43,9 +45,14 @@ export const ClientList = () => {
         fetchClients();
         setOpen(false);
         setFormData({ client_type: 'residential', name: '', email: '', phone: '', address: '', notes: '' });
+        showSuccess('Client successfully added!');
+      } else {
+        const errorData = await res.json();
+        showError(errorData.error?.message || 'Failed to add client');
       }
     } catch (err) {
       console.error(err);
+      showError('An unexpected error occurred. Please try again.');
     }
   };
 
