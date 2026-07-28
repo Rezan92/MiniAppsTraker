@@ -1,7 +1,29 @@
-import React from 'react';
+import React, { useState } from 'react';
 
 export const AddClientModal = ({ open, onClose, onSubmit, formData, setFormData }) => {
+  const [errors, setErrors] = useState({});
+
   if (!open) return null;
+
+  const validateField = (name, value) => {
+    let errorMsg = null;
+    if (name === 'name') {
+      if (/[0-9]/.test(value)) {
+        errorMsg = "Name cannot contain numbers";
+      }
+    } else if (name === 'phone') {
+      if (/[a-zA-Z]/.test(value)) {
+        errorMsg = "Phone number cannot contain letters";
+      }
+    }
+    setErrors(prev => ({ ...prev, [name]: errorMsg }));
+  };
+
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
+    validateField(name, value);
+  };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-on-background/40 backdrop-blur-sm p-4">
@@ -62,14 +84,16 @@ export const AddClientModal = ({ open, onClose, onSubmit, formData, setFormData 
             {/* Full Name */}
             <div>
               <label className="block font-label-md text-label-md text-on-surface-variant mb-1">Full Name *</label>
-              <input 
-                className="w-full px-3 py-2 border border-outline-variant rounded-md bg-surface text-on-surface focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-shadow placeholder:text-on-surface-variant/50" 
-                placeholder="e.g. John Doe" 
-                type="text" 
-                value={formData.name}
-                onChange={e => setFormData({...formData, name: e.target.value})}
-                required
-              />
+                <input 
+                  className={`w-full px-3 py-2 border rounded-md bg-surface text-on-surface focus:outline-none focus:ring-1 transition-shadow placeholder:text-on-surface-variant/50 ${errors.name ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : 'border-outline-variant focus:border-primary focus:ring-primary'}`}
+                  placeholder="e.g. John Doe" 
+                  name="name"
+                  type="text" 
+                  value={formData.name}
+                  onChange={handleInputChange}
+                  required
+                />
+                {errors.name && <p className="text-red-500 text-xs mt-1">{errors.name}</p>}
             </div>
             
             {/* Contact Info Grid */}
@@ -87,13 +111,15 @@ export const AddClientModal = ({ open, onClose, onSubmit, formData, setFormData 
               <div>
                 <label className="block font-label-md text-label-md text-on-surface-variant mb-1">Phone Number *</label>
                 <input 
-                  className="w-full px-3 py-2 border border-outline-variant rounded-md bg-surface text-on-surface focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-shadow placeholder:text-on-surface-variant/50" 
+                  className={`w-full px-3 py-2 border rounded-md bg-surface text-on-surface focus:outline-none focus:ring-1 transition-shadow placeholder:text-on-surface-variant/50 ${errors.phone ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : 'border-outline-variant focus:border-primary focus:ring-primary'}`}
                   placeholder="(555) 000-0000" 
+                  name="phone"
                   type="tel" 
                   value={formData.phone}
-                  onChange={e => setFormData({...formData, phone: e.target.value})}
+                  onChange={handleInputChange}
                   required
                 />
+                {errors.phone && <p className="text-red-500 text-xs mt-1">{errors.phone}</p>}
               </div>
             </div>
             
@@ -133,7 +159,7 @@ export const AddClientModal = ({ open, onClose, onSubmit, formData, setFormData 
           <button 
             type="submit"
             form="add-client-form"
-            disabled={!formData.name || !formData.phone}
+            disabled={!formData.name || !formData.phone || Object.values(errors).some(Boolean)}
             className="px-5 py-2 bg-primary-container text-on-primary hover:bg-primary transition-colors rounded-md font-title-md text-sm flex items-center justify-center shadow-sm disabled:opacity-50"
           >
             Add Client
