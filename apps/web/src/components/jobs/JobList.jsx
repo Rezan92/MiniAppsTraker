@@ -3,6 +3,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useToast } from '../../contexts/ToastContext';
 import { AddJobModal } from './AddJobModal';
 import { AddMaterialModal } from './AddMaterialModal';
+import { AddJobHoursModal } from './AddJobHoursModal';
 
 export const JobList = () => {
   const { session } = useAuth();
@@ -13,11 +14,14 @@ export const JobList = () => {
   const [loading, setLoading] = useState(true);
   
   const [open, setOpen] = useState(false);
-  const [formData, setFormData] = useState({ client_id: '', title: '', rate_type: 'flat', hourly_rate: '' });
+  const [formData, setFormData] = useState({ client_id: '', title: '', rate_type: 'flat', hourly_rate: '', start_date: '', end_date: '', notes: '' });
 
   const [matOpen, setMatOpen] = useState(false);
   const [selectedJobId, setSelectedJobId] = useState('');
-  const [matData, setMatData] = useState({ description: '', cost: '', is_from_stock: false });
+  const [matData, setMatData] = useState({ description: '', cost: '', is_from_stock: false, store: '', purchase_date: '', notes: '' });
+
+  const [hoursOpen, setHoursOpen] = useState(false);
+  const [hoursData, setHoursData] = useState({ date: new Date().toISOString().split('T')[0], hours: '' });
 
   useEffect(() => {
     fetchJobs();
@@ -69,7 +73,7 @@ export const JobList = () => {
       if (res.ok) {
         fetchJobs();
         setOpen(false);
-        setFormData({ client_id: '', title: '', rate_type: 'flat', hourly_rate: '' });
+        setFormData({ client_id: '', title: '', rate_type: 'flat', hourly_rate: '', start_date: '', end_date: '', notes: '' });
         showSuccess('Job successfully created!');
       } else {
         const errorData = await res.json();
@@ -94,11 +98,59 @@ export const JobList = () => {
       });
       if (res.ok) {
         setMatOpen(false);
-        setMatData({ description: '', cost: '', is_from_stock: false });
+        setMatData({ description: '', cost: '', is_from_stock: false, store: '', purchase_date: '', notes: '' });
         showSuccess('Material added successfully!');
       } else {
         const errorData = await res.json();
         showError(errorData.error?.message || 'Failed to add material');
+      }
+    } catch (err) {
+      console.error(err);
+      showError('An unexpected error occurred.');
+    }
+  };
+
+  const handleUpdateStatus = async (jobId, newStatus) => {
+    try {
+      const res = await fetch(`http://localhost:4000/api/jobs/${jobId}/status`, {
+        method: 'PATCH',
+        headers: { 
+          'Authorization': `Bearer ${session?.access_token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ status: newStatus })
+      });
+      if (res.ok) {
+        fetchJobs();
+        showSuccess('Job status updated!');
+      } else {
+        const errorData = await res.json();
+        showError(errorData.error?.message || 'Failed to update status');
+      }
+    } catch (err) {
+      console.error(err);
+      showError('An unexpected error occurred.');
+    }
+  };
+
+  const handleLogHours = async () => {
+    try {
+      const payload = { ...hoursData, hours: parseFloat(hoursData.hours) };
+      const res = await fetch(`http://localhost:4000/api/jobs/${selectedJobId}/hours`, {
+        method: 'POST',
+        headers: { 
+          'Authorization': `Bearer ${session?.access_token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(payload)
+      });
+      if (res.ok) {
+        setHoursOpen(false);
+        setHoursData({ date: new Date().toISOString().split('T')[0], hours: '' });
+        showSuccess('Hours logged successfully!');
+      } else {
+        const errorData = await res.json();
+        showError(errorData.error?.message || 'Failed to log hours');
       }
     } catch (err) {
       console.error(err);
@@ -183,18 +235,29 @@ export const JobList = () => {
                       </div>
                     </td>
                     <td className="py-4 px-4 align-top">
-                      <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md font-label-md text-label-md border ${
-                        j.status === 'open' ? 'bg-[#fff3e0] text-[#e65100] border-[#ffe0b2]' :
-                        j.status === 'in_progress' ? 'bg-[#e5f6fd] text-[#0288d1] border-[#b3e5fc]' :
-                        'bg-[#e8f5e9] text-[#2e7d32] border-[#c8e6c9]'
-                      }`}>
-                        <span className={`w-1.5 h-1.5 rounded-full ${
-                          j.status === 'open' ? 'bg-[#e65100]' :
-                          j.status === 'in_progress' ? 'bg-[#0288d1]' :
-                          'bg-[#2e7d32]'
-                        }`}></span>
-                        {j.status.replace('_', ' ').toUpperCase()}
-                      </span>
+                      <div className="relative group/status w-max cursor-pointer">
+                        <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md font-label-md text-label-md border ${
+                          j.status === 'open' ? 'bg-[#fff3e0] text-[#e65100] border-[#ffe0b2]' :
+                          j.status === 'in_progress' ? 'bg-[#e5f6fd] text-[#0288d1] border-[#b3e5fc]' :
+                          'bg-[#e8f5e9] text-[#2e7d32] border-[#c8e6c9]'
+                        }`}>
+                          <span className={`w-1.5 h-1.5 rounded-full ${
+                            j.status === 'open' ? 'bg-[#e65100]' :
+                            j.status === 'in_progress' ? 'bg-[#0288d1]' :
+                            'bg-[#2e7d32]'
+                          }`}></span>
+                          {j.status.replace('_', ' ').toUpperCase()}
+                          <span className="material-symbols-outlined text-[14px]">expand_more</span>
+                        </span>
+                        
+                        {/* Status Dropdown */}
+                        <div className="absolute top-full left-0 mt-1 bg-surface-container-lowest border border-outline-variant rounded-md shadow-lg z-10 hidden group-hover/status:flex flex-col min-w-[120px] overflow-hidden">
+                          <button onClick={() => handleUpdateStatus(j.id, 'open')} className="px-3 py-2 text-left font-body-md text-on-surface hover:bg-surface-container-low transition-colors">Open</button>
+                          <button onClick={() => handleUpdateStatus(j.id, 'in_progress')} className="px-3 py-2 text-left font-body-md text-on-surface hover:bg-surface-container-low transition-colors">In Progress</button>
+                          <button onClick={() => handleUpdateStatus(j.id, 'completed')} className="px-3 py-2 text-left font-body-md text-on-surface hover:bg-surface-container-low transition-colors">Completed</button>
+                          <button onClick={() => handleUpdateStatus(j.id, 'cancelled')} className="px-3 py-2 text-left font-body-md text-on-surface hover:bg-surface-container-low transition-colors text-error">Cancelled</button>
+                        </div>
+                      </div>
                     </td>
                     <td className="py-4 px-4 align-top">
                       <div className="text-on-surface font-medium capitalize">{j.rate_type} Rate</div>
@@ -203,13 +266,22 @@ export const JobList = () => {
                       )}
                     </td>
                     <td className="py-4 px-4 align-top text-right">
-                      <button 
-                        onClick={() => { setSelectedJobId(j.id); setMatOpen(true); }}
-                        className="text-on-surface-variant hover:text-primary p-2 rounded-lg hover:bg-surface-container-low transition-colors opacity-0 group-hover:opacity-100 focus:opacity-100"
-                        title="Add Material"
-                      >
-                        <span className="material-symbols-outlined">add_box</span>
-                      </button>
+                      <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
+                        <button 
+                          onClick={() => { setSelectedJobId(j.id); setHoursOpen(true); }}
+                          className="text-on-surface-variant hover:text-primary p-2 rounded-lg hover:bg-surface-container-low transition-colors"
+                          title="Log Hours"
+                        >
+                          <span className="material-symbols-outlined">schedule</span>
+                        </button>
+                        <button 
+                          onClick={() => { setSelectedJobId(j.id); setMatOpen(true); }}
+                          className="text-on-surface-variant hover:text-primary p-2 rounded-lg hover:bg-surface-container-low transition-colors"
+                          title="Add Material"
+                        >
+                          <span className="material-symbols-outlined">add_box</span>
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -255,6 +327,13 @@ export const JobList = () => {
           onSubmit={handleAddMaterial} 
           matData={matData} 
           setMatData={setMatData} 
+        />
+        <AddJobHoursModal 
+          open={hoursOpen} 
+          onClose={() => setHoursOpen(false)} 
+          onSubmit={handleLogHours} 
+          hoursData={hoursData} 
+          setHoursData={setHoursData} 
         />
       </div>
     </main>
