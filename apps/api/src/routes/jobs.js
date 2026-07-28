@@ -12,7 +12,10 @@ const jobSchema = z.object({
   rate_type: z.enum(['flat', 'hourly']),
   hourly_rate: z.number().optional(),
   status: z.enum(['open', 'in_progress', 'completed', 'cancelled']).optional().default('open'),
-  description: z.string().optional() // Used as scope of work
+  description: z.string().optional(), // Used as scope of work
+  start_date: z.string().optional(),
+  end_date: z.string().optional(),
+  notes: z.string().optional()
 });
 
 const statusSchema = z.object({
@@ -22,7 +25,15 @@ const statusSchema = z.object({
 const materialSchema = z.object({
   description: z.string().min(1, "Description is required"),
   cost: z.number().min(0),
-  is_from_stock: z.boolean().optional().default(false)
+  is_from_stock: z.boolean().optional().default(false),
+  store: z.string().optional(),
+  purchase_date: z.string().optional(),
+  notes: z.string().optional()
+});
+
+const jobHoursSchema = z.object({
+  date: z.string().min(1, "Date is required"),
+  hours: z.number().min(0, "Hours must be positive")
 });
 
 router.get('/', async (req, res, next) => {
@@ -135,6 +146,67 @@ router.get('/:id/materials', async (req, res, next) => {
       .from('job_materials')
       .select('*')
       .eq('job_id', job.id);
+
+    if (error) throw error;
+    res.json({ success: true, data });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// Job Hours sub-routes
+router.post('/:id/hours', async (req, res, next) => {
+  try {
+    const result = jobHoursSchema.safeParse(req.body);
+    if (!result.success) {
+      const err = new Error(result.error.errors[0].message);
+      err.status = 400;
+      err.code = 'VALIDATION_ERROR';
+      return next(err);
+    }
+
+    const { data: job, error: jobError } = await supabase
+      .from('jobs')
+      .select('id')
+      .eq('id', req.params.id)
+      .eq('tenant_id', req.user.tenant_id)
+      .single();
+
+    if (jobError || !job) {
+      return res.status(404).json({ success: false, error: 'Job not found' });
+    }
+
+    const { data, error } = await supabase
+      .from('job_hours')
+      .insert([{ ...result.data, job_id: job.id }])
+      .select()
+      .single();
+
+    if (error) throw error;
+    res.json({ success: true, data });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.get('/:id/hours', async (req, res, next) => {
+  try {
+    const { data: job, error: jobError } = await supabase
+      .from('jobs')
+      .select('id')
+      .eq('id', req.params.id)
+      .eq('tenant_id', req.user.tenant_id)
+      .single();
+
+    if (jobError || !job) {
+      return res.status(404).json({ success: false, error: 'Job not found' });
+    }
+
+    const { data, error } = await supabase
+      .from('job_hours')
+      .select('*')
+      .eq('job_id', job.id)
+      .order('date', { ascending: false });
 
     if (error) throw error;
     res.json({ success: true, data });
