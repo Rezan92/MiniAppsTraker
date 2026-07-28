@@ -1,18 +1,23 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
+import { useToast } from '../../contexts/ToastContext';
+import { AddJobModal } from './AddJobModal';
+import { AddMaterialModal } from './AddMaterialModal';
 
 export const JobList = () => {
   const { session } = useAuth();
+  const { showSuccess, showError } = useToast();
+  
   const [jobs, setJobs] = useState([]);
   const [clients, setClients] = useState([]);
   const [loading, setLoading] = useState(true);
   
   const [open, setOpen] = useState(false);
-  const [formData, setFormData] = useState({ client_id: '', title: '', rate_type: 'flat', hourly_rate: 0 });
+  const [formData, setFormData] = useState({ client_id: '', title: '', rate_type: 'flat', hourly_rate: '' });
 
   const [matOpen, setMatOpen] = useState(false);
   const [selectedJobId, setSelectedJobId] = useState('');
-  const [matData, setMatData] = useState({ description: '', cost: 0, is_from_stock: false });
+  const [matData, setMatData] = useState({ description: '', cost: '', is_from_stock: false });
 
   useEffect(() => {
     fetchJobs();
@@ -28,6 +33,7 @@ export const JobList = () => {
       if (data.success) setJobs(data.data);
     } catch (err) {
       console.error(err);
+      showError('Failed to fetch jobs.');
     } finally {
       setLoading(false);
     }
@@ -42,6 +48,7 @@ export const JobList = () => {
       if (data.success) setClients(data.data);
     } catch (err) {
       console.error(err);
+      showError('Failed to fetch clients.');
     }
   };
 
@@ -62,10 +69,15 @@ export const JobList = () => {
       if (res.ok) {
         fetchJobs();
         setOpen(false);
-        setFormData({ client_id: '', title: '', rate_type: 'flat', hourly_rate: 0 });
+        setFormData({ client_id: '', title: '', rate_type: 'flat', hourly_rate: '' });
+        showSuccess('Job successfully created!');
+      } else {
+        const errorData = await res.json();
+        showError(errorData.error?.message || 'Failed to create job');
       }
     } catch (err) {
       console.error(err);
+      showError('An unexpected error occurred.');
     }
   };
 
@@ -82,113 +94,169 @@ export const JobList = () => {
       });
       if (res.ok) {
         setMatOpen(false);
-        setMatData({ description: '', cost: 0, is_from_stock: false });
+        setMatData({ description: '', cost: '', is_from_stock: false });
+        showSuccess('Material added successfully!');
+      } else {
+        const errorData = await res.json();
+        showError(errorData.error?.message || 'Failed to add material');
       }
     } catch (err) {
       console.error(err);
+      showError('An unexpected error occurred.');
     }
   };
 
   return (
-    <div className="bg-surface-container-lowest p-6 rounded-lg shadow-sm border border-outline-variant">
-      <div className="flex justify-between items-center mb-6">
-        <h2 className="text-headline-md font-semibold text-on-surface">Jobs</h2>
-        <button 
-          onClick={() => setOpen(true)}
-          className="bg-primary text-on-primary px-4 py-2 rounded font-title-md hover:bg-primary-container transition-colors"
-        >
-          Add Job
-        </button>
-      </div>
+    <main className="flex-1 overflow-auto p-gutter bg-background">
+      <div className="max-w-container-max mx-auto flex flex-col gap-lg">
+        {/* Page Header & Actions */}
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+          <div>
+            <h1 className="font-headline-lg text-headline-lg text-primary hidden md:block">Job Tracking Engine</h1>
+            <h1 className="font-headline-lg-mobile text-headline-lg-mobile text-primary block md:hidden">Job Tracking Engine</h1>
+            <p className="text-on-surface-variant font-body-md text-body-md mt-1">Manage, filter, and track all active and historical jobs.</p>
+          </div>
+          <button 
+            onClick={() => setOpen(true)}
+            className="bg-secondary-container text-on-secondary-container hover:bg-[#e09110] transition-colors font-title-md text-title-md px-6 py-3 rounded-lg flex items-center gap-2 shadow-sm whitespace-nowrap"
+          >
+            <span className="material-symbols-outlined">add</span>
+            New Job
+          </button>
+        </div>
 
-      {loading ? (
-        <div className="text-center py-8 text-on-surface-variant font-body-md">Loading...</div>
-      ) : (
-        <div className="overflow-x-auto border border-outline-variant rounded-lg">
-          <table className="w-full text-left border-collapse">
-            <thead className="bg-surface-container-low border-b border-outline-variant">
-              <tr>
-                <th className="p-3 font-title-md text-on-surface">Title</th>
-                <th className="p-3 font-title-md text-on-surface">Client</th>
-                <th className="p-3 font-title-md text-on-surface">Status</th>
-                <th className="p-3 font-title-md text-on-surface">Rate Type</th>
-                <th className="p-3 font-title-md text-on-surface">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-outline-variant">
-              {jobs.map(j => (
-                <tr key={j.id} className="hover:bg-surface-container-lowest transition-colors">
-                  <td className="p-3 font-body-md text-on-surface">{j.title}</td>
-                  <td className="p-3 font-body-md text-on-surface-variant">{j.clients?.name}</td>
-                  <td className="p-3 font-body-md text-on-surface-variant capitalize">{j.status.replace('_', ' ')}</td>
-                  <td className="p-3 font-body-md text-on-surface-variant capitalize">{j.rate_type}</td>
-                  <td className="p-3 font-body-md text-on-surface">
-                    <button 
-                      className="text-primary hover:text-primary-container hover:underline font-label-md uppercase tracking-wider" 
-                      onClick={() => { setSelectedJobId(j.id); setMatOpen(true); }}
-                    >
-                      Add Material
-                    </button>
-                  </td>
-                </tr>
-              ))}
-              {jobs.length === 0 && (
+        {/* Filters & Search */}
+        <div className="bg-surface-container-lowest border border-outline-variant rounded-xl p-md flex flex-col lg:flex-row gap-4 justify-between items-center shadow-sm">
+          <div className="flex gap-2 overflow-x-auto w-full lg:w-auto pb-2 lg:pb-0 scrollbar-hide">
+            <button className="px-4 py-2 rounded-lg bg-surface-container-high text-primary font-title-md text-title-md whitespace-nowrap border border-transparent">
+                All Jobs
+            </button>
+            <button className="px-4 py-2 rounded-lg bg-transparent text-on-surface-variant hover:bg-surface-container-low border border-outline-variant transition-colors font-title-md text-title-md whitespace-nowrap">
+                Open
+            </button>
+            <button className="px-4 py-2 rounded-lg bg-transparent text-on-surface-variant hover:bg-surface-container-low border border-outline-variant transition-colors font-title-md text-title-md whitespace-nowrap">
+                In Progress
+            </button>
+            <button className="px-4 py-2 rounded-lg bg-transparent text-on-surface-variant hover:bg-surface-container-low border border-outline-variant transition-colors font-title-md text-title-md whitespace-nowrap">
+                Completed
+            </button>
+          </div>
+          <div className="relative w-full lg:w-72 shrink-0">
+            <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant">search</span>
+            <input 
+              className="w-full pl-10 pr-4 py-2 rounded-lg border border-outline bg-surface-container-lowest text-on-surface focus:border-primary-container focus:ring-1 focus:ring-primary-container transition-shadow font-body-md text-body-md placeholder:text-on-tertiary-container" 
+              placeholder="Search jobs, clients..." 
+              type="text" 
+            />
+          </div>
+        </div>
+
+        {/* Data Table Container */}
+        <div className="bg-surface-container-lowest border border-outline-variant rounded-xl shadow-sm overflow-hidden flex flex-col">
+          <div className="overflow-x-auto">
+            <table className="w-full text-left min-w-[800px]">
+              <thead className="bg-surface-container-low border-b border-outline-variant">
                 <tr>
-                  <td colSpan="5" className="p-6 text-center text-on-surface-variant font-body-md">No jobs found.</td>
+                  <th className="py-3 px-4 font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">Job Name & ID</th>
+                  <th className="py-3 px-4 font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">Client</th>
+                  <th className="py-3 px-4 font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">Status</th>
+                  <th className="py-3 px-4 font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">Rate Type</th>
+                  <th className="py-3 px-4 font-label-md text-label-md text-on-surface-variant uppercase tracking-wider text-right">Actions</th>
                 </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      )}
-
-      {/* New Job Modal */}
-      {open && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-on-surface/50">
-          <div className="bg-surface-container-lowest rounded-xl p-6 shadow-level-3 w-full max-w-[28rem] border border-outline-variant">
-            <h3 className="text-title-md font-semibold mb-4 text-on-surface">Add New Job</h3>
-            <div className="space-y-3 mb-6">
-              <select className="w-full px-3 py-2 border border-outline-variant rounded bg-surface-container-lowest focus:border-primary focus:ring-1 focus:ring-primary outline-none" value={formData.client_id} onChange={e => setFormData({...formData, client_id: e.target.value})}>
-                <option value="" disabled>Select Client</option>
-                {clients.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-              </select>
-              <input type="text" placeholder="Job Title" className="w-full px-3 py-2 border border-outline-variant rounded bg-surface-container-lowest focus:border-primary focus:ring-1 focus:ring-primary outline-none" value={formData.title} onChange={e => setFormData({...formData, title: e.target.value})} />
-              <select className="w-full px-3 py-2 border border-outline-variant rounded bg-surface-container-lowest focus:border-primary focus:ring-1 focus:ring-primary outline-none" value={formData.rate_type} onChange={e => setFormData({...formData, rate_type: e.target.value})}>
-                <option value="flat">Flat Rate</option>
-                <option value="hourly">Hourly Rate</option>
-              </select>
-              {formData.rate_type === 'hourly' && (
-                <input type="number" placeholder="Hourly Rate ($)" className="w-full px-3 py-2 border border-outline-variant rounded bg-surface-container-lowest focus:border-primary focus:ring-1 focus:ring-primary outline-none" value={formData.hourly_rate} onChange={e => setFormData({...formData, hourly_rate: e.target.value})} />
-              )}
-            </div>
-            <div className="flex justify-end gap-3">
-              <button onClick={() => setOpen(false)} className="px-4 py-2 font-title-md text-primary hover:bg-surface-container-low rounded transition-colors">Cancel</button>
-              <button onClick={handleCreateJob} disabled={!formData.client_id || !formData.title} className="px-4 py-2 font-title-md bg-primary text-on-primary rounded hover:bg-primary-container disabled:opacity-50 transition-colors">Save Job</button>
+              </thead>
+              <tbody className="divide-y divide-outline-variant font-table-data text-table-data">
+                {jobs.map(j => (
+                  <tr key={j.id} className="hover:bg-surface-container-lowest transition-colors bg-white group">
+                    <td className="py-4 px-4 align-top">
+                      <div className="font-title-md text-title-md text-primary">{j.title}</div>
+                      <div className="text-on-tertiary-container mt-1">#JOB-{j.id.split('-')[0].toUpperCase()}</div>
+                    </td>
+                    <td className="py-4 px-4 align-top">
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-full bg-primary-container text-on-primary-container flex items-center justify-center font-bold">
+                          {j.clients?.name?.substring(0, 2).toUpperCase() || 'NA'}
+                        </div>
+                        <div>
+                          <div className="text-on-surface font-medium">{j.clients?.name || 'Unknown Client'}</div>
+                          <div className="text-on-tertiary-container text-xs">{j.clients?.email || 'No email provided'}</div>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="py-4 px-4 align-top">
+                      <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md font-label-md text-label-md border ${
+                        j.status === 'open' ? 'bg-[#fff3e0] text-[#e65100] border-[#ffe0b2]' :
+                        j.status === 'in_progress' ? 'bg-[#e5f6fd] text-[#0288d1] border-[#b3e5fc]' :
+                        'bg-[#e8f5e9] text-[#2e7d32] border-[#c8e6c9]'
+                      }`}>
+                        <span className={`w-1.5 h-1.5 rounded-full ${
+                          j.status === 'open' ? 'bg-[#e65100]' :
+                          j.status === 'in_progress' ? 'bg-[#0288d1]' :
+                          'bg-[#2e7d32]'
+                        }`}></span>
+                        {j.status.replace('_', ' ').toUpperCase()}
+                      </span>
+                    </td>
+                    <td className="py-4 px-4 align-top">
+                      <div className="text-on-surface font-medium capitalize">{j.rate_type} Rate</div>
+                      {j.rate_type === 'hourly' && (
+                        <div className="text-on-tertiary-container text-xs mt-1">${j.hourly_rate}/hr</div>
+                      )}
+                    </td>
+                    <td className="py-4 px-4 align-top text-right">
+                      <button 
+                        onClick={() => { setSelectedJobId(j.id); setMatOpen(true); }}
+                        className="text-on-surface-variant hover:text-primary p-2 rounded-lg hover:bg-surface-container-low transition-colors opacity-0 group-hover:opacity-100 focus:opacity-100"
+                        title="Add Material"
+                      >
+                        <span className="material-symbols-outlined">add_box</span>
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+                {loading && jobs.length === 0 && (
+                  <tr>
+                    <td colSpan="5" className="py-8 text-center text-on-surface-variant font-body-md">Loading jobs...</td>
+                  </tr>
+                )}
+                {!loading && jobs.length === 0 && (
+                  <tr>
+                    <td colSpan="5" className="py-8 text-center text-on-surface-variant font-body-md">No jobs found. Click "New Job" to get started.</td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+          {/* Pagination Footer */}
+          <div className="border-t border-outline-variant p-4 flex justify-between items-center bg-surface-container-lowest">
+            <span className="text-on-surface-variant font-body-md text-body-md">Showing {jobs.length} entries</span>
+            <div className="flex gap-2">
+              <button className="p-2 border border-outline-variant rounded-lg text-on-surface-variant hover:bg-surface-container-low disabled:opacity-50" disabled>
+                <span className="material-symbols-outlined">chevron_left</span>
+              </button>
+              <button className="p-2 border border-outline-variant rounded-lg text-on-surface-variant hover:bg-surface-container-low disabled:opacity-50" disabled>
+                <span className="material-symbols-outlined">chevron_right</span>
+              </button>
             </div>
           </div>
         </div>
-      )}
-
-      {/* Add Material Modal */}
-      {matOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-on-surface/50">
-          <div className="bg-surface-container-lowest rounded-xl p-6 shadow-level-3 w-full max-w-[28rem] border border-outline-variant">
-            <h3 className="text-title-md font-semibold mb-4 text-on-surface">Add Material to Job</h3>
-            <div className="space-y-3 mb-6">
-              <input type="text" placeholder="Description" className="w-full px-3 py-2 border border-outline-variant rounded bg-surface-container-lowest focus:border-primary focus:ring-1 focus:ring-primary outline-none" value={matData.description} onChange={e => setMatData({...matData, description: e.target.value})} />
-              <input type="number" placeholder="Cost ($)" className="w-full px-3 py-2 border border-outline-variant rounded bg-surface-container-lowest focus:border-primary focus:ring-1 focus:ring-primary outline-none" value={matData.cost} onChange={e => setMatData({...matData, cost: e.target.value})} />
-              <label className="flex items-center gap-2 cursor-pointer mt-2 text-on-surface font-body-md">
-                <input type="checkbox" checked={matData.is_from_stock} onChange={e => setMatData({...matData, is_from_stock: e.target.checked})} className="rounded text-primary focus:ring-primary h-4 w-4" />
-                Pulled From Stock Inventory?
-              </label>
-            </div>
-            <div className="flex justify-end gap-3">
-              <button onClick={() => setMatOpen(false)} className="px-4 py-2 font-title-md text-primary hover:bg-surface-container-low rounded transition-colors">Cancel</button>
-              <button onClick={handleAddMaterial} disabled={!matData.description || matData.cost < 0} className="px-4 py-2 font-title-md bg-primary text-on-primary rounded hover:bg-primary-container disabled:opacity-50 transition-colors">Add Material</button>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
+        
+        {/* Modals */}
+        <AddJobModal 
+          open={open} 
+          onClose={() => setOpen(false)} 
+          onSubmit={handleCreateJob} 
+          formData={formData} 
+          setFormData={setFormData} 
+          clients={clients} 
+        />
+        <AddMaterialModal 
+          open={matOpen} 
+          onClose={() => setMatOpen(false)} 
+          onSubmit={handleAddMaterial} 
+          matData={matData} 
+          setMatData={setMatData} 
+        />
+      </div>
+    </main>
   );
 };
