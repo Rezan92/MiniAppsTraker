@@ -32,19 +32,53 @@ export const AddMaterialModal = ({ open, onClose, onSubmit, matData, setMatData 
               />
             </div>
             
-            {/* Cost */}
+            {/* Cost and Purchase Date Grid */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+              <div>
+                <label className="block font-label-md text-label-md text-on-surface-variant mb-1">Cost ($) *</label>
+                <input 
+                  className="w-full px-3 py-2 border border-outline-variant rounded-md bg-surface text-on-surface focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-shadow placeholder:text-on-surface-variant/50" 
+                  placeholder="e.g. 45.00" 
+                  type="number" 
+                  min="0"
+                  step="0.01"
+                  value={matData.cost}
+                  onChange={e => setMatData({...matData, cost: e.target.value})}
+                  required
+                />
+              </div>
+              <div>
+                <label className="block font-label-md text-label-md text-on-surface-variant mb-1">Purchase Date</label>
+                <input 
+                  className="w-full px-3 py-2 border border-outline-variant rounded-md bg-surface text-on-surface focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-shadow" 
+                  type="date" 
+                  value={matData.purchase_date || ''}
+                  onChange={e => setMatData({...matData, purchase_date: e.target.value})}
+                />
+              </div>
+            </div>
+
+            {/* Store */}
             <div>
-              <label className="block font-label-md text-label-md text-on-surface-variant mb-1">Cost ($) *</label>
+              <label className="block font-label-md text-label-md text-on-surface-variant mb-1">Store / Supplier</label>
               <input 
                 className="w-full px-3 py-2 border border-outline-variant rounded-md bg-surface text-on-surface focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-shadow placeholder:text-on-surface-variant/50" 
-                placeholder="e.g. 45.00" 
-                type="number" 
-                min="0"
-                step="0.01"
-                value={matData.cost}
-                onChange={e => setMatData({...matData, cost: e.target.value})}
-                required
+                placeholder="e.g. Home Depot" 
+                type="text" 
+                value={matData.store || ''}
+                onChange={e => setMatData({...matData, store: e.target.value})}
               />
+            </div>
+
+            {/* Notes */}
+            <div>
+              <label className="block font-label-md text-label-md text-on-surface-variant mb-1">Notes</label>
+              <textarea 
+                className="w-full px-3 py-2 border border-outline-variant rounded-md bg-surface text-on-surface focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-shadow placeholder:text-on-surface-variant/50 resize-none h-16" 
+                placeholder="Receipt number, warranty info..."
+                value={matData.notes || ''}
+                onChange={e => setMatData({...matData, notes: e.target.value})}
+              ></textarea>
             </div>
             
             {/* Inventory Checkbox */}

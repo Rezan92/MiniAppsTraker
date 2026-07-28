@@ -82,6 +82,39 @@ export const AddJobModal = ({ open, onClose, onSubmit, formData, setFormData, cl
                 </div>
               )}
             </div>
+
+            {/* Dates Grid */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+              <div>
+                <label className="block font-label-md text-label-md text-on-surface-variant mb-1">Start Date</label>
+                <input 
+                  className="w-full px-3 py-2 border border-outline-variant rounded-md bg-surface text-on-surface focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-shadow" 
+                  type="date" 
+                  value={formData.start_date || ''}
+                  onChange={e => setFormData({...formData, start_date: e.target.value})}
+                />
+              </div>
+              <div>
+                <label className="block font-label-md text-label-md text-on-surface-variant mb-1">End Date</label>
+                <input 
+                  className="w-full px-3 py-2 border border-outline-variant rounded-md bg-surface text-on-surface focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-shadow" 
+                  type="date" 
+                  value={formData.end_date || ''}
+                  onChange={e => setFormData({...formData, end_date: e.target.value})}
+                />
+              </div>
+            </div>
+
+            {/* Notes */}
+            <div>
+              <label className="block font-label-md text-label-md text-on-surface-variant mb-1">Job Notes</label>
+              <textarea 
+                className="w-full px-3 py-2 border border-outline-variant rounded-md bg-surface text-on-surface focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-shadow placeholder:text-on-surface-variant/50 resize-none h-20" 
+                placeholder="Initial assessment, scope details..."
+                value={formData.notes || ''}
+                onChange={e => setFormData({...formData, notes: e.target.value})}
+              ></textarea>
+            </div>
           </form>
         </div>
         
