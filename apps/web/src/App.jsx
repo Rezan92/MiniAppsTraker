@@ -3,43 +3,52 @@ import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { LoginCard } from './components/LoginCard';
 import { ClientList } from './components/clients/ClientList';
 import { JobList } from './components/jobs/JobList';
-import { Box, Typography, Button, CssBaseline, AppBar, Toolbar, Tabs, Tab } from '@mui/material';
 
 const Dashboard = () => {
   const { user, signOut } = useAuth();
   const [tab, setTab] = useState(0);
   
   return (
-    <Box>
-      <AppBar position="static">
-        <Toolbar>
-          <Typography variant="h6" sx={{ flexGrow: 1 }}>Handyman CRM</Typography>
-          <Typography variant="body2" sx={{ mr: 2 }}>{user?.email}</Typography>
-          <Button color="inherit" onClick={signOut}>Sign Out</Button>
-        </Toolbar>
-      </AppBar>
-      <Box p={4} maxWidth="1200px" mx="auto">
-        <Tabs value={tab} onChange={(e, v) => setTab(v)} sx={{ mb: 4 }}>
-          <Tab label="Clients" />
-          <Tab label="Jobs" />
-        </Tabs>
+    <div className="min-h-screen bg-background">
+      <header className="bg-primary text-on-primary py-4 px-6 flex justify-between items-center shadow">
+        <h1 className="font-headline-md text-title-md font-bold tracking-tight">Handyman CRM</h1>
+        <div className="flex items-center gap-4">
+          <span className="font-body-md opacity-90">{user?.email}</span>
+          <button 
+            onClick={signOut}
+            className="text-on-primary hover:text-primary-fixed-dim transition-colors font-label-md uppercase tracking-wider px-3 py-1 border border-on-primary/30 rounded"
+          >
+            Sign Out
+          </button>
+        </div>
+      </header>
+      
+      <main className="max-w-7xl mx-auto p-6 mt-4">
+        <div className="flex gap-4 border-b border-outline-variant mb-6">
+          <button 
+            onClick={() => setTab(0)} 
+            className={`pb-2 px-4 font-title-md transition-colors ${tab === 0 ? 'border-b-2 border-primary text-primary' : 'text-on-surface-variant hover:text-on-surface'}`}
+          >
+            Clients
+          </button>
+          <button 
+            onClick={() => setTab(1)} 
+            className={`pb-2 px-4 font-title-md transition-colors ${tab === 1 ? 'border-b-2 border-primary text-primary' : 'text-on-surface-variant hover:text-on-surface'}`}
+          >
+            Jobs
+          </button>
+        </div>
         
         {tab === 0 && <ClientList />}
         {tab === 1 && <JobList />}
-      </Box>
-    </Box>
+      </main>
+    </div>
   );
 };
 
 const MainApp = () => {
   const { user } = useAuth();
-  
-  return (
-    <>
-      <CssBaseline />
-      {user ? <Dashboard /> : <LoginCard />}
-    </>
-  );
+  return user ? <Dashboard /> : <LoginCard />;
 };
 
 function App() {

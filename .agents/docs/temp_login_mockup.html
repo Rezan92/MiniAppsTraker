@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Login - ProFix Handyman</title>
+<!-- Material Symbols -->
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Google Fonts -->
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&amp;family=JetBrains+Mono:wght@500&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Tailwind CSS -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<!-- Tailwind Config -->
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "surface-container-lowest": "#ffffff",
+                    "secondary-fixed": "#ffddb8",
+                    "primary-fixed-dim": "#adc7f7",
+                    "secondary-container": "#fea619",
+                    "primary": "#002045",
+                    "on-primary": "#ffffff",
+                    "on-tertiary-fixed": "#131b2e",
+                    "tertiary": "#182033",
+                    "tertiary-fixed-dim": "#bec6e0",
+                    "surface-bright": "#f8f9ff",
+                    "error": "#ba1a1a",
+                    "inverse-primary": "#adc7f7",
+                    "primary-fixed": "#d6e3ff",
+                    "outline": "#74777f",
+                    "on-secondary-fixed-variant": "#653e00",
+                    "surface": "#f8f9ff",
+                    "surface-tint": "#455f88",
+                    "on-error": "#ffffff",
+                    "surface-container": "#e5eeff",
+                    "on-tertiary-container": "#969eb7",
+                    "on-surface": "#0b1c30",
+                    "surface-container-highest": "#d3e4fe",
+                    "surface-variant": "#d3e4fe",
+                    "on-error-container": "#93000a",
+                    "on-surface-variant": "#43474e",
+                    "primary-container": "#1a365d",
+                    "on-secondary": "#ffffff",
+                    "on-secondary-fixed": "#2a1700",
+                    "secondary-fixed-dim": "#ffb95f",
+                    "background": "#f8f9ff",
+                    "secondary": "#855300",
+                    "surface-dim": "#cbdbf5",
+                    "tertiary-fixed": "#dae2fd",
+                    "surface-container-low": "#eff4ff",
+                    "surface-container-high": "#dce9ff",
+                    "inverse-surface": "#213145",
+                    "on-tertiary-fixed-variant": "#3f465c",
+                    "inverse-on-surface": "#eaf1ff",
+                    "on-background": "#0b1c30",
+                    "tertiary-container": "#2d354a",
+                    "outline-variant": "#c4c6cf",
+                    "on-primary-container": "#86a0cd",
+                    "on-primary-fixed-variant": "#2d476f",
+                    "error-container": "#ffdad6",
+                    "on-tertiary": "#ffffff",
+                    "on-primary-fixed": "#001b3c",
+                    "on-secondary-container": "#684000"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "full": "9999px"
+            },
+            "spacing": {
+                    "gutter": "24px",
+                    "sm": "12px",
+                    "xl": "32px",
+                    "md": "16px",
+                    "lg": "24px",
+                    "xs": "4px",
+                    "container-max": "1440px",
+                    "base": "8px"
+            },
+            "fontFamily": {
+                    "display-lg": [
+                            "Inter"
+                    ],
+                    "body-lg": [
+                            "Inter"
+                    ],
+                    "headline-md": [
+                            "Inter"
+                    ],
+                    "headline-lg": [
+                            "Inter"
+                    ],
+                    "headline-lg-mobile": [
+                            "Inter"
+                    ],
+                    "label-md": [
+                            "JetBrains Mono"
+                    ],
+                    "title-md": [
+                            "Inter"
+                    ],
+                    "body-md": [
+                            "Inter"
+                    ],
+                    "table-data": [
+                            "Inter"
+                    ]
+            },
+            "fontSize": {
+                    "display-lg": [
+                            "48px",
+                            {
+                                    "lineHeight": "56px",
+                                    "letterSpacing": "-0.02em",
+                                    "fontWeight": "700"
+                            }
+                    ],
+                    "body-lg": [
+                            "16px",
+                            {
+                                    "lineHeight": "24px",
+                                    "fontWeight": "400"
+                            }
+                    ],
+                    "headline-md": [
+                            "24px",
+                            {
+                                    "lineHeight": "32px",
+                                    "fontWeight": "600"
+                            }
+                    ],
+                    "headline-lg": [
+                            "32px",
+                            {
+                                    "lineHeight": "40px",
+                                    "letterSpacing": "-0.01em",
+                                    "fontWeight": "600"
+                            }
+                    ],
+                    "headline-lg-mobile": [
+                            "24px",
+                            {
+                                    "lineHeight": "32px",
+                                    "fontWeight": "600"
+                            }
+                    ],
+                    "label-md": [
+                            "12px",
+                            {
+                                    "lineHeight": "16px",
+                                    "letterSpacing": "0.05em",
+                                    "fontWeight": "500"
+                            }
+                    ],
+                    "title-md": [
+                            "18px",
+                            {
+                                    "lineHeight": "24px",
+                                    "fontWeight": "600"
+                            }
+                    ],
+                    "body-md": [
+                            "14px",
+                            {
+                                    "lineHeight": "20px",
+                                    "fontWeight": "400"
+                            }
+                    ],
+                    "table-data": [
+                            "13px",
+                            {
+                                    "lineHeight": "18px",
+                                    "fontWeight": "400"
+                            }
+                    ]
+            }
+    },
+        },
+      }
+    </script>
+<style>
+        .shadow-level-3 {
+            box-shadow: 0px 12px 24px rgba(15, 23, 42, 0.12);
+        }
+    </style>
+</head>
+<body class="bg-background min-h-screen flex items-center justify-center relative overflow-hidden font-sans antialiased text-on-surface selection:bg-primary-container selection:text-on-primary-container">
+<!-- Subtle Background Image -->
+<div class="absolute inset-0 z-0 bg-cover bg-center opacity-20 pointer-events-none" data-alt="A subtle, highly desaturated image of organized professional tools like a measuring tape, level, and blueprints laid out on a clean white desk surface. The lighting is soft and diffuse, creating a high-key, modern architectural aesthetic. The image is mostly white and light gray, providing a clean, distraction-free background that implies precision and professional work." style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuCDC784Zr_DabjzbUHfBfQXKGVxcVgU4KL7VZU9haoKQpKkB30Oh1HqVckdIcbEHIvsPxzWiMMMIf5m6F8RsRzbpKkOB1A_I3beRYM2oyPpOn69kPUAE1cQxbRua1b3RrWZgnkmNogP8EAs8VKQU_2XFUrw7sllGFhtgQSUR2t2YLjKpG2JjH2QpqI7Ri3JT0ieArMB2lbpieuP8qfZKaFRA_3tH2-CMvNjQ9N5ulTCzigmFdghrTQqAQ')"></div>
+<!-- Main Content Container -->
+<main class="w-full max-w-md px-md z-10 relative">
+<!-- Login Card -->
+<div class="bg-surface-container-lowest border border-outline-variant rounded-xl p-lg shadow-level-3">
+<!-- Brand / Logo -->
+<div class="flex flex-col items-center mb-lg">
+<div class="h-12 w-12 bg-primary text-on-primary rounded-DEFAULT flex items-center justify-center mb-sm">
+<span class="material-symbols-outlined" style="font-size: 28px;">handyman</span>
+</div>
+<h1 class="font-headline-md text-headline-md text-primary tracking-tight">ProFix Handyman</h1>
+</div>
+<!-- Header -->
+<div class="text-center mb-lg">
+<h2 class="font-title-md text-title-md text-on-surface mb-xs">Welcome back</h2>
+<p class="font-body-md text-body-md text-on-surface-variant">Sign in to your account to continue</p>
+</div>
+<!-- Sign in with Google (Prominent) -->
+<button class="w-full flex items-center justify-center gap-sm py-3 px-4 mb-md border border-outline-variant rounded-DEFAULT bg-surface-container-lowest hover:bg-surface-container-low transition-colors focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent">
+<!-- SVG Google Icon (Inline for reliability without external assets) -->
+<svg aria-hidden="true" class="h-5 w-5" viewbox="0 0 24 24">
+<path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"></path>
+<path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"></path>
+<path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"></path>
+<path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"></path>
+<path d="M1 1h22v22H1z" fill="none"></path>
+</svg>
+<span class="font-title-md text-body-lg text-on-surface">Sign in with Google</span>
+</button>
+<!-- Divider -->
+<div class="relative flex items-center py-sm mb-md">
+<div class="flex-grow border-t border-outline-variant"></div>
+<span class="flex-shrink-0 mx-sm text-on-surface-variant font-label-md text-label-md uppercase">Or continue with</span>
+<div class="flex-grow border-t border-outline-variant"></div>
+</div>
+<!-- Email Form -->
+<form action="#" method="POST">
+<div class="mb-sm">
+<label class="block font-label-md text-label-md text-on-surface mb-xs" for="email">Email address</label>
+<input autocomplete="email" class="w-full px-4 py-3 border border-outline-variant rounded-DEFAULT bg-surface-container-lowest font-body-md text-on-surface focus:outline-none focus:ring-0 focus:border-primary focus:border-[2px] transition-all min-h-[44px]" id="email" name="email" placeholder="Enter your email" required="" type="email"/>
+</div>
+<div class="mb-lg">
+<label class="block font-label-md text-label-md text-on-surface mb-xs" for="password">Password</label>
+<input autocomplete="current-password" class="w-full px-4 py-3 border border-outline-variant rounded-DEFAULT bg-surface-container-lowest font-body-md text-on-surface focus:outline-none focus:ring-0 focus:border-primary focus:border-[2px] transition-all min-h-[44px]" id="password" name="password" placeholder="Enter your password" required="" type="password"/>
+<div class="flex justify-end mt-2">
+<a class="font-body-md text-body-md text-primary hover:underline hover:text-primary-container transition-colors" href="#">Forgot password?</a>
+</div>
+</div>
+<button class="w-full bg-primary text-on-primary font-title-md text-title-md py-3 px-4 rounded-DEFAULT hover:bg-primary-container transition-colors min-h-[44px] flex items-center justify-center" type="submit">
+                    Sign In
+                </button>
+</form>
+</div>
+<!-- Footer Links (Optional context) -->
+<div class="mt-lg text-center">
+<p class="font-body-md text-body-md text-on-surface-variant">
+                Don't have an account? <a class="font-title-md text-primary hover:underline" href="#">Sign up</a>
+</p>
+</div>
+</main>
+</body></html>

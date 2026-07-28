@@ -1,10 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  Box, Typography, Button, Table, TableBody, TableCell, 
-  TableContainer, TableHead, TableRow, Paper, Dialog, 
-  DialogTitle, DialogContent, DialogActions, TextField,
-  CircularProgress
-} from '@mui/material';
 import { useAuth } from '../../contexts/AuthContext';
 
 export const ClientList = () => {
@@ -55,52 +49,66 @@ export const ClientList = () => {
   };
 
   return (
-    <Box>
-      <Box display="flex" justifyContent="space-between" mb={2}>
-        <Typography variant="h5">Clients</Typography>
-        <Button variant="contained" onClick={() => setOpen(true)}>Add Client</Button>
-      </Box>
+    <div className="bg-surface-container-lowest p-6 rounded-lg shadow-sm border border-outline-variant">
+      <div className="flex justify-between items-center mb-6">
+        <h2 className="text-headline-md font-semibold text-on-surface">Clients</h2>
+        <button 
+          onClick={() => setOpen(true)}
+          className="bg-primary text-on-primary px-4 py-2 rounded font-title-md hover:bg-primary-container transition-colors"
+        >
+          Add Client
+        </button>
+      </div>
 
-      {loading ? <CircularProgress /> : (
-        <TableContainer component={Paper}>
-          <Table>
-            <TableHead>
-              <TableRow>
-                <TableCell>Name</TableCell>
-                <TableCell>Email</TableCell>
-                <TableCell>Phone</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
+      {loading ? (
+        <div className="text-center py-8 text-on-surface-variant font-body-md">Loading...</div>
+      ) : (
+        <div className="overflow-x-auto border border-outline-variant rounded-lg">
+          <table className="w-full text-left border-collapse">
+            <thead className="bg-surface-container-low border-b border-outline-variant">
+              <tr>
+                <th className="p-3 font-title-md text-on-surface">Name</th>
+                <th className="p-3 font-title-md text-on-surface">Email</th>
+                <th className="p-3 font-title-md text-on-surface">Phone</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-outline-variant">
               {clients.map(c => (
-                <TableRow key={c.id}>
-                  <TableCell>{c.name}</TableCell>
-                  <TableCell>{c.email}</TableCell>
-                  <TableCell>{c.phone}</TableCell>
-                </TableRow>
+                <tr key={c.id} className="hover:bg-surface-container-lowest transition-colors">
+                  <td className="p-3 font-body-md text-on-surface">{c.name}</td>
+                  <td className="p-3 font-body-md text-on-surface-variant">{c.email}</td>
+                  <td className="p-3 font-body-md text-on-surface-variant">{c.phone}</td>
+                </tr>
               ))}
               {clients.length === 0 && (
-                <TableRow><TableCell colSpan={3} align="center">No clients found.</TableCell></TableRow>
+                <tr>
+                  <td colSpan="3" className="p-6 text-center text-on-surface-variant font-body-md">No clients found.</td>
+                </tr>
               )}
-            </TableBody>
-          </Table>
-        </TableContainer>
+            </tbody>
+          </table>
+        </div>
       )}
 
-      <Dialog open={open} onClose={() => setOpen(false)} maxWidth="sm" fullWidth>
-        <DialogTitle>Add New Client</DialogTitle>
-        <DialogContent>
-          <TextField margin="dense" label="Name" fullWidth value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} />
-          <TextField margin="dense" label="Email" fullWidth value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} />
-          <TextField margin="dense" label="Phone" fullWidth value={formData.phone} onChange={e => setFormData({...formData, phone: e.target.value})} />
-          <TextField margin="dense" label="Address" fullWidth value={formData.address} onChange={e => setFormData({...formData, address: e.target.value})} />
-          <TextField margin="dense" label="Notes" fullWidth multiline rows={3} value={formData.notes} onChange={e => setFormData({...formData, notes: e.target.value})} />
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setOpen(false)}>Cancel</Button>
-          <Button variant="contained" onClick={handleCreate} disabled={!formData.name}>Save</Button>
-        </DialogActions>
-      </Dialog>
-    </Box>
+      {/* Simple Modal */}
+      {open && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-on-surface/50">
+          <div className="bg-surface-container-lowest rounded-xl p-6 shadow-level-3 w-full max-w-md border border-outline-variant">
+            <h3 className="text-title-md font-semibold mb-4 text-on-surface">Add New Client</h3>
+            <div className="space-y-3 mb-6">
+              <input type="text" placeholder="Name" className="w-full px-3 py-2 border border-outline-variant rounded bg-surface-container-lowest focus:border-primary focus:ring-1 focus:ring-primary outline-none" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} />
+              <input type="email" placeholder="Email" className="w-full px-3 py-2 border border-outline-variant rounded bg-surface-container-lowest focus:border-primary focus:ring-1 focus:ring-primary outline-none" value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} />
+              <input type="text" placeholder="Phone" className="w-full px-3 py-2 border border-outline-variant rounded bg-surface-container-lowest focus:border-primary focus:ring-1 focus:ring-primary outline-none" value={formData.phone} onChange={e => setFormData({...formData, phone: e.target.value})} />
+              <input type="text" placeholder="Address" className="w-full px-3 py-2 border border-outline-variant rounded bg-surface-container-lowest focus:border-primary focus:ring-1 focus:ring-primary outline-none" value={formData.address} onChange={e => setFormData({...formData, address: e.target.value})} />
+              <textarea placeholder="Notes" rows="3" className="w-full px-3 py-2 border border-outline-variant rounded bg-surface-container-lowest focus:border-primary focus:ring-1 focus:ring-primary outline-none resize-none" value={formData.notes} onChange={e => setFormData({...formData, notes: e.target.value})}></textarea>
+            </div>
+            <div className="flex justify-end gap-3">
+              <button onClick={() => setOpen(false)} className="px-4 py-2 font-title-md text-primary hover:bg-surface-container-low rounded transition-colors">Cancel</button>
+              <button onClick={handleCreate} disabled={!formData.name} className="px-4 py-2 font-title-md bg-primary text-on-primary rounded hover:bg-primary-container disabled:opacity-50 transition-colors">Save</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
   );
 };
