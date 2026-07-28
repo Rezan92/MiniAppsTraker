@@ -7,7 +7,7 @@ export const ClientList = () => {
   const [clients, setClients] = useState([]);
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
-  const [formData, setFormData] = useState({ name: '', email: '', phone: '', address: '', notes: '' });
+  const [formData, setFormData] = useState({ client_type: 'residential', name: '', email: '', phone: '', address: '', notes: '' });
 
   useEffect(() => {
     fetchClients();
@@ -42,7 +42,7 @@ export const ClientList = () => {
       if (res.ok) {
         fetchClients();
         setOpen(false);
-        setFormData({ name: '', email: '', phone: '', address: '', notes: '' });
+        setFormData({ client_type: 'residential', name: '', email: '', phone: '', address: '', notes: '' });
       }
     } catch (err) {
       console.error(err);
