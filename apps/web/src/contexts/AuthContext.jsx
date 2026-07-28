@@ -27,12 +27,16 @@ export const AuthProvider = ({ children }) => {
     return supabase.auth.signInWithOAuth({ provider: 'google' });
   };
 
+  const signInWithEmail = async (email, password) => {
+    return supabase.auth.signInWithPassword({ email, password });
+  };
+
   const signOut = async () => {
     return supabase.auth.signOut();
   };
 
   return (
-    <AuthContext.Provider value={{ session, user, loading, signInWithGoogle, signOut }}>
+    <AuthContext.Provider value={{ session, user, loading, signInWithGoogle, signInWithEmail, signOut }}>
       {!loading && children}
     </AuthContext.Provider>
   );
