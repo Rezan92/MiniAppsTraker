@@ -14,7 +14,7 @@ export const JobList = () => {
   const [loading, setLoading] = useState(true);
   
   const [open, setOpen] = useState(false);
-  const [formData, setFormData] = useState({ client_id: '', title: '', rate_type: 'flat', hourly_rate: '', start_date: '', end_date: '', notes: '' });
+  const [formData, setFormData] = useState({ client_id: '', title: '', rate_type: 'flat', hourly_rate: '', flat_rate: '', start_date: '', end_date: '', notes: '' });
 
   const [matOpen, setMatOpen] = useState(false);
   const [selectedJobId, setSelectedJobId] = useState('');
@@ -22,6 +22,8 @@ export const JobList = () => {
 
   const [hoursOpen, setHoursOpen] = useState(false);
   const [hoursData, setHoursData] = useState({ date: new Date().toISOString().split('T')[0], hours: '' });
+
+  const [openMenuId, setOpenMenuId] = useState(null);
 
   useEffect(() => {
     fetchJobs();
@@ -60,7 +62,8 @@ export const JobList = () => {
     try {
       const payload = {
         ...formData,
-        hourly_rate: formData.rate_type === 'hourly' ? parseFloat(formData.hourly_rate) : undefined
+        hourly_rate: formData.rate_type === 'hourly' ? parseFloat(formData.hourly_rate) : undefined,
+        flat_rate: formData.rate_type === 'flat' ? parseFloat(formData.flat_rate) : undefined
       };
       const res = await fetch('http://localhost:4000/api/jobs', {
         method: 'POST',
@@ -73,7 +76,7 @@ export const JobList = () => {
       if (res.ok) {
         fetchJobs();
         setOpen(false);
-        setFormData({ client_id: '', title: '', rate_type: 'flat', hourly_rate: '', start_date: '', end_date: '', notes: '' });
+        setFormData({ client_id: '', title: '', rate_type: 'flat', hourly_rate: '', flat_rate: '', start_date: '', end_date: '', notes: '' });
         showSuccess('Job successfully created!');
       } else {
         const errorData = await res.json();
@@ -122,6 +125,7 @@ export const JobList = () => {
       });
       if (res.ok) {
         fetchJobs();
+        setOpenMenuId(null);
         showSuccess('Job status updated!');
       } else {
         const errorData = await res.json();
@@ -205,7 +209,7 @@ export const JobList = () => {
 
         {/* Data Table Container */}
         <div className="bg-surface-container-lowest border border-outline-variant rounded-xl shadow-sm overflow-hidden flex flex-col">
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto min-h-[300px]">
             <table className="w-full text-left min-w-[800px]">
               <thead className="bg-surface-container-low border-b border-outline-variant">
                 <tr>
@@ -235,12 +239,15 @@ export const JobList = () => {
                       </div>
                     </td>
                     <td className="py-4 px-4 align-top">
-                      <div className="relative group/status w-max cursor-pointer">
-                        <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md font-label-md text-label-md border ${
-                          j.status === 'open' ? 'bg-[#fff3e0] text-[#e65100] border-[#ffe0b2]' :
-                          j.status === 'in_progress' ? 'bg-[#e5f6fd] text-[#0288d1] border-[#b3e5fc]' :
-                          'bg-[#e8f5e9] text-[#2e7d32] border-[#c8e6c9]'
-                        }`}>
+                      <div className="relative w-max cursor-pointer">
+                        <button 
+                          onClick={() => setOpenMenuId(openMenuId === j.id ? null : j.id)}
+                          className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md font-label-md text-label-md border focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-1 ${
+                            j.status === 'open' ? 'bg-[#fff3e0] text-[#e65100] border-[#ffe0b2]' :
+                            j.status === 'in_progress' ? 'bg-[#e5f6fd] text-[#0288d1] border-[#b3e5fc]' :
+                            'bg-[#e8f5e9] text-[#2e7d32] border-[#c8e6c9]'
+                          }`}
+                        >
                           <span className={`w-1.5 h-1.5 rounded-full ${
                             j.status === 'open' ? 'bg-[#e65100]' :
                             j.status === 'in_progress' ? 'bg-[#0288d1]' :
@@ -248,15 +255,17 @@ export const JobList = () => {
                           }`}></span>
                           {j.status.replace('_', ' ').toUpperCase()}
                           <span className="material-symbols-outlined text-[14px]">expand_more</span>
-                        </span>
+                        </button>
                         
                         {/* Status Dropdown */}
-                        <div className="absolute top-full left-0 mt-1 bg-surface-container-lowest border border-outline-variant rounded-md shadow-lg z-10 hidden group-hover/status:flex flex-col min-w-[120px] overflow-hidden">
-                          <button onClick={() => handleUpdateStatus(j.id, 'open')} className="px-3 py-2 text-left font-body-md text-on-surface hover:bg-surface-container-low transition-colors">Open</button>
-                          <button onClick={() => handleUpdateStatus(j.id, 'in_progress')} className="px-3 py-2 text-left font-body-md text-on-surface hover:bg-surface-container-low transition-colors">In Progress</button>
-                          <button onClick={() => handleUpdateStatus(j.id, 'completed')} className="px-3 py-2 text-left font-body-md text-on-surface hover:bg-surface-container-low transition-colors">Completed</button>
-                          <button onClick={() => handleUpdateStatus(j.id, 'cancelled')} className="px-3 py-2 text-left font-body-md text-on-surface hover:bg-surface-container-low transition-colors text-error">Cancelled</button>
-                        </div>
+                        {openMenuId === j.id && (
+                          <div className="absolute top-full left-0 mt-1 bg-surface-container-lowest border border-outline-variant rounded-md shadow-lg z-50 flex flex-col min-w-[120px] overflow-hidden">
+                            <button onClick={() => handleUpdateStatus(j.id, 'open')} className="px-3 py-2 text-left font-body-md text-on-surface hover:bg-surface-container-low transition-colors">Open</button>
+                            <button onClick={() => handleUpdateStatus(j.id, 'in_progress')} className="px-3 py-2 text-left font-body-md text-on-surface hover:bg-surface-container-low transition-colors">In Progress</button>
+                            <button onClick={() => handleUpdateStatus(j.id, 'completed')} className="px-3 py-2 text-left font-body-md text-on-surface hover:bg-surface-container-low transition-colors">Completed</button>
+                            <button onClick={() => handleUpdateStatus(j.id, 'cancelled')} className="px-3 py-2 text-left font-body-md text-on-surface hover:bg-surface-container-low transition-colors text-error">Cancelled</button>
+                          </div>
+                        )}
                       </div>
                     </td>
                     <td className="py-4 px-4 align-top">
@@ -264,9 +273,12 @@ export const JobList = () => {
                       {j.rate_type === 'hourly' && (
                         <div className="text-on-tertiary-container text-xs mt-1">${j.hourly_rate}/hr</div>
                       )}
+                      {j.rate_type === 'flat' && j.flat_rate && (
+                        <div className="text-on-tertiary-container text-xs mt-1">${j.flat_rate} Total</div>
+                      )}
                     </td>
                     <td className="py-4 px-4 align-top text-right">
-                      <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
+                      <div className="flex justify-end gap-1">
                         <button 
                           onClick={() => { setSelectedJobId(j.id); setHoursOpen(true); }}
                           className="text-on-surface-variant hover:text-primary p-2 rounded-lg hover:bg-surface-container-low transition-colors"

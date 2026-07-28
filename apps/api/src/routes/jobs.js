@@ -11,6 +11,7 @@ const jobSchema = z.object({
   title: z.string().min(1, "Title is required"),
   rate_type: z.enum(['flat', 'hourly']),
   hourly_rate: z.number().optional(),
+  flat_rate: z.number().optional(),
   status: z.enum(['open', 'in_progress', 'completed', 'cancelled']).optional().default('open'),
   description: z.string().optional(), // Used as scope of work
   start_date: z.string().optional(),

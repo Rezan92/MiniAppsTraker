@@ -81,6 +81,21 @@ export const AddJobModal = ({ open, onClose, onSubmit, formData, setFormData, cl
                   />
                 </div>
               )}
+              {formData.rate_type === 'flat' && (
+                <div>
+                  <label className="block font-label-md text-label-md text-on-surface-variant mb-1">Flat Rate ($) *</label>
+                  <input 
+                    className="w-full px-3 py-2 border border-outline-variant rounded-md bg-surface text-on-surface focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-shadow placeholder:text-on-surface-variant/50" 
+                    placeholder="e.g. 500.00" 
+                    type="number" 
+                    min="0"
+                    step="0.01"
+                    value={formData.flat_rate}
+                    onChange={e => setFormData({...formData, flat_rate: e.target.value})}
+                    required
+                  />
+                </div>
+              )}
             </div>
 
             {/* Dates Grid */}
