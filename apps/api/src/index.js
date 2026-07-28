@@ -5,6 +5,7 @@ import { supabase } from './config/supabase.js';
 import authRoutes from './routes/auth.js';
 import clientRoutes from './routes/clients.js';
 import jobRoutes from './routes/jobs.js';
+import { errorHandler } from './middleware/errorHandler.js';
 
 const app = express();
 const port = process.env.PORT || 4000;
@@ -27,13 +28,7 @@ app.get('/api/health', (req, res) => {
 });
 
 // Global Error Handler
-app.use((err, req, res, next) => {
-  console.error('Unhandled Error:', err);
-  res.status(err.status || 500).json({
-    success: false,
-    error: err.message || 'Internal Server Error'
-  });
-});
+app.use(errorHandler);
 
 // Start Server and verify DB connectivity
 app.listen(port, async () => {

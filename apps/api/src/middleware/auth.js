@@ -21,13 +21,53 @@ export const authenticate = async (req, res, next) => {
       .from('users')
       .select('tenant_id, role')
       .eq('id', user.id)
-      .single();
-      
+      .maybeSingle();
+
+    if (userError && userError.code !== 'PGRST116') {
+      return next(userError); // Real DB error
+    }
+
+    let tenant_id = userData?.tenant_id;
+    let role = userData?.role;
+
+    if (!tenant_id) {
+      // Auto-provision tenant
+      const { data: tenant, error: tenantError } = await supabase
+        .from('tenants')
+        .insert([{ company_name: 'Default Workspace' }])
+        .select('id')
+        .single();
+
+      if (tenantError || !tenant) {
+        return res.status(500).json({ success: false, error: 'Failed to auto-provision tenant workspace' });
+      }
+
+      tenant_id = tenant.id;
+      role = 'admin';
+
+      const { error: upsertError } = await supabase
+        .from('users')
+        .upsert({
+          id: user.id,
+          email: user.email,
+          tenant_id,
+          role
+        });
+
+      if (upsertError) {
+        return res.status(500).json({ success: false, error: 'Failed to auto-provision user profile' });
+      }
+    }
+
+    if (!tenant_id) {
+      return res.status(400).json({ success: false, error: 'Tenant context missing after resolution' });
+    }
+
     req.user = {
       id: user.id,
       email: user.email,
-      tenant_id: userData?.tenant_id || null,
-      role: userData?.role || null
+      tenant_id,
+      role
     };
 
     next();
