@@ -34,7 +34,9 @@ const materialSchema = z.object({
 
 const jobHoursSchema = z.object({
   date: z.string().min(1, "Date is required"),
-  hours: z.number().min(0, "Hours must be positive")
+  hours: z.number().min(0, "Hours must be positive"),
+  start_time: z.string().optional(),
+  end_time: z.string().optional()
 });
 
 router.get('/', async (req, res, next) => {

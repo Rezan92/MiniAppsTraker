@@ -13,6 +13,9 @@ export const JobList = () => {
   const [clients, setClients] = useState([]);
   const [loading, setLoading] = useState(true);
   
+  const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
+
   const [open, setOpen] = useState(false);
   const [formData, setFormData] = useState({ client_id: '', title: '', rate_type: 'flat', hourly_rate: '', flat_rate: '', start_date: '', end_date: '', notes: '' });
 
@@ -162,6 +165,13 @@ export const JobList = () => {
     }
   };
 
+  const filteredJobs = jobs.filter(j => {
+    const matchesSearch = j.title.toLowerCase().includes(search.toLowerCase()) || 
+                          (j.clients?.name || '').toLowerCase().includes(search.toLowerCase());
+    const matchesStatus = statusFilter === 'all' || j.status === statusFilter;
+    return matchesSearch && matchesStatus;
+  });
+
   return (
     <main className="flex-1 overflow-auto p-gutter bg-background">
       <div className="max-w-container-max mx-auto flex flex-col gap-lg">
@@ -184,16 +194,28 @@ export const JobList = () => {
         {/* Filters & Search */}
         <div className="bg-surface-container-lowest border border-outline-variant rounded-xl p-md flex flex-col lg:flex-row gap-4 justify-between items-center shadow-sm">
           <div className="flex gap-2 overflow-x-auto w-full lg:w-auto pb-2 lg:pb-0 scrollbar-hide">
-            <button className="px-4 py-2 rounded-lg bg-surface-container-high text-primary font-title-md text-title-md whitespace-nowrap border border-transparent">
+            <button 
+              onClick={() => setStatusFilter('all')}
+              className={`px-4 py-2 rounded-lg font-title-md text-title-md whitespace-nowrap transition-colors border ${statusFilter === 'all' ? 'bg-surface-container-high text-primary border-transparent' : 'bg-transparent text-on-surface-variant hover:bg-surface-container-low border-outline-variant'}`}
+            >
                 All Jobs
             </button>
-            <button className="px-4 py-2 rounded-lg bg-transparent text-on-surface-variant hover:bg-surface-container-low border border-outline-variant transition-colors font-title-md text-title-md whitespace-nowrap">
+            <button 
+              onClick={() => setStatusFilter('open')}
+              className={`px-4 py-2 rounded-lg font-title-md text-title-md whitespace-nowrap transition-colors border ${statusFilter === 'open' ? 'bg-surface-container-high text-primary border-transparent' : 'bg-transparent text-on-surface-variant hover:bg-surface-container-low border-outline-variant'}`}
+            >
                 Open
             </button>
-            <button className="px-4 py-2 rounded-lg bg-transparent text-on-surface-variant hover:bg-surface-container-low border border-outline-variant transition-colors font-title-md text-title-md whitespace-nowrap">
+            <button 
+              onClick={() => setStatusFilter('in_progress')}
+              className={`px-4 py-2 rounded-lg font-title-md text-title-md whitespace-nowrap transition-colors border ${statusFilter === 'in_progress' ? 'bg-surface-container-high text-primary border-transparent' : 'bg-transparent text-on-surface-variant hover:bg-surface-container-low border-outline-variant'}`}
+            >
                 In Progress
             </button>
-            <button className="px-4 py-2 rounded-lg bg-transparent text-on-surface-variant hover:bg-surface-container-low border border-outline-variant transition-colors font-title-md text-title-md whitespace-nowrap">
+            <button 
+              onClick={() => setStatusFilter('completed')}
+              className={`px-4 py-2 rounded-lg font-title-md text-title-md whitespace-nowrap transition-colors border ${statusFilter === 'completed' ? 'bg-surface-container-high text-primary border-transparent' : 'bg-transparent text-on-surface-variant hover:bg-surface-container-low border-outline-variant'}`}
+            >
                 Completed
             </button>
           </div>
@@ -203,6 +225,8 @@ export const JobList = () => {
               className="w-full pl-10 pr-4 py-2 rounded-lg border border-outline bg-surface-container-lowest text-on-surface focus:border-primary-container focus:ring-1 focus:ring-primary-container transition-shadow font-body-md text-body-md placeholder:text-on-tertiary-container" 
               placeholder="Search jobs, clients..." 
               type="text" 
+              value={search}
+              onChange={e => setSearch(e.target.value)}
             />
           </div>
         </div>
@@ -221,7 +245,7 @@ export const JobList = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-outline-variant font-table-data text-table-data">
-                {jobs.map(j => (
+                {filteredJobs.map(j => (
                   <tr key={j.id} className="hover:bg-surface-container-lowest transition-colors bg-white group">
                     <td className="py-4 px-4 align-top">
                       <div className="font-title-md text-title-md text-primary">{j.title}</div>
@@ -259,12 +283,15 @@ export const JobList = () => {
                         
                         {/* Status Dropdown */}
                         {openMenuId === j.id && (
-                          <div className="absolute top-full left-0 mt-1 bg-surface-container-lowest border border-outline-variant rounded-md shadow-lg z-50 flex flex-col min-w-[120px] overflow-hidden">
-                            <button onClick={() => handleUpdateStatus(j.id, 'open')} className="px-3 py-2 text-left font-body-md text-on-surface hover:bg-surface-container-low transition-colors">Open</button>
-                            <button onClick={() => handleUpdateStatus(j.id, 'in_progress')} className="px-3 py-2 text-left font-body-md text-on-surface hover:bg-surface-container-low transition-colors">In Progress</button>
-                            <button onClick={() => handleUpdateStatus(j.id, 'completed')} className="px-3 py-2 text-left font-body-md text-on-surface hover:bg-surface-container-low transition-colors">Completed</button>
-                            <button onClick={() => handleUpdateStatus(j.id, 'cancelled')} className="px-3 py-2 text-left font-body-md text-on-surface hover:bg-surface-container-low transition-colors text-error">Cancelled</button>
-                          </div>
+                          <>
+                            <div className="fixed inset-0 z-40" onClick={(e) => { e.stopPropagation(); setOpenMenuId(null); }}></div>
+                            <div className="absolute top-full left-0 mt-1 bg-surface-container-lowest border border-outline-variant rounded-md shadow-lg z-50 flex flex-col min-w-[120px] overflow-hidden">
+                              <button onClick={() => handleUpdateStatus(j.id, 'open')} className="px-3 py-2 text-left font-body-md text-on-surface hover:bg-surface-container-low transition-colors">Open</button>
+                              <button onClick={() => handleUpdateStatus(j.id, 'in_progress')} className="px-3 py-2 text-left font-body-md text-on-surface hover:bg-surface-container-low transition-colors">In Progress</button>
+                              <button onClick={() => handleUpdateStatus(j.id, 'completed')} className="px-3 py-2 text-left font-body-md text-on-surface hover:bg-surface-container-low transition-colors">Completed</button>
+                              <button onClick={() => handleUpdateStatus(j.id, 'cancelled')} className="px-3 py-2 text-left font-body-md text-on-surface hover:bg-surface-container-low transition-colors text-error">Cancelled</button>
+                            </div>
+                          </>
                         )}
                       </div>
                     </td>
@@ -297,14 +324,14 @@ export const JobList = () => {
                     </td>
                   </tr>
                 ))}
-                {loading && jobs.length === 0 && (
+                {loading && filteredJobs.length === 0 && (
                   <tr>
                     <td colSpan="5" className="py-8 text-center text-on-surface-variant font-body-md">Loading jobs...</td>
                   </tr>
                 )}
-                {!loading && jobs.length === 0 && (
+                {!loading && filteredJobs.length === 0 && (
                   <tr>
-                    <td colSpan="5" className="py-8 text-center text-on-surface-variant font-body-md">No jobs found. Click "New Job" to get started.</td>
+                    <td colSpan="5" className="py-8 text-center text-on-surface-variant font-body-md">No jobs found.</td>
                   </tr>
                 )}
               </tbody>
@@ -312,7 +339,7 @@ export const JobList = () => {
           </div>
           {/* Pagination Footer */}
           <div className="border-t border-outline-variant p-4 flex justify-between items-center bg-surface-container-lowest">
-            <span className="text-on-surface-variant font-body-md text-body-md">Showing {jobs.length} entries</span>
+            <span className="text-on-surface-variant font-body-md text-body-md">Showing {filteredJobs.length} entries</span>
             <div className="flex gap-2">
               <button className="p-2 border border-outline-variant rounded-lg text-on-surface-variant hover:bg-surface-container-low disabled:opacity-50" disabled>
                 <span className="material-symbols-outlined">chevron_left</span>

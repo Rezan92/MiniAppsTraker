@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 
-export const AddClientModal = ({ open, onClose, onSubmit, formData, setFormData }) => {
+export const AddClientModal = ({ open, onClose, onSubmit, formData, setFormData, editMode }) => {
   const [errors, setErrors] = useState({});
 
   if (!open) return null;
@@ -26,10 +26,16 @@ export const AddClientModal = ({ open, onClose, onSubmit, formData, setFormData 
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-on-background/40 backdrop-blur-sm p-4">
-      <div className="bg-surface-container-lowest rounded-xl shadow-lg w-full max-w-[32rem] overflow-hidden flex flex-col">
+    <div 
+      className="fixed inset-0 z-50 flex items-center justify-center bg-on-background/40 backdrop-blur-sm p-4"
+      onMouseDown={onClose}
+    >
+      <div 
+        className="bg-surface-container-lowest rounded-xl shadow-lg w-full max-w-[32rem] overflow-hidden flex flex-col max-h-[90vh]"
+        onMouseDown={e => e.stopPropagation()}
+      >
         <div className="px-6 py-4 border-b border-outline-variant flex justify-between items-center">
-          <h2 className="font-title-md text-title-md font-bold text-primary">Add New Client</h2>
+          <h2 className="font-title-md text-title-md font-bold text-primary">{editMode ? 'Edit Client' : 'Add New Client'}</h2>
           <button 
             type="button"
             onClick={onClose}
@@ -159,10 +165,10 @@ export const AddClientModal = ({ open, onClose, onSubmit, formData, setFormData 
           <button 
             type="submit"
             form="add-client-form"
-            disabled={!formData.name || !formData.phone || Object.values(errors).some(Boolean)}
             className="px-5 py-2 bg-primary-container text-on-primary hover:bg-primary transition-colors rounded-md font-title-md text-sm flex items-center justify-center shadow-sm disabled:opacity-50"
+            disabled={!formData.name || !formData.phone || Object.values(errors).some(Boolean)}
           >
-            Add Client
+            {editMode ? 'Save Changes' : 'Add Client'}
           </button>
         </div>
       </div>

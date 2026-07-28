@@ -4,8 +4,14 @@ export const AddJobModal = ({ open, onClose, onSubmit, formData, setFormData, cl
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-on-background/40 backdrop-blur-sm p-4">
-      <div className="bg-surface-container-lowest rounded-xl shadow-lg w-full max-w-[32rem] overflow-hidden flex flex-col">
+    <div 
+      className="fixed inset-0 z-50 flex items-center justify-center bg-on-background/40 backdrop-blur-sm p-4"
+      onMouseDown={onClose}
+    >
+      <div 
+        className="bg-surface-container-lowest rounded-xl shadow-lg w-full max-w-[32rem] overflow-hidden flex flex-col max-h-[90vh]"
+        onMouseDown={e => e.stopPropagation()}
+      >
         <div className="px-6 py-4 border-b border-outline-variant flex justify-between items-center">
           <h2 className="font-title-md text-title-md font-bold text-primary">Add New Job</h2>
           <button 
