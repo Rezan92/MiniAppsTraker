@@ -48,7 +48,10 @@ router.post('/', async (req, res, next) => {
 
     const result = clientSchema.safeParse(req.body);
     if (!result.success) {
-      return res.status(400).json({ success: false, error: result.error.errors[0].message });
+      const err = new Error(result.error.errors[0].message);
+      err.status = 400;
+      err.code = 'VALIDATION_ERROR';
+      return next(err);
     }
 
     const { name, client_type, email, phone, address, notes } = result.data;
@@ -77,7 +80,10 @@ router.put('/:id', async (req, res, next) => {
 
     const result = clientSchema.safeParse(req.body);
     if (!result.success) {
-      return res.status(400).json({ success: false, error: result.error.errors[0].message });
+      const err = new Error(result.error.errors[0].message);
+      err.status = 400;
+      err.code = 'VALIDATION_ERROR';
+      return next(err);
     }
 
     const { name, client_type, email, phone, address, notes } = result.data;
