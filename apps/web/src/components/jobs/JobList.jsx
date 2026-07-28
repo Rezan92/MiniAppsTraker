@@ -145,7 +145,7 @@ export const JobList = () => {
       {/* New Job Modal */}
       {open && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-on-surface/50">
-          <div className="bg-surface-container-lowest rounded-xl p-6 shadow-level-3 w-full max-w-md border border-outline-variant">
+          <div className="bg-surface-container-lowest rounded-xl p-6 shadow-level-3 w-full max-w-[28rem] border border-outline-variant">
             <h3 className="text-title-md font-semibold mb-4 text-on-surface">Add New Job</h3>
             <div className="space-y-3 mb-6">
               <select className="w-full px-3 py-2 border border-outline-variant rounded bg-surface-container-lowest focus:border-primary focus:ring-1 focus:ring-primary outline-none" value={formData.client_id} onChange={e => setFormData({...formData, client_id: e.target.value})}>
@@ -172,7 +172,7 @@ export const JobList = () => {
       {/* Add Material Modal */}
       {matOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-on-surface/50">
-          <div className="bg-surface-container-lowest rounded-xl p-6 shadow-level-3 w-full max-w-md border border-outline-variant">
+          <div className="bg-surface-container-lowest rounded-xl p-6 shadow-level-3 w-full max-w-[28rem] border border-outline-variant">
             <h3 className="text-title-md font-semibold mb-4 text-on-surface">Add Material to Job</h3>
             <div className="space-y-3 mb-6">
               <input type="text" placeholder="Description" className="w-full px-3 py-2 border border-outline-variant rounded bg-surface-container-lowest focus:border-primary focus:ring-1 focus:ring-primary outline-none" value={matData.description} onChange={e => setMatData({...matData, description: e.target.value})} />

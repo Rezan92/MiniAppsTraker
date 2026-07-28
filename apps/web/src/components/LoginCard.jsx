@@ -28,7 +28,7 @@ export const LoginCard = () => {
       ></div>
       
       {/* Main Content Container */}
-      <main className="w-full max-w-md px-md z-10 relative">
+      <main className="w-full max-w-[28rem] px-md z-10 relative">
         {/* Login Card */}
         <div className="bg-surface-container-lowest border border-outline-variant rounded-xl p-lg shadow-level-3">
           

@@ -93,7 +93,7 @@ export const ClientList = () => {
       {/* Simple Modal */}
       {open && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-on-surface/50">
-          <div className="bg-surface-container-lowest rounded-xl p-6 shadow-level-3 w-full max-w-md border border-outline-variant">
+          <div className="bg-surface-container-lowest rounded-xl p-6 shadow-level-3 w-full max-w-[28rem] border border-outline-variant">
             <h3 className="text-title-md font-semibold mb-4 text-on-surface">Add New Client</h3>
             <div className="space-y-3 mb-6">
               <input type="text" placeholder="Name" className="w-full px-3 py-2 border border-outline-variant rounded bg-surface-container-lowest focus:border-primary focus:ring-1 focus:ring-primary outline-none" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} />
