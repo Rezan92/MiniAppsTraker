@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
+import { AddClientModal } from './AddClientModal';
 
 export const ClientList = () => {
   const { session } = useAuth();
@@ -49,66 +50,99 @@ export const ClientList = () => {
   };
 
   return (
-    <div className="bg-surface-container-lowest p-6 rounded-lg shadow-sm border border-outline-variant">
-      <div className="flex justify-between items-center mb-6">
-        <h2 className="text-headline-md font-semibold text-on-surface">Clients</h2>
-        <button 
-          onClick={() => setOpen(true)}
-          className="bg-primary text-on-primary px-4 py-2 rounded font-title-md hover:bg-primary-container transition-colors"
-        >
-          Add Client
-        </button>
+    <>
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
+        <h1 className="font-headline-lg text-headline-lg font-bold text-primary">Client Management</h1>
+        <div className="flex flex-col sm:flex-row gap-4 w-full md:w-auto">
+          <div className="relative w-full lg:w-72 shrink-0">
+            <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant">search</span>
+            <input 
+              className="w-full pl-10 pr-4 py-2 rounded-lg border border-outline bg-surface-container-lowest text-on-surface focus:border-primary-container focus:ring-1 focus:ring-primary-container transition-shadow font-body-md text-body-md placeholder:text-on-tertiary-container" 
+              placeholder="Search clients..." 
+              type="text" 
+            />
+          </div>
+          <button 
+            onClick={() => setOpen(true)}
+            className="bg-primary-container text-on-primary whitespace-nowrap px-6 py-2 rounded font-title-md text-title-md hover:bg-primary transition-colors flex items-center justify-center gap-2 h-11 shrink-0 shadow-sm"
+          >
+            <span className="material-symbols-outlined" style={{ fontVariationSettings: "'FILL' 1" }}>add</span>
+            Add Client
+          </button>
+        </div>
       </div>
 
-      {loading ? (
-        <div className="text-center py-8 text-on-surface-variant font-body-md">Loading...</div>
-      ) : (
-        <div className="overflow-x-auto border border-outline-variant rounded-lg">
-          <table className="w-full text-left border-collapse">
-            <thead className="bg-surface-container-low border-b border-outline-variant">
-              <tr>
-                <th className="p-3 font-title-md text-on-surface">Name</th>
-                <th className="p-3 font-title-md text-on-surface">Email</th>
-                <th className="p-3 font-title-md text-on-surface">Phone</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-outline-variant">
-              {clients.map(c => (
-                <tr key={c.id} className="hover:bg-surface-container-lowest transition-colors">
-                  <td className="p-3 font-body-md text-on-surface">{c.name}</td>
-                  <td className="p-3 font-body-md text-on-surface-variant">{c.email}</td>
-                  <td className="p-3 font-body-md text-on-surface-variant">{c.phone}</td>
-                </tr>
-              ))}
-              {clients.length === 0 && (
-                <tr>
-                  <td colSpan="3" className="p-6 text-center text-on-surface-variant font-body-md">No clients found.</td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      )}
+      <div className="bg-surface-container-lowest border border-outline-variant rounded-lg shadow-sm overflow-hidden">
+        {loading ? (
+          <div className="text-center py-8 text-on-surface-variant font-body-md">Loading clients...</div>
+        ) : (
+          <>
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="bg-surface-container-low border-b border-outline-variant">
+                    <th className="py-4 px-6 font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">Client Name</th>
+                    <th className="py-4 px-6 font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">Contact Info</th>
+                    <th className="py-4 px-6 font-label-md text-label-md text-on-surface-variant uppercase tracking-wider hidden sm:table-cell">Recent Job</th>
+                    <th className="py-4 px-6 font-label-md text-label-md text-on-surface-variant uppercase tracking-wider text-right">Total Revenue</th>
+                    <th className="py-4 px-6 font-label-md text-label-md text-on-surface-variant uppercase tracking-wider text-center w-20">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="font-table-data text-table-data text-on-surface divide-y divide-outline-variant">
+                  {clients.length === 0 ? (
+                    <tr>
+                      <td colSpan="5" className="py-8 px-6 text-center text-on-surface-variant">
+                        No clients found.
+                      </td>
+                    </tr>
+                  ) : (
+                    clients.map((c, idx) => (
+                      <tr key={c.id} className={`hover:bg-surface-container-lowest/50 transition-colors group ${idx % 2 !== 0 ? 'bg-surface-container-low/30' : ''}`}>
+                        <td className="py-4 px-6">
+                          <div className="font-title-md text-title-md text-primary">{c.name}</div>
+                          {c.address && <div className="text-on-surface-variant text-xs mt-1">{c.address}</div>}
+                        </td>
+                        <td className="py-4 px-6">
+                          <div>{c.email || 'No email'}</div>
+                          <div className="text-on-surface-variant mt-1">{c.phone || 'No phone'}</div>
+                        </td>
+                        <td className="py-4 px-6 hidden sm:table-cell">
+                          <div className="text-on-surface-variant text-xs italic">N/A</div>
+                        </td>
+                        <td className="py-4 px-6 text-right font-title-md text-title-md">
+                          $0.00
+                        </td>
+                        <td className="py-4 px-6 text-center">
+                          <button aria-label="Edit Client" className="p-2 text-outline hover:text-primary transition-colors rounded hover:bg-surface-container-low">
+                            <span className="material-symbols-outlined">edit</span>
+                          </button>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+            
+            <div className="p-4 border-t border-outline-variant bg-surface flex justify-between items-center text-sm text-on-surface-variant">
+              <span>Showing {clients.length} clients</span>
+              <div className="flex gap-2">
+                <button className="px-3 py-1 border border-outline-variant rounded hover:bg-surface-container-lowest transition-colors disabled:opacity-50" disabled>Prev</button>
+                <button className="px-3 py-1 border border-outline-variant rounded hover:bg-surface-container-lowest transition-colors bg-surface-container-lowest text-primary">1</button>
+                <button className="px-3 py-1 border border-outline-variant rounded hover:bg-surface-container-lowest transition-colors disabled:opacity-50" disabled>Next</button>
+              </div>
+            </div>
+          </>
+        )}
+      </div>
 
-      {/* Simple Modal */}
-      {open && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-on-surface/50">
-          <div className="bg-surface-container-lowest rounded-xl p-6 shadow-level-3 w-full max-w-[28rem] border border-outline-variant">
-            <h3 className="text-title-md font-semibold mb-4 text-on-surface">Add New Client</h3>
-            <div className="space-y-3 mb-6">
-              <input type="text" placeholder="Name" className="w-full px-3 py-2 border border-outline-variant rounded bg-surface-container-lowest focus:border-primary focus:ring-1 focus:ring-primary outline-none" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} />
-              <input type="email" placeholder="Email" className="w-full px-3 py-2 border border-outline-variant rounded bg-surface-container-lowest focus:border-primary focus:ring-1 focus:ring-primary outline-none" value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} />
-              <input type="text" placeholder="Phone" className="w-full px-3 py-2 border border-outline-variant rounded bg-surface-container-lowest focus:border-primary focus:ring-1 focus:ring-primary outline-none" value={formData.phone} onChange={e => setFormData({...formData, phone: e.target.value})} />
-              <input type="text" placeholder="Address" className="w-full px-3 py-2 border border-outline-variant rounded bg-surface-container-lowest focus:border-primary focus:ring-1 focus:ring-primary outline-none" value={formData.address} onChange={e => setFormData({...formData, address: e.target.value})} />
-              <textarea placeholder="Notes" rows="3" className="w-full px-3 py-2 border border-outline-variant rounded bg-surface-container-lowest focus:border-primary focus:ring-1 focus:ring-primary outline-none resize-none" value={formData.notes} onChange={e => setFormData({...formData, notes: e.target.value})}></textarea>
-            </div>
-            <div className="flex justify-end gap-3">
-              <button onClick={() => setOpen(false)} className="px-4 py-2 font-title-md text-primary hover:bg-surface-container-low rounded transition-colors">Cancel</button>
-              <button onClick={handleCreate} disabled={!formData.name} className="px-4 py-2 font-title-md bg-primary text-on-primary rounded hover:bg-primary-container disabled:opacity-50 transition-colors">Save</button>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
+      <AddClientModal 
+        open={open}
+        onClose={() => setOpen(false)}
+        onSubmit={handleCreate}
+        formData={formData}
+        setFormData={setFormData}
+      />
+    </>
   );
 };
