@@ -1,6 +1,7 @@
 import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { ToastProvider } from './contexts/ToastContext';
 import { LoginCard } from './components/LoginCard';
 import { DashboardLayout } from './components/layout/DashboardLayout';
 import { ClientList } from './components/clients/ClientList';
