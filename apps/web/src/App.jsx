@@ -28,9 +28,11 @@ const MainApp = () => {
 function App() {
   return (
     <AuthProvider>
-      <BrowserRouter>
-        <MainApp />
-      </BrowserRouter>
+      <ToastProvider>
+        <BrowserRouter>
+          <MainApp />
+        </BrowserRouter>
+      </ToastProvider>
     </AuthProvider>
   );
 }
