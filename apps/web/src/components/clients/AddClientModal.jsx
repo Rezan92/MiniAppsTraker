@@ -5,7 +5,7 @@ export const AddClientModal = ({ open, onClose, onSubmit, formData, setFormData 
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-on-background/40 backdrop-blur-sm p-4">
-      <div className="bg-surface-container-lowest rounded-xl shadow-lg w-full max-w-lg overflow-hidden flex flex-col">
+      <div className="bg-surface-container-lowest rounded-xl shadow-lg w-full max-w-[32rem] overflow-hidden flex flex-col">
         <div className="px-6 py-4 border-b border-outline-variant flex justify-between items-center">
           <h2 className="font-title-md text-title-md font-bold text-primary">Add New Client</h2>
           <button 
