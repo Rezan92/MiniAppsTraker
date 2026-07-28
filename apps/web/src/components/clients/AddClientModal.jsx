@@ -24,19 +24,44 @@ export const AddClientModal = ({ open, onClose, onSubmit, formData, setFormData 
               <label className="block font-label-md text-label-md text-on-surface-variant mb-2">Client Type</label>
               <div className="flex gap-4">
                 <label className="flex items-center gap-2 cursor-pointer">
-                  <input defaultChecked className="text-primary focus:ring-primary h-4 w-4 border-outline-variant" name="clientType" type="radio" value="Residential" />
+                  <input 
+                    className="text-primary focus:ring-primary h-4 w-4 border-outline-variant" 
+                    name="clientType" 
+                    type="radio" 
+                    value="residential" 
+                    checked={formData.client_type === 'residential'}
+                    onChange={e => setFormData({...formData, client_type: e.target.value})}
+                  />
                   <span className="text-body-md">Residential</span>
                 </label>
                 <label className="flex items-center gap-2 cursor-pointer">
-                  <input className="text-primary focus:ring-primary h-4 w-4 border-outline-variant" name="clientType" type="radio" value="Commercial" />
+                  <input 
+                    className="text-primary focus:ring-primary h-4 w-4 border-outline-variant" 
+                    name="clientType" 
+                    type="radio" 
+                    value="commercial" 
+                    checked={formData.client_type === 'commercial'}
+                    onChange={e => setFormData({...formData, client_type: e.target.value})}
+                  />
                   <span className="text-body-md">Commercial</span>
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input 
+                    className="text-primary focus:ring-primary h-4 w-4 border-outline-variant" 
+                    name="clientType" 
+                    type="radio" 
+                    value="property_manager" 
+                    checked={formData.client_type === 'property_manager'}
+                    onChange={e => setFormData({...formData, client_type: e.target.value})}
+                  />
+                  <span className="text-body-md">Property Manager</span>
                 </label>
               </div>
             </div>
             
             {/* Full Name */}
             <div>
-              <label className="block font-label-md text-label-md text-on-surface-variant mb-1">Full Name</label>
+              <label className="block font-label-md text-label-md text-on-surface-variant mb-1">Full Name *</label>
               <input 
                 className="w-full px-3 py-2 border border-outline-variant rounded-md bg-surface text-on-surface focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-shadow placeholder:text-on-surface-variant/50" 
                 placeholder="e.g. John Doe" 
@@ -60,13 +85,14 @@ export const AddClientModal = ({ open, onClose, onSubmit, formData, setFormData 
                 />
               </div>
               <div>
-                <label className="block font-label-md text-label-md text-on-surface-variant mb-1">Phone Number</label>
+                <label className="block font-label-md text-label-md text-on-surface-variant mb-1">Phone Number *</label>
                 <input 
                   className="w-full px-3 py-2 border border-outline-variant rounded-md bg-surface text-on-surface focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-shadow placeholder:text-on-surface-variant/50" 
                   placeholder="(555) 000-0000" 
                   type="tel" 
                   value={formData.phone}
                   onChange={e => setFormData({...formData, phone: e.target.value})}
+                  required
                 />
               </div>
             </div>
@@ -107,10 +133,10 @@ export const AddClientModal = ({ open, onClose, onSubmit, formData, setFormData 
           <button 
             type="submit"
             form="add-client-form"
-            disabled={!formData.name}
+            disabled={!formData.name || !formData.phone}
             className="px-5 py-2 bg-primary-container text-on-primary hover:bg-primary transition-colors rounded-md font-title-md text-sm flex items-center justify-center shadow-sm disabled:opacity-50"
           >
-            Save Client
+            Add Client
           </button>
         </div>
       </div>
