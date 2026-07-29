@@ -190,44 +190,49 @@ export const JobList = () => {
       </div>
 
       {/* Filters & Search */}
-      <div className="bg-white border border-gray-200 rounded-lg p-4 flex flex-col lg:flex-row gap-4 justify-between items-center shadow-sm">
-        <div className="flex gap-2 overflow-x-auto w-full lg:w-auto pb-2 lg:pb-0 scrollbar-hide">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        {/* Tabs */}
+        <div className="flex space-x-1 p-1 bg-gray-100 rounded-xl border border-gray-200 inline-flex overflow-x-auto scrollbar-hide w-full md:w-auto">
           <button 
             onClick={() => setStatusFilter('all')}
-            className={`px-4 py-2 rounded font-body-md font-medium whitespace-nowrap transition-colors border ${statusFilter === 'all' ? 'bg-[#F9FAFB] border-gray-300 text-gray-700' : 'bg-transparent text-gray-500 border-transparent hover:bg-gray-100'}`}
+            className={`px-4 py-1.5 text-sm font-medium rounded-md whitespace-nowrap transition-colors ${statusFilter === 'all' ? 'bg-white text-gray-900 shadow-sm border border-gray-200' : 'text-gray-600 hover:text-gray-900 hover:bg-white/50 border border-transparent'}`}
           >
-              All Jobs
+            All Jobs
           </button>
           <button 
             onClick={() => setStatusFilter('open')}
-            className={`px-4 py-2 rounded font-body-md font-medium whitespace-nowrap transition-colors border ${statusFilter === 'open' ? 'bg-[#F9FAFB] border-gray-300 text-gray-700' : 'bg-transparent text-gray-500 border-transparent hover:bg-gray-100'}`}
+            className={`px-4 py-1.5 text-sm font-medium rounded-md whitespace-nowrap transition-colors ${statusFilter === 'open' ? 'bg-white text-gray-900 shadow-sm border border-gray-200' : 'text-gray-600 hover:text-gray-900 hover:bg-white/50 border border-transparent'}`}
           >
-              Open
+            Open
           </button>
           <button 
             onClick={() => setStatusFilter('in_progress')}
-            className={`px-4 py-2 rounded font-body-md font-medium whitespace-nowrap transition-colors border ${statusFilter === 'in_progress' ? 'bg-[#F9FAFB] border-gray-300 text-gray-700' : 'bg-transparent text-gray-500 border-transparent hover:bg-gray-100'}`}
+            className={`px-4 py-1.5 text-sm font-medium rounded-md whitespace-nowrap transition-colors ${statusFilter === 'in_progress' ? 'bg-white text-gray-900 shadow-sm border border-gray-200' : 'text-gray-600 hover:text-gray-900 hover:bg-white/50 border border-transparent'}`}
           >
-              In Progress
+            In Progress
           </button>
           <button 
             onClick={() => setStatusFilter('completed')}
-            className={`px-4 py-2 rounded font-body-md font-medium whitespace-nowrap transition-colors border ${statusFilter === 'completed' ? 'bg-[#F9FAFB] border-gray-300 text-gray-700' : 'bg-transparent text-gray-500 border-transparent hover:bg-gray-100'}`}
+            className={`px-4 py-1.5 text-sm font-medium rounded-md whitespace-nowrap transition-colors ${statusFilter === 'completed' ? 'bg-white text-gray-900 shadow-sm border border-gray-200' : 'text-gray-600 hover:text-gray-900 hover:bg-white/50 border border-transparent'}`}
           >
-              Completed
+            Completed
           </button>
         </div>
-          <div className="relative w-full lg:w-72 shrink-0">
-            <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant">search</span>
-            <input 
-              className="w-full pl-10 pr-4 py-2 rounded-lg border border-outline bg-surface-container-lowest text-on-surface focus:border-primary-container focus:ring-1 focus:ring-primary-container transition-shadow font-body-md text-body-md placeholder:text-on-tertiary-container" 
-              placeholder="Search jobs, clients..." 
-              type="text" 
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-            />
+        
+        {/* Table Search */}
+        <div className="relative w-full md:w-80 shrink-0">
+          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+            <span className="material-symbols-outlined text-gray-400 text-xl">search</span>
           </div>
+          <input 
+            className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-xl leading-5 bg-white placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary sm:text-sm transition-shadow shadow-sm" 
+            placeholder="Search jobs, clients..." 
+            type="text" 
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+          />
         </div>
+      </div>
 
       {/* Data Table Container */}
       <div className="bg-white border border-surface-container-high rounded-lg shadow-sm overflow-hidden flex flex-col">
