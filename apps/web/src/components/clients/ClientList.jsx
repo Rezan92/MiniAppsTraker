@@ -1,12 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useToast } from '../../contexts/ToastContext';
+import { useNavigate } from 'react-router-dom';
 import { AddClientModal } from './AddClientModal';
 import { DeleteConfirmationModal } from './DeleteConfirmationModal';
 
 export const ClientList = () => {
   const { session } = useAuth();
   const { showSuccess, showError } = useToast();
+  const navigate = useNavigate();
   const [clients, setClients] = useState([]);
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
@@ -202,7 +204,7 @@ export const ClientList = () => {
                     </tr>
                   ) : (
                     clients.map((c, idx) => (
-                      <tr key={c.id} onClick={() => console.log('Navigate to client profile:', c.id)} className={`hover:bg-gray-100 transition-colors group cursor-pointer ${idx % 2 !== 0 ? 'bg-[#F9FAFB]' : 'bg-white'}`}>
+                      <tr key={c.id} onClick={() => navigate(`/clients/${c.id}`)} className={`hover:bg-gray-100 transition-colors group cursor-pointer ${idx % 2 !== 0 ? 'bg-[#F9FAFB]' : 'bg-white'}`}>
                         <td className="py-3 px-4 rounded-l-lg">
                           <div className="flex items-center gap-3">
                             <div className="w-8 h-8 rounded bg-gray-100 flex items-center justify-center text-gray-500 font-bold border border-gray-200">

@@ -19,3 +19,10 @@
 - Added Materials as sub-routes under Jobs to streamline relational queries.
 - Built unified Dashboard UI with MUI Tabs rendering ClientList and JobList views.
 - [x] Created 00002_add_notes_to_clients.sql migration and updated API Zod schemas to handle the notes field.
+
+- [ ] **Task 2.4: Database Migration for Job Hours**
+  - Add a `description` (TEXT) column to the `job_hours` table to track work logs.
+- [ ] **Task 2.5: Client Details Page**
+  - Build `ClientDetails.jsx` dynamic route. Map `clients.notes` to a single text area. Include financial overview, contact info, and related jobs table.
+- [ ] **Task 2.6: Job Details Page**
+  - Build `JobDetails.jsx` dynamic route. Include Job Overview (dates/rates), Labor & Time data table (using the new `description` column), Materials data table, and Job Notes text area.

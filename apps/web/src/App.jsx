@@ -7,13 +7,18 @@ import { DashboardLayout } from './components/layout/DashboardLayout';
 import { ClientList } from './components/clients/ClientList';
 import { JobList } from './components/jobs/JobList';
 
+import { ClientDetails } from './components/clients/ClientDetails';
+import { JobDetails } from './components/jobs/JobDetails';
+
 const AuthenticatedApp = () => {
   return (
     <DashboardLayout>
       <Routes>
         <Route path="/" element={<Navigate to="/clients" replace />} />
         <Route path="/clients" element={<ClientList />} />
+        <Route path="/clients/:id" element={<ClientDetails />} />
         <Route path="/jobs" element={<JobList />} />
+        <Route path="/jobs/:id" element={<JobDetails />} />
         <Route path="*" element={<Navigate to="/clients" replace />} />
       </Routes>
     </DashboardLayout>

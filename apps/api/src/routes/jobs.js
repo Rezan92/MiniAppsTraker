@@ -36,7 +36,8 @@ const jobHoursSchema = z.object({
   date: z.string().min(1, "Date is required"),
   hours: z.number().min(0, "Hours must be positive"),
   start_time: z.string().optional(),
-  end_time: z.string().optional()
+  end_time: z.string().optional(),
+  description: z.string().optional()
 });
 
 router.get('/', async (req, res, next) => {
@@ -52,6 +53,27 @@ router.get('/', async (req, res, next) => {
 
     const { data, error } = await query;
     if (error) throw error;
+    res.json({ success: true, data });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.get('/:id', async (req, res, next) => {
+  try {
+    const { data, error } = await supabase
+      .from('jobs')
+      .select('*, clients(name)')
+      .eq('id', req.params.id)
+      .eq('tenant_id', req.user.tenant_id)
+      .single();
+
+    if (error) {
+      if (error.code === 'PGRST116') {
+        return res.status(404).json({ success: false, error: 'Job not found' });
+      }
+      throw error;
+    }
     res.json({ success: true, data });
   } catch (err) {
     next(err);

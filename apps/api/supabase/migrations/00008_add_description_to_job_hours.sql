@@ -1,0 +1,1 @@
+ALTER TABLE job_hours ADD COLUMN IF NOT EXISTS description TEXT;

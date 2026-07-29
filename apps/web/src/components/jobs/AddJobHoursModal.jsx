@@ -94,22 +94,34 @@ export const AddJobHoursModal = ({ open, onClose, onSubmit, hoursData, setHoursD
                 required
               />
             </div>
+
+            {/* Description */}
+            <div>
+              <label className="block font-label-md text-label-md text-on-surface-variant mb-1">Work Description</label>
+              <textarea 
+                className="w-full px-3 py-2 border border-outline-variant rounded-md bg-surface text-on-surface focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-shadow placeholder:text-on-surface-variant/50"
+                value={hoursData.description || ''}
+                onChange={e => setHoursData({...hoursData, description: e.target.value})}
+                placeholder="E.g., Initial site prep..."
+                rows={2}
+              />
+            </div>
           </form>
         </div>
         
         <div className="px-6 py-4 border-t border-outline-variant bg-surface flex justify-end gap-3">
           <button 
             type="button"
-            onClick={onClose}
-            className="px-5 py-2 border border-outline-variant text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface transition-colors rounded-md font-title-md text-sm"
+            onClick={onClose} 
+            className="px-4 py-2 bg-white border border-gray-300 text-gray-700 font-label-caps text-label-caps uppercase rounded cursor-pointer hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors focus:outline-none focus:ring-2 focus:ring-gray-300"
           >
             Cancel
           </button>
           <button 
-            type="submit"
-            form="add-hours-form"
-            disabled={!hoursData.date || !hoursData.hours}
-            className="px-5 py-2 bg-primary-container text-on-primary hover:bg-primary transition-colors rounded-md font-title-md text-sm flex items-center justify-center shadow-sm disabled:opacity-50"
+            type="button"
+            onClick={onSubmit} 
+            disabled={!hoursData.date || !hoursData.hours} 
+            className="px-4 py-2 bg-primary-container text-black font-label-caps text-label-caps uppercase rounded cursor-pointer hover:bg-opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors focus:outline-none focus:ring-2 focus:ring-primary shadow-sm"
           >
             Log Hours
           </button>

@@ -108,15 +108,15 @@ export const AddMaterialModal = ({ open, onClose, onSubmit, matData, setMatData 
           <button 
             type="button"
             onClick={onClose}
-            className="px-5 py-2 border border-outline-variant text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface transition-colors rounded-md font-title-md text-sm"
+            className="px-4 py-2 bg-white border border-gray-300 text-gray-700 font-label-caps text-label-caps uppercase rounded cursor-pointer hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors focus:outline-none focus:ring-2 focus:ring-gray-300"
           >
             Cancel
           </button>
           <button 
-            type="submit"
-            form="add-material-form"
-            disabled={!matData.description || matData.cost < 0}
-            className="px-5 py-2 bg-primary-container text-on-primary hover:bg-primary transition-colors rounded-md font-title-md text-sm flex items-center justify-center shadow-sm disabled:opacity-50"
+            type="button"
+            onClick={onSubmit}
+            disabled={!matData.description || !matData.cost}
+            className="px-4 py-2 bg-primary-container text-black font-label-caps text-label-caps uppercase rounded cursor-pointer hover:bg-opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors focus:outline-none focus:ring-2 focus:ring-primary shadow-sm"
           >
             Add Material
           </button>

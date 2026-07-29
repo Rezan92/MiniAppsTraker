@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useToast } from '../../contexts/ToastContext';
+import { useNavigate } from 'react-router-dom';
 import { AddJobModal } from './AddJobModal';
 import { AddMaterialModal } from './AddMaterialModal';
 import { AddJobHoursModal } from './AddJobHoursModal';
@@ -8,6 +9,7 @@ import { AddJobHoursModal } from './AddJobHoursModal';
 export const JobList = () => {
   const { session } = useAuth();
   const { showSuccess, showError } = useToast();
+  const navigate = useNavigate();
   
   const [jobs, setJobs] = useState([]);
   const [clients, setClients] = useState([]);
@@ -249,7 +251,7 @@ export const JobList = () => {
             </thead>
             <tbody className="divide-y divide-surface-container-high font-body-md">
               {filteredJobs.map((j, idx) => (
-                <tr key={j.id} className={`hover:bg-gray-50 transition-colors group ${idx % 2 !== 0 ? 'bg-[#F9FAFB]' : 'bg-white'}`}>
+                <tr key={j.id} onClick={() => navigate(`/jobs/${j.id}`)} className={`hover:bg-gray-50 transition-colors group cursor-pointer ${idx % 2 !== 0 ? 'bg-[#F9FAFB]' : 'bg-white'}`}>
                   <td className="py-4 px-4 align-top">
                     <div className="font-medium text-on-surface">{j.title}</div>
                     <div className="text-gray-500 font-label-caps text-[10px] mt-1">#JOB-{j.id.split('-')[0].toUpperCase()}</div>
@@ -315,7 +317,7 @@ export const JobList = () => {
                       <div className="text-gray-500 text-xs mt-1 font-label-caps">${j.flat_rate} Total</div>
                     )}
                   </td>
-                  <td className="py-4 px-4 align-top text-center">
+                  <td className="py-4 px-4 align-top text-center" onClick={e => e.stopPropagation()}>
                     <div className="flex justify-center gap-2">
                       <button 
                         onClick={() => { setSelectedJobId(j.id); setHoursOpen(true); }}
