@@ -9,7 +9,7 @@ export const DeleteConfirmationModal = ({ open, onClose, onConfirm, clientName }
       onMouseDown={onClose}
     >
       <div 
-        className="bg-white border border-gray-200 rounded-xl w-full max-w-md shadow-2xl flex flex-col overflow-hidden animate-[fadeInUp_0.2s_ease-out]"
+        className="bg-white border border-gray-200 rounded-xl w-[90vw] max-w-[400px] shadow-2xl flex flex-col overflow-hidden animate-[fadeInUp_0.2s_ease-out]"
         onMouseDown={e => e.stopPropagation()}
       >
         {/* Modal Header / Content */}

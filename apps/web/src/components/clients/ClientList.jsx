@@ -148,7 +148,10 @@ export const ClientList = () => {
   return (
     <>
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
-        <h1 className="font-headline-lg text-headline-lg font-bold text-on-surface">Client Management</h1>
+        <div>
+          <h1 className="font-headline-lg text-headline-lg font-bold text-on-surface">Clients</h1>
+          <p className="font-body-md text-gray-500 mt-1">Manage active contracts, billing, and contact information.</p>
+        </div>
         <div className="flex flex-col sm:flex-row gap-4 w-full md:w-auto">
           <div className="relative w-full lg:w-72 shrink-0">
             <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant">search</span>
@@ -221,22 +224,27 @@ export const ClientList = () => {
                         <td className="py-3 px-4 relative">
                           <button 
                             onClick={(e) => { e.stopPropagation(); setOpenMenuId(openMenuId === c.id ? null : c.id); }}
-                            className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-bold uppercase tracking-wide border focus:outline-none focus:ring-2 focus:ring-offset-1 ${
-                              c.status === 'inactive' ? 'bg-gray-100 text-gray-800 border-gray-200 focus:ring-gray-500' : 'bg-emerald-100 text-emerald-800 border-emerald-200 focus:ring-emerald-500'
+                            className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium transition-colors ${
+                              c.status === 'inactive' ? 'bg-gray-100 text-gray-800 border border-gray-200 hover:bg-gray-200' : 'bg-emerald-100 text-emerald-800 border border-emerald-200 hover:bg-emerald-200'
                             }`}
                           >
-                            <span className={`w-1.5 h-1.5 rounded-full ${c.status === 'inactive' ? 'bg-gray-500' : 'bg-emerald-500'}`}></span>
-                            {c.status === 'inactive' ? 'INACTIVE' : 'ACTIVE'}
-                            <span className="material-symbols-outlined text-[14px]">expand_more</span>
+                            <span>{c.status === 'inactive' ? 'Inactive' : 'Active'}</span>
+                            <span className="material-symbols-outlined" style={{ fontSize: '14px' }}>expand_more</span>
                           </button>
                           
                           {/* Status Dropdown */}
                           {openMenuId === c.id && (
                             <>
                               <div className="fixed inset-0 z-40" onClick={(e) => { e.stopPropagation(); setOpenMenuId(null); }}></div>
-                              <div className="absolute top-full left-4 mt-1 bg-white border border-gray-200 rounded-md shadow-lg z-50 flex flex-col min-w-[120px] overflow-hidden" onClick={e => e.stopPropagation()}>
-                                <button onClick={(e) => { e.stopPropagation(); handleUpdateStatus(c, 'active'); }} className="px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 transition-colors font-medium">Active</button>
-                                <button onClick={(e) => { e.stopPropagation(); handleUpdateStatus(c, 'inactive'); }} className="px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 transition-colors font-medium">Inactive</button>
+                              <div className="absolute left-0 mt-1 w-32 bg-white border border-gray-200 rounded shadow-lg z-50 py-1" onClick={e => e.stopPropagation()}>
+                                <button onClick={(e) => { e.stopPropagation(); handleUpdateStatus(c, 'active'); }} className="w-full text-left px-3 py-1.5 text-xs font-medium text-emerald-800 hover:bg-emerald-50 flex items-center gap-2">
+                                  <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+                                  Active
+                                </button>
+                                <button onClick={(e) => { e.stopPropagation(); handleUpdateStatus(c, 'inactive'); }} className="w-full text-left px-3 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-50 flex items-center gap-2">
+                                  <span className="w-2 h-2 rounded-full bg-gray-400"></span>
+                                  Inactive
+                                </button>
                               </div>
                             </>
                           )}

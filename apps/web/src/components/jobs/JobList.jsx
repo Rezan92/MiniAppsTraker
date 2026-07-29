@@ -268,31 +268,39 @@ export const JobList = () => {
                     <td className="py-4 px-4 align-top">
                       <div className="relative w-max cursor-pointer">
                         <button 
-                          onClick={() => setOpenMenuId(openMenuId === j.id ? null : j.id)}
-                          className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md font-label-md text-label-md border focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-1 ${
-                            j.status === 'open' ? 'bg-[#fff3e0] text-[#e65100] border-[#ffe0b2]' :
-                            j.status === 'in_progress' ? 'bg-[#e5f6fd] text-[#0288d1] border-[#b3e5fc]' :
-                            'bg-[#e8f5e9] text-[#2e7d32] border-[#c8e6c9]'
+                          onClick={(e) => { e.stopPropagation(); setOpenMenuId(openMenuId === j.id ? null : j.id); }}
+                          className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium transition-colors ${
+                            j.status === 'open' ? 'bg-amber-100 text-amber-800 border border-amber-200 hover:bg-amber-200' :
+                            j.status === 'in_progress' ? 'bg-sky-100 text-sky-800 border border-sky-200 hover:bg-sky-200' :
+                            j.status === 'completed' ? 'bg-emerald-100 text-emerald-800 border border-emerald-200 hover:bg-emerald-200' :
+                            'bg-gray-100 text-gray-800 border border-gray-200 hover:bg-gray-200'
                           }`}
                         >
-                          <span className={`w-1.5 h-1.5 rounded-full ${
-                            j.status === 'open' ? 'bg-[#e65100]' :
-                            j.status === 'in_progress' ? 'bg-[#0288d1]' :
-                            'bg-[#2e7d32]'
-                          }`}></span>
-                          {j.status.replace('_', ' ').toUpperCase()}
-                          <span className="material-symbols-outlined text-[14px]">expand_more</span>
+                          <span className="capitalize">{j.status.replace('_', ' ')}</span>
+                          <span className="material-symbols-outlined" style={{ fontSize: '14px' }}>expand_more</span>
                         </button>
                         
                         {/* Status Dropdown */}
                         {openMenuId === j.id && (
                           <>
                             <div className="fixed inset-0 z-40" onClick={(e) => { e.stopPropagation(); setOpenMenuId(null); }}></div>
-                            <div className="absolute top-full left-0 mt-1 bg-surface-container-lowest border border-outline-variant rounded-md shadow-lg z-50 flex flex-col min-w-[120px] overflow-hidden">
-                              <button onClick={() => handleUpdateStatus(j.id, 'open')} className="px-3 py-2 text-left font-body-md text-on-surface hover:bg-surface-container-low transition-colors">Open</button>
-                              <button onClick={() => handleUpdateStatus(j.id, 'in_progress')} className="px-3 py-2 text-left font-body-md text-on-surface hover:bg-surface-container-low transition-colors">In Progress</button>
-                              <button onClick={() => handleUpdateStatus(j.id, 'completed')} className="px-3 py-2 text-left font-body-md text-on-surface hover:bg-surface-container-low transition-colors">Completed</button>
-                              <button onClick={() => handleUpdateStatus(j.id, 'cancelled')} className="px-3 py-2 text-left font-body-md text-on-surface hover:bg-surface-container-low transition-colors text-error">Cancelled</button>
+                            <div className="absolute left-0 mt-1 w-36 bg-white border border-gray-200 rounded shadow-lg z-50 py-1" onClick={e => e.stopPropagation()}>
+                              <button onClick={(e) => { e.stopPropagation(); handleUpdateStatus(j.id, 'open'); }} className="w-full text-left px-3 py-1.5 text-xs font-medium text-amber-800 hover:bg-amber-50 flex items-center gap-2">
+                                <span className="w-2 h-2 rounded-full bg-amber-500"></span>
+                                Open
+                              </button>
+                              <button onClick={(e) => { e.stopPropagation(); handleUpdateStatus(j.id, 'in_progress'); }} className="w-full text-left px-3 py-1.5 text-xs font-medium text-sky-800 hover:bg-sky-50 flex items-center gap-2">
+                                <span className="w-2 h-2 rounded-full bg-sky-500"></span>
+                                In Progress
+                              </button>
+                              <button onClick={(e) => { e.stopPropagation(); handleUpdateStatus(j.id, 'completed'); }} className="w-full text-left px-3 py-1.5 text-xs font-medium text-emerald-800 hover:bg-emerald-50 flex items-center gap-2">
+                                <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+                                Completed
+                              </button>
+                              <button onClick={(e) => { e.stopPropagation(); handleUpdateStatus(j.id, 'cancelled'); }} className="w-full text-left px-3 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-50 flex items-center gap-2">
+                                <span className="w-2 h-2 rounded-full bg-gray-400"></span>
+                                Cancelled
+                              </button>
                             </div>
                           </>
                         )}
