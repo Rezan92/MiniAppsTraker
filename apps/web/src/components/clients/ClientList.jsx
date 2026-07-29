@@ -112,7 +112,7 @@ export const ClientList = () => {
   return (
     <>
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
-        <h1 className="font-headline-lg text-headline-lg font-bold text-primary">Client Management</h1>
+        <h1 className="font-headline-lg text-headline-lg font-bold text-on-surface">Client Management</h1>
         <div className="flex flex-col sm:flex-row gap-4 w-full md:w-auto">
           <div className="relative w-full lg:w-72 shrink-0">
             <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant">search</span>
@@ -124,17 +124,21 @@ export const ClientList = () => {
               onChange={e => setSearch(e.target.value)}
             />
           </div>
+          <button className="flex items-center justify-center gap-2 bg-[#F9FAFB] border border-outline-variant text-on-surface-variant px-4 py-2 rounded font-body-md font-medium hover:bg-surface-container-low transition-colors h-11">
+            <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>filter_list</span>
+            Filter
+          </button>
           <button 
             onClick={openAddClient}
-            className="bg-primary-container text-on-primary whitespace-nowrap px-6 py-2 rounded font-title-md text-title-md hover:bg-primary transition-colors flex items-center justify-center gap-2 h-11 shrink-0 shadow-sm"
+            className="flex items-center justify-center gap-2 bg-primary text-black px-4 py-2 rounded font-body-md font-bold hover:bg-opacity-90 transition-colors shadow-[0_0_10px_rgba(245,158,11,0.15)] h-11"
           >
-            <span className="material-symbols-outlined" style={{ fontVariationSettings: "'FILL' 1" }}>add</span>
+            <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>person_add</span>
             Add Client
           </button>
         </div>
       </div>
 
-      <div className="bg-surface-container-lowest border border-outline-variant rounded-lg shadow-sm overflow-hidden">
+      <div className="bg-white border border-surface-container-high rounded-lg shadow-sm overflow-hidden">
         {loading ? (
           <div className="text-center py-8 text-on-surface-variant font-body-md">Loading clients...</div>
         ) : (
@@ -142,44 +146,51 @@ export const ClientList = () => {
             <div className="overflow-x-auto">
               <table className="w-full text-left border-collapse">
                 <thead>
-                  <tr className="bg-surface-container-low border-b border-outline-variant">
-                    <th className="py-4 px-6 font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">Client Name</th>
-                    <th className="py-4 px-6 font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">Address</th>
-                    <th className="py-4 px-6 font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">Contact Info</th>
-                    <th className="py-4 px-6 font-label-md text-label-md text-on-surface-variant uppercase tracking-wider text-right">Total Revenue</th>
-                    <th className="py-4 px-6 font-label-md text-label-md text-on-surface-variant uppercase tracking-wider text-right">Actions</th>
+                  <tr className="bg-[#1F2937] text-white border-b border-surface-container-high">
+                    <th className="py-3 px-4 font-label-caps text-label-caps whitespace-nowrap">Client Name</th>
+                    <th className="py-3 px-4 font-label-caps text-label-caps whitespace-nowrap">Address</th>
+                    <th className="py-3 px-4 font-label-caps text-label-caps whitespace-nowrap">Contact Info</th>
+                    <th className="py-3 px-4 font-label-caps text-label-caps whitespace-nowrap">Status</th>
+                    <th className="py-3 px-4 font-label-caps text-label-caps text-center whitespace-nowrap w-16">Actions</th>
                   </tr>
                 </thead>
-                <tbody className="font-table-data text-table-data text-on-surface divide-y divide-outline-variant">
+                <tbody className="font-body-md divide-y divide-surface-container-high">
                   {clients.length === 0 ? (
-                    <tr>
+                    <tr className="bg-white">
                       <td colSpan="5" className="py-8 px-6 text-center text-on-surface-variant">
                         No clients found.
                       </td>
                     </tr>
                   ) : (
                     clients.map((c, idx) => (
-                      <tr key={c.id} className={`hover:bg-surface-container-lowest/50 transition-colors group ${idx % 2 !== 0 ? 'bg-surface-container-low/30' : ''}`}>
-                        <td className="py-4 px-6">
-                          <div className="font-title-md text-title-md text-primary">{c.name}</div>
-                          <div className="text-on-surface-variant text-xs mt-1 capitalize border border-outline-variant rounded px-1.5 py-0.5 inline-block w-max bg-surface-container-low">{c.client_type?.replace('_', ' ')}</div>
+                      <tr key={c.id} className={`hover:bg-gray-50 transition-colors group ${idx % 2 !== 0 ? 'bg-[#F9FAFB]' : 'bg-white'}`}>
+                        <td className="py-3 px-4 cursor-pointer hover:bg-gray-100 transition-colors rounded-l-lg">
+                          <div className="flex items-center gap-3">
+                            <div className="w-8 h-8 rounded bg-gray-100 flex items-center justify-center text-gray-500 font-bold border border-gray-200">
+                              {(c.name || 'C').substring(0, 2).toUpperCase()}
+                            </div>
+                            <div>
+                              <div className="font-medium text-on-surface">{c.name}</div>
+                              <div className="text-xs text-gray-500 capitalize">{c.client_type?.replace('_', ' ')}</div>
+                            </div>
+                          </div>
                         </td>
-                        <td className="py-4 px-6">
-                          <div className="text-on-surface-variant text-sm truncate max-w-[200px]">{c.address || 'No address'}</div>
+                        <td className="py-3 px-4">
+                          <div className="text-on-surface text-sm truncate max-w-[200px]">{c.address || 'No address'}</div>
                         </td>
-                        <td className="py-4 px-6">
-                          <div>{c.email || 'No email'}</div>
-                          <div className="text-on-surface-variant mt-1">{c.phone || 'No phone'}</div>
+                        <td className="py-3 px-4">
+                          <div className="text-on-surface">{c.email || 'No email'}</div>
+                          <div className="text-xs text-gray-500">{c.phone || 'No phone'}</div>
                         </td>
-                        <td className="py-4 px-6 text-right font-title-md text-title-md">
-                          $0.00
+                        <td className="py-3 px-4">
+                          <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-emerald-100 text-emerald-800 border border-emerald-200">Active</span>
                         </td>
-                        <td className="py-4 px-6 text-right">
-                          <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
-                            <button onClick={() => openEditClient(c)} aria-label="Edit Client" className="p-2 text-outline hover:text-primary transition-colors rounded hover:bg-surface-container-low">
+                        <td className="py-3 px-4 text-center">
+                          <div className="flex justify-center gap-2">
+                            <button onClick={() => openEditClient(c)} aria-label="Edit Client" className="p-1 text-black hover:text-gray-600 transition-colors rounded hover:bg-gray-200">
                               <span className="material-symbols-outlined text-[20px]">edit</span>
                             </button>
-                            <button onClick={() => handleDelete(c.id)} aria-label="Delete Client" className="p-2 text-outline hover:text-error transition-colors rounded hover:bg-surface-container-low">
+                            <button onClick={() => handleDelete(c.id)} aria-label="Delete Client" className="p-1 text-black hover:text-gray-600 transition-colors rounded hover:bg-gray-200">
                               <span className="material-symbols-outlined text-[20px]">delete</span>
                             </button>
                           </div>
@@ -191,12 +202,11 @@ export const ClientList = () => {
               </table>
             </div>
             
-            <div className="p-4 border-t border-outline-variant bg-surface flex justify-between items-center text-sm text-on-surface-variant">
-              <span>Showing {clients.length} clients</span>
+            <div className="flex items-center justify-between px-4 py-3 bg-[#F9FAFB] border-t border-surface-container-high text-sm text-gray-500">
+              <div>Showing {clients.length} clients</div>
               <div className="flex gap-2">
-                <button className="px-3 py-1 border border-outline-variant rounded hover:bg-surface-container-lowest transition-colors disabled:opacity-50" disabled>Prev</button>
-                <button className="px-3 py-1 border border-outline-variant rounded hover:bg-surface-container-lowest transition-colors bg-surface-container-lowest text-primary">1</button>
-                <button className="px-3 py-1 border border-outline-variant rounded hover:bg-surface-container-lowest transition-colors disabled:opacity-50" disabled>Next</button>
+                <button className="px-2 py-1 border border-surface-container-high rounded bg-white hover:bg-gray-50 disabled:opacity-50" disabled>Prev</button>
+                <button className="px-2 py-1 border border-surface-container-high rounded bg-white hover:bg-gray-50 disabled:opacity-50" disabled>Next</button>
               </div>
             </div>
           </>

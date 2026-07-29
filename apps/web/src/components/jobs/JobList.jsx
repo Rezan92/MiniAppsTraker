@@ -177,7 +177,7 @@ export const JobList = () => {
       {/* Page Header & Actions */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
-          <h1 className="font-headline-lg text-headline-lg font-bold text-primary">Job Tracking Engine</h1>
+          <h1 className="font-headline-lg text-headline-lg font-bold text-on-surface">Job Tracking Engine</h1>
           <p className="font-body-md text-gray-500 mt-1">Manage, filter, and track all active and historical jobs.</p>
         </div>
         <button 
@@ -190,7 +190,7 @@ export const JobList = () => {
       </div>
 
       {/* Filters & Search */}
-      <div className="flex flex-col lg:flex-row gap-4 justify-between items-center">
+      <div className="bg-white border border-gray-200 rounded-lg p-4 flex flex-col lg:flex-row gap-4 justify-between items-center shadow-sm">
         <div className="flex gap-2 overflow-x-auto w-full lg:w-auto pb-2 lg:pb-0 scrollbar-hide">
           <button 
             onClick={() => setStatusFilter('all')}
@@ -303,17 +303,17 @@ export const JobList = () => {
                     )}
                   </td>
                   <td className="py-4 px-4 align-top text-center">
-                    <div className="flex justify-center gap-1 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
+                    <div className="flex justify-center gap-2">
                       <button 
                         onClick={() => { setSelectedJobId(j.id); setHoursOpen(true); }}
-                        className="p-1 text-gray-400 hover:text-primary transition-colors rounded hover:bg-gray-100"
+                        className="p-1 text-black hover:text-gray-600 transition-colors rounded hover:bg-gray-200"
                         title="Log Hours"
                       >
                         <span className="material-symbols-outlined text-[20px]">schedule</span>
                       </button>
                       <button 
                         onClick={() => { setSelectedJobId(j.id); setMatOpen(true); }}
-                        className="p-1 text-gray-400 hover:text-primary transition-colors rounded hover:bg-gray-100"
+                        className="p-1 text-black hover:text-gray-600 transition-colors rounded hover:bg-gray-200"
                         title="Add Material"
                       >
                         <span className="material-symbols-outlined text-[20px]">add_box</span>
