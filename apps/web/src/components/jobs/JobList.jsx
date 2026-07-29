@@ -173,52 +173,50 @@ export const JobList = () => {
   });
 
   return (
-    <main className="flex-1 overflow-auto p-gutter bg-background">
-      <div className="max-w-container-max mx-auto flex flex-col gap-lg">
-        {/* Page Header & Actions */}
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-          <div>
-            <h1 className="font-headline-lg text-headline-lg text-primary hidden md:block">Job Tracking Engine</h1>
-            <h1 className="font-headline-lg-mobile text-headline-lg-mobile text-primary block md:hidden">Job Tracking Engine</h1>
-            <p className="text-on-surface-variant font-body-md text-body-md mt-1">Manage, filter, and track all active and historical jobs.</p>
-          </div>
+    <div className="flex flex-col gap-8">
+      {/* Page Header & Actions */}
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+        <div>
+          <h1 className="font-headline-lg text-headline-lg font-bold text-primary">Job Tracking Engine</h1>
+          <p className="font-body-md text-gray-500 mt-1">Manage, filter, and track all active and historical jobs.</p>
+        </div>
+        <button 
+          onClick={() => setOpen(true)}
+          className="flex items-center justify-center gap-2 bg-primary text-black px-4 py-2 rounded font-body-md font-bold hover:bg-opacity-90 transition-colors shadow-[0_0_10px_rgba(245,158,11,0.15)] h-11"
+        >
+          <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>add</span>
+          New Job
+        </button>
+      </div>
+
+      {/* Filters & Search */}
+      <div className="flex flex-col lg:flex-row gap-4 justify-between items-center">
+        <div className="flex gap-2 overflow-x-auto w-full lg:w-auto pb-2 lg:pb-0 scrollbar-hide">
           <button 
-            onClick={() => setOpen(true)}
-            className="bg-secondary-container text-on-secondary-container hover:bg-[#e09110] transition-colors font-title-md text-title-md px-6 py-3 rounded-lg flex items-center gap-2 shadow-sm whitespace-nowrap"
+            onClick={() => setStatusFilter('all')}
+            className={`px-4 py-2 rounded font-body-md font-medium whitespace-nowrap transition-colors border ${statusFilter === 'all' ? 'bg-[#F9FAFB] border-gray-300 text-gray-700' : 'bg-transparent text-gray-500 border-transparent hover:bg-gray-100'}`}
           >
-            <span className="material-symbols-outlined">add</span>
-            New Job
+              All Jobs
+          </button>
+          <button 
+            onClick={() => setStatusFilter('open')}
+            className={`px-4 py-2 rounded font-body-md font-medium whitespace-nowrap transition-colors border ${statusFilter === 'open' ? 'bg-[#F9FAFB] border-gray-300 text-gray-700' : 'bg-transparent text-gray-500 border-transparent hover:bg-gray-100'}`}
+          >
+              Open
+          </button>
+          <button 
+            onClick={() => setStatusFilter('in_progress')}
+            className={`px-4 py-2 rounded font-body-md font-medium whitespace-nowrap transition-colors border ${statusFilter === 'in_progress' ? 'bg-[#F9FAFB] border-gray-300 text-gray-700' : 'bg-transparent text-gray-500 border-transparent hover:bg-gray-100'}`}
+          >
+              In Progress
+          </button>
+          <button 
+            onClick={() => setStatusFilter('completed')}
+            className={`px-4 py-2 rounded font-body-md font-medium whitespace-nowrap transition-colors border ${statusFilter === 'completed' ? 'bg-[#F9FAFB] border-gray-300 text-gray-700' : 'bg-transparent text-gray-500 border-transparent hover:bg-gray-100'}`}
+          >
+              Completed
           </button>
         </div>
-
-        {/* Filters & Search */}
-        <div className="bg-surface-container-lowest border border-outline-variant rounded-xl p-md flex flex-col lg:flex-row gap-4 justify-between items-center shadow-sm">
-          <div className="flex gap-2 overflow-x-auto w-full lg:w-auto pb-2 lg:pb-0 scrollbar-hide">
-            <button 
-              onClick={() => setStatusFilter('all')}
-              className={`px-4 py-2 rounded-lg font-title-md text-title-md whitespace-nowrap transition-colors border ${statusFilter === 'all' ? 'bg-surface-container-high text-primary border-transparent' : 'bg-transparent text-on-surface-variant hover:bg-surface-container-low border-outline-variant'}`}
-            >
-                All Jobs
-            </button>
-            <button 
-              onClick={() => setStatusFilter('open')}
-              className={`px-4 py-2 rounded-lg font-title-md text-title-md whitespace-nowrap transition-colors border ${statusFilter === 'open' ? 'bg-surface-container-high text-primary border-transparent' : 'bg-transparent text-on-surface-variant hover:bg-surface-container-low border-outline-variant'}`}
-            >
-                Open
-            </button>
-            <button 
-              onClick={() => setStatusFilter('in_progress')}
-              className={`px-4 py-2 rounded-lg font-title-md text-title-md whitespace-nowrap transition-colors border ${statusFilter === 'in_progress' ? 'bg-surface-container-high text-primary border-transparent' : 'bg-transparent text-on-surface-variant hover:bg-surface-container-low border-outline-variant'}`}
-            >
-                In Progress
-            </button>
-            <button 
-              onClick={() => setStatusFilter('completed')}
-              className={`px-4 py-2 rounded-lg font-title-md text-title-md whitespace-nowrap transition-colors border ${statusFilter === 'completed' ? 'bg-surface-container-high text-primary border-transparent' : 'bg-transparent text-on-surface-variant hover:bg-surface-container-low border-outline-variant'}`}
-            >
-                Completed
-            </button>
-          </div>
           <div className="relative w-full lg:w-72 shrink-0">
             <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant">search</span>
             <input 
@@ -231,37 +229,37 @@ export const JobList = () => {
           </div>
         </div>
 
-        {/* Data Table Container */}
-        <div className="bg-surface-container-lowest border border-outline-variant rounded-xl shadow-sm overflow-hidden flex flex-col">
-          <div className="overflow-x-auto min-h-[300px]">
-            <table className="w-full text-left min-w-[800px]">
-              <thead className="bg-surface-container-low border-b border-outline-variant">
-                <tr>
-                  <th className="py-3 px-4 font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">Job Name & ID</th>
-                  <th className="py-3 px-4 font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">Client</th>
-                  <th className="py-3 px-4 font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">Status</th>
-                  <th className="py-3 px-4 font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">Rate Type</th>
-                  <th className="py-3 px-4 font-label-md text-label-md text-on-surface-variant uppercase tracking-wider text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-outline-variant font-table-data text-table-data">
-                {filteredJobs.map(j => (
-                  <tr key={j.id} className="hover:bg-surface-container-lowest transition-colors bg-white group">
-                    <td className="py-4 px-4 align-top">
-                      <div className="font-title-md text-title-md text-primary">{j.title}</div>
-                      <div className="text-on-tertiary-container mt-1">#JOB-{j.id.split('-')[0].toUpperCase()}</div>
-                    </td>
-                    <td className="py-4 px-4 align-top">
-                      <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-full bg-primary-container text-on-primary-container flex items-center justify-center font-bold">
-                          {j.clients?.name?.substring(0, 2).toUpperCase() || 'NA'}
-                        </div>
-                        <div>
-                          <div className="text-on-surface font-medium">{j.clients?.name || 'Unknown Client'}</div>
-                          <div className="text-on-tertiary-container text-xs">{j.clients?.email || 'No email provided'}</div>
-                        </div>
+      {/* Data Table Container */}
+      <div className="bg-white border border-surface-container-high rounded-lg shadow-sm overflow-hidden flex flex-col">
+        <div className="overflow-x-auto min-h-[300px]">
+          <table className="w-full text-left min-w-[800px] border-collapse">
+            <thead>
+              <tr className="bg-[#1F2937] text-white border-b border-surface-container-high">
+                <th className="py-3 px-4 font-label-caps text-label-caps whitespace-nowrap">Job Name & ID</th>
+                <th className="py-3 px-4 font-label-caps text-label-caps whitespace-nowrap">Client</th>
+                <th className="py-3 px-4 font-label-caps text-label-caps whitespace-nowrap">Status</th>
+                <th className="py-3 px-4 font-label-caps text-label-caps whitespace-nowrap">Rate Type</th>
+                <th className="py-3 px-4 font-label-caps text-label-caps text-center whitespace-nowrap w-16">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-surface-container-high font-body-md">
+              {filteredJobs.map((j, idx) => (
+                <tr key={j.id} className={`hover:bg-gray-50 transition-colors group ${idx % 2 !== 0 ? 'bg-[#F9FAFB]' : 'bg-white'}`}>
+                  <td className="py-4 px-4 align-top">
+                    <div className="font-medium text-on-surface">{j.title}</div>
+                    <div className="text-gray-500 font-label-caps text-[10px] mt-1">#JOB-{j.id.split('-')[0].toUpperCase()}</div>
+                  </td>
+                  <td className="py-4 px-4 align-top">
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 rounded bg-gray-100 flex items-center justify-center text-gray-500 font-bold border border-gray-200">
+                        {j.clients?.name?.substring(0, 2).toUpperCase() || 'NA'}
                       </div>
-                    </td>
+                      <div>
+                        <div className="font-medium text-on-surface">{j.clients?.name || 'Unknown Client'}</div>
+                        <div className="text-gray-500 text-xs">{j.clients?.email || 'No email provided'}</div>
+                      </div>
+                    </div>
+                  </td>
                     <td className="py-4 px-4 align-top">
                       <div className="relative w-max cursor-pointer">
                         <button 
@@ -295,61 +293,57 @@ export const JobList = () => {
                         )}
                       </div>
                     </td>
-                    <td className="py-4 px-4 align-top">
-                      <div className="text-on-surface font-medium capitalize">{j.rate_type} Rate</div>
-                      {j.rate_type === 'hourly' && (
-                        <div className="text-on-tertiary-container text-xs mt-1">${j.hourly_rate}/hr</div>
-                      )}
-                      {j.rate_type === 'flat' && j.flat_rate && (
-                        <div className="text-on-tertiary-container text-xs mt-1">${j.flat_rate} Total</div>
-                      )}
-                    </td>
-                    <td className="py-4 px-4 align-top text-right">
-                      <div className="flex justify-end gap-1">
-                        <button 
-                          onClick={() => { setSelectedJobId(j.id); setHoursOpen(true); }}
-                          className="text-on-surface-variant hover:text-primary p-2 rounded-lg hover:bg-surface-container-low transition-colors"
-                          title="Log Hours"
-                        >
-                          <span className="material-symbols-outlined">schedule</span>
-                        </button>
-                        <button 
-                          onClick={() => { setSelectedJobId(j.id); setMatOpen(true); }}
-                          className="text-on-surface-variant hover:text-primary p-2 rounded-lg hover:bg-surface-container-low transition-colors"
-                          title="Add Material"
-                        >
-                          <span className="material-symbols-outlined">add_box</span>
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-                {loading && filteredJobs.length === 0 && (
-                  <tr>
-                    <td colSpan="5" className="py-8 text-center text-on-surface-variant font-body-md">Loading jobs...</td>
-                  </tr>
-                )}
-                {!loading && filteredJobs.length === 0 && (
-                  <tr>
-                    <td colSpan="5" className="py-8 text-center text-on-surface-variant font-body-md">No jobs found.</td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-          {/* Pagination Footer */}
-          <div className="border-t border-outline-variant p-4 flex justify-between items-center bg-surface-container-lowest">
-            <span className="text-on-surface-variant font-body-md text-body-md">Showing {filteredJobs.length} entries</span>
-            <div className="flex gap-2">
-              <button className="p-2 border border-outline-variant rounded-lg text-on-surface-variant hover:bg-surface-container-low disabled:opacity-50" disabled>
-                <span className="material-symbols-outlined">chevron_left</span>
-              </button>
-              <button className="p-2 border border-outline-variant rounded-lg text-on-surface-variant hover:bg-surface-container-low disabled:opacity-50" disabled>
-                <span className="material-symbols-outlined">chevron_right</span>
-              </button>
-            </div>
+                  <td className="py-4 px-4 align-top">
+                    <div className="text-on-surface font-medium capitalize">{j.rate_type} Rate</div>
+                    {j.rate_type === 'hourly' && (
+                      <div className="text-gray-500 text-xs mt-1 font-label-caps">${j.hourly_rate}/hr</div>
+                    )}
+                    {j.rate_type === 'flat' && j.flat_rate && (
+                      <div className="text-gray-500 text-xs mt-1 font-label-caps">${j.flat_rate} Total</div>
+                    )}
+                  </td>
+                  <td className="py-4 px-4 align-top text-center">
+                    <div className="flex justify-center gap-1 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
+                      <button 
+                        onClick={() => { setSelectedJobId(j.id); setHoursOpen(true); }}
+                        className="p-1 text-gray-400 hover:text-primary transition-colors rounded hover:bg-gray-100"
+                        title="Log Hours"
+                      >
+                        <span className="material-symbols-outlined text-[20px]">schedule</span>
+                      </button>
+                      <button 
+                        onClick={() => { setSelectedJobId(j.id); setMatOpen(true); }}
+                        className="p-1 text-gray-400 hover:text-primary transition-colors rounded hover:bg-gray-100"
+                        title="Add Material"
+                      >
+                        <span className="material-symbols-outlined text-[20px]">add_box</span>
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+              {loading && filteredJobs.length === 0 && (
+                <tr className="bg-white">
+                  <td colSpan="5" className="py-8 px-6 text-center text-on-surface-variant">Loading jobs...</td>
+                </tr>
+              )}
+              {!loading && filteredJobs.length === 0 && (
+                <tr className="bg-white">
+                  <td colSpan="5" className="py-8 px-6 text-center text-on-surface-variant">No jobs found.</td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+        {/* Pagination Footer */}
+        <div className="flex items-center justify-between px-4 py-3 bg-[#F9FAFB] border-t border-surface-container-high text-sm text-gray-500">
+          <div>Showing {filteredJobs.length} jobs</div>
+          <div className="flex gap-2">
+            <button className="px-2 py-1 border border-surface-container-high rounded bg-white hover:bg-gray-50 disabled:opacity-50" disabled>Prev</button>
+            <button className="px-2 py-1 border border-surface-container-high rounded bg-white hover:bg-gray-50 disabled:opacity-50" disabled>Next</button>
           </div>
         </div>
+      </div>
         
         {/* Modals */}
         <AddJobModal 
@@ -374,7 +368,6 @@ export const JobList = () => {
           hoursData={hoursData} 
           setHoursData={setHoursData} 
         />
-      </div>
-    </main>
+    </div>
   );
 };

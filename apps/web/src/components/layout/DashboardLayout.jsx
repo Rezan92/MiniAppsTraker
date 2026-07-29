@@ -12,91 +12,113 @@ export const DashboardLayout = ({ children }) => {
   return (
     <div className="antialiased min-h-screen flex font-body-md text-body-md text-on-surface bg-background">
       {/* SideNavBar */}
-      <nav className="hidden md:flex bg-surface dark:bg-inverse-surface text-primary dark:text-primary-fixed-dim font-body-md text-body-md docked left-0 h-full w-64 border-r border-outline-variant dark:border-outline flat no shadows fixed top-0 flex-col p-4 z-40">
-        <div className="mb-8 flex items-center gap-3">
-          <div className="w-10 h-10 rounded-full bg-surface-container-high overflow-hidden shrink-0">
-            <img alt="Contractor Profile" className="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBKchZKHbJQmqwJmpq9tXOHcbD672jNUerLBB1Jb-TWpe8BWSYYsIFM_nFJEna4RM1sESlknjxHBNnjjQl2PC4W3GuqbetJF7OZL7OggAupsoiLKa2HaGk26GNFR1xRf8drenxSThqRgh22FjbqmOykdbPVejyrLWuj3RYOSSUYIAP_ViRUeU9hAG587-aSm8a50cO9RXOV1vG50M4FgTH4XZcxmWrKeGlghU9kdhnIPg8RP5bHGxwfsg" />
-          </div>
-          <div>
-            <h1 className="font-headline-md text-headline-md font-bold text-primary dark:text-inverse-primary">{tenantName}</h1>
-            <p className="font-body-md text-body-md text-on-surface-variant text-sm">{tenantSubtitle}</p>
+      <nav className="hidden md:flex bg-[#1F2937] text-white font-body-md text-body-md docked left-0 h-full w-[280px] border-r border-[#374151] flat no shadows fixed top-0 flex-col p-4 z-40">
+        <div className="mb-8 px-2 mt-4">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-primary rounded flex items-center justify-center font-headline-md font-bold text-black shrink-0">P</div>
+            <div>
+              <h1 className="font-headline-md text-headline-md font-bold tracking-tight text-white leading-tight">{tenantName}</h1>
+              <span className="font-label-caps text-label-caps text-gray-400">{tenantSubtitle}</span>
+            </div>
           </div>
         </div>
         
-        <ul className="flex-1 space-y-2">
+        <ul className="flex-1 space-y-[8px]">
           <li>
-            <NavLink to="/" className={({ isActive }) => `flex items-center gap-3 px-4 py-3 rounded-lg transition-colors duration-200 ${isActive ? 'text-primary dark:text-primary-fixed-dim font-bold bg-surface-container-high dark:bg-surface-variant' : 'text-on-surface-variant dark:text-on-tertiary-container hover:bg-surface-container-low dark:hover:bg-tertiary-container'}`}>
-              <span className="material-symbols-outlined">dashboard</span>
-              Dashboard
+            <NavLink to="/" className={({ isActive }) => `relative group flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors duration-200 ${isActive ? 'bg-gray-800 text-white' : 'text-gray-300 hover:bg-gray-800 hover:text-white'}`}>
+              {({ isActive }) => (
+                <>
+                  {isActive && <div className="absolute left-0 top-0 bottom-0 w-1 bg-primary rounded-r-full"></div>}
+                  <span className={`material-symbols-outlined transition-colors ${isActive ? 'text-primary' : 'text-gray-400 group-hover:text-white'}`}>dashboard</span>
+                  <span className={`font-body-md ${isActive ? 'font-bold' : 'font-medium'}`}>Dashboard</span>
+                </>
+              )}
             </NavLink>
           </li>
           <li>
-            <NavLink to="/clients" className={({ isActive }) => `flex items-center gap-3 px-4 py-3 rounded-lg transition-colors duration-200 ${isActive ? 'text-primary dark:text-primary-fixed-dim font-bold bg-surface-container-high dark:bg-surface-variant' : 'text-on-surface-variant dark:text-on-tertiary-container hover:bg-surface-container-low dark:hover:bg-tertiary-container'}`}>
-              <span className="material-symbols-outlined" style={{ fontVariationSettings: "'FILL' 1" }}>group</span>
-              Clients
+            <NavLink to="/clients" className={({ isActive }) => `relative group flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors duration-200 ${isActive ? 'bg-gray-800 text-white' : 'text-gray-300 hover:bg-gray-800 hover:text-white'}`}>
+              {({ isActive }) => (
+                <>
+                  {isActive && <div className="absolute left-0 top-0 bottom-0 w-1 bg-primary rounded-r-full"></div>}
+                  <span className={`material-symbols-outlined transition-colors ${isActive ? 'text-primary' : 'text-gray-400 group-hover:text-white'}`} style={{ fontVariationSettings: isActive ? "'FILL' 1" : "'FILL' 0" }}>group</span>
+                  <span className={`font-body-md ${isActive ? 'font-bold' : 'font-medium'}`}>Clients</span>
+                </>
+              )}
             </NavLink>
           </li>
           <li>
-            <NavLink to="/jobs" className={({ isActive }) => `flex items-center gap-3 px-4 py-3 rounded-lg transition-colors duration-200 ${isActive ? 'text-primary dark:text-primary-fixed-dim font-bold bg-surface-container-high dark:bg-surface-variant' : 'text-on-surface-variant dark:text-on-tertiary-container hover:bg-surface-container-low dark:hover:bg-tertiary-container'}`}>
-              <span className="material-symbols-outlined">handyman</span>
-              Jobs
+            <NavLink to="/jobs" className={({ isActive }) => `relative group flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors duration-200 ${isActive ? 'bg-gray-800 text-white' : 'text-gray-300 hover:bg-gray-800 hover:text-white'}`}>
+              {({ isActive }) => (
+                <>
+                  {isActive && <div className="absolute left-0 top-0 bottom-0 w-1 bg-primary rounded-r-full"></div>}
+                  <span className={`material-symbols-outlined transition-colors ${isActive ? 'text-primary' : 'text-gray-400 group-hover:text-white'}`}>work</span>
+                  <span className={`font-body-md ${isActive ? 'font-bold' : 'font-medium'}`}>Jobs</span>
+                </>
+              )}
             </NavLink>
           </li>
           <li>
-            <NavLink to="/invoices" className={({ isActive }) => `flex items-center gap-3 px-4 py-3 rounded-lg transition-colors duration-200 ${isActive ? 'text-primary dark:text-primary-fixed-dim font-bold bg-surface-container-high dark:bg-surface-variant' : 'text-on-surface-variant dark:text-on-tertiary-container hover:bg-surface-container-low dark:hover:bg-tertiary-container'}`}>
-              <span className="material-symbols-outlined">receipt_long</span>
-              Invoices
+            <NavLink to="/invoices" className={({ isActive }) => `relative group flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors duration-200 ${isActive ? 'bg-gray-800 text-white' : 'text-gray-300 hover:bg-gray-800 hover:text-white'}`}>
+              {({ isActive }) => (
+                <>
+                  {isActive && <div className="absolute left-0 top-0 bottom-0 w-1 bg-primary rounded-r-full"></div>}
+                  <span className={`material-symbols-outlined transition-colors ${isActive ? 'text-primary' : 'text-gray-400 group-hover:text-white'}`}>receipt_long</span>
+                  <span className={`font-body-md ${isActive ? 'font-bold' : 'font-medium'}`}>Invoices</span>
+                </>
+              )}
             </NavLink>
           </li>
         </ul>
         
-        <ul className="mt-auto pt-4 border-t border-outline-variant space-y-2 mb-4">
+        <ul className="mt-auto pt-4 border-t border-gray-700 space-y-2 mb-4">
           <li>
-            <a href="#" className="flex items-center gap-3 px-4 py-3 text-on-surface-variant dark:text-on-tertiary-container hover:bg-surface-container-low dark:hover:bg-tertiary-container transition-colors duration-200 rounded-lg">
-              <span className="material-symbols-outlined">settings</span>
-              Settings
+            <a href="#" className="flex items-center gap-3 px-3 py-2.5 text-gray-300 hover:bg-gray-800 hover:text-white transition-colors duration-200 rounded-lg group">
+              <span className="material-symbols-outlined text-gray-400 group-hover:text-white transition-colors">settings</span>
+              <span className="font-body-md font-medium">Settings</span>
             </a>
           </li>
           <li>
-            <a href="#" className="flex items-center gap-3 px-4 py-3 text-on-surface-variant dark:text-on-tertiary-container hover:bg-surface-container-low dark:hover:bg-tertiary-container transition-colors duration-200 rounded-lg">
-              <span className="material-symbols-outlined">help_outline</span>
-              Support
+            <a href="#" className="flex items-center gap-3 px-3 py-2.5 text-gray-300 hover:bg-gray-800 hover:text-white transition-colors duration-200 rounded-lg group">
+              <span className="material-symbols-outlined text-gray-400 group-hover:text-white transition-colors">help</span>
+              <span className="font-body-md font-medium">Support</span>
             </a>
           </li>
         </ul>
         
-        <button className="w-full bg-secondary-container text-on-secondary-container font-title-md text-title-md py-3 rounded-lg flex justify-center items-center gap-2 hover:opacity-90 transition-opacity">
-          <span className="material-symbols-outlined" style={{ fontVariationSettings: "'FILL' 1" }}>add</span>
-          New Job
+        <button className="w-full flex items-center justify-center gap-2 bg-primary hover:bg-opacity-90 text-black py-2.5 rounded font-body-md font-bold transition-all shadow-[0_0_15px_rgba(245,158,11,0.2)] active:scale-95 duration-150">
+          <span className="material-symbols-outlined text-black" style={{ fontSize: '18px' }}>add</span>
+          Create New Job
         </button>
       </nav>
 
       {/* Main Content Area */}
-      <div className="flex-1 md:ml-64 flex flex-col min-h-screen">
+      <main className="flex-1 md:ml-[280px] flex flex-col h-screen bg-[#F9FAFB]">
         {/* TopAppBar */}
-        <header className="bg-surface-bright dark:bg-surface-dim text-primary dark:text-primary-fixed-dim font-title-md text-title-md border-b border-outline-variant dark:border-outline flex justify-between items-center h-16 px-6 fixed top-0 left-0 right-0 z-30 md:ml-64 md:w-[calc(100%-16rem)]">
+        <header className="bg-white border-b border-gray-200 flex justify-between items-center px-6 py-4 sticky top-0 z-30">
           <div className="flex items-center gap-4">
-            <h2 className="font-headline-md text-headline-md font-bold text-primary dark:text-on-surface">{tenantName}</h2>
+            <h2 className="font-headline-md text-headline-md font-bold text-gray-900">ProFix</h2>
           </div>
           
           <div className="flex justify-end items-center gap-4">
-            <button className="p-2 text-on-surface-variant hover:text-primary transition-colors">
+            <button className="p-2 text-gray-500 hover:text-gray-900 transition-colors">
               <span className="material-symbols-outlined">notifications</span>
             </button>
-            <button className="p-2 text-on-surface-variant hover:text-primary transition-colors">
+            <button className="p-2 text-gray-500 hover:text-gray-900 transition-colors">
               <span className="material-symbols-outlined">settings</span>
             </button>
-            <button className="w-8 h-8 rounded-full overflow-hidden border border-outline-variant hover:border-primary transition-colors">
-              <img alt="User Avatar" className="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAXNx85d1Uz6rP2peIVLRRFAZqiC28-cMpD4xyGchsQd08Bhm4kw2-JvUBoA5v-rZT5VPq-Wv1WMuPJFwP8mYx6RvlufA9zYSAdrjdNP73Jtak-BOUptH-TMG25X7sqVJFFn3ZvSFHTItc_g9S2ZoKulyY14oNfhOcDqrEdc-EQYDAFVgzZ02FPh0nBXNoQkc5O3SyC29YnXgWznJ0ThdoTsffoJAfDq7JvsytfoYAAfTFAoTr9BUq_CQ" />
+            <button className="w-8 h-8 rounded-full overflow-hidden border border-gray-200 hover:border-primary transition-colors bg-gray-100 flex items-center justify-center">
+               <span className="material-symbols-outlined text-gray-500">person</span>
             </button>
           </div>
         </header>
 
         {/* Canvas */}
-        <main className="flex-1 p-6 md:p-gutter mt-16 max-w-container-max mx-auto w-full">
-          {children || <Outlet />}
-        </main>
-      </div>
+        <div className="flex-1 overflow-auto p-4 md:p-8">
+          <div className="max-w-[1440px] mx-auto">
+            {children || <Outlet />}
+          </div>
+        </div>
+      </main>
     </div>
   );
 };
