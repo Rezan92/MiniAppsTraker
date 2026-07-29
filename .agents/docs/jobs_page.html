@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Jobs Tracking Engine - ProFix Solutions</title>
+<!-- Font Setup -->
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+<!-- Tailwind CSS -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<!-- Iconify -->
+<script src="https://code.iconify.design/iconify-icon/1.0.7/iconify-icon.min.js"></script>
+<!-- Tailwind Configuration for 'Industrial Tech Logic' -->
+<script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['"Hanken Grotesk"', 'sans-serif'],
+            mono: ['"Hanken Grotesk"', 'monospace'], // Fallback for mono if needed
+          },
+          colors: {
+            // Colors from the design system and reference image
+            primary: {
+              DEFAULT: '#f59e0b', // Amber
+              hover: '#d97706',
+              text: '#ffffff',
+            },
+            surface: {
+              DEFAULT: '#f9fafb', // Ghost White background
+              container: '#ffffff',
+              'container-lowest': '#ffffff',
+            },
+            sidebar: {
+              bg: '#1e293b', // Deep charcoal/slate
+              text: '#94a3b8',
+              hover: '#334155',
+              active: '#f8fafc',
+              border: '#334155',
+            },
+            neutral: {
+              50: '#f8fafc',
+              100: '#f1f5f9',
+              200: '#e2e8f0',
+              300: '#cbd5e1',
+              400: '#94a3b8',
+              500: '#64748b',
+              600: '#475569',
+              700: '#334155',
+              800: '#1e293b',
+              900: '#0f172a',
+            },
+            status: {
+              completed: { bg: '#dcfce7', text: '#166534', dot: '#22c55e' },
+              open: { bg: '#ffedd5', text: '#9a3412', dot: '#f97316' },
+            }
+          },
+          borderRadius: {
+            'xl': '0.5rem', // ROUND_FOUR equivalent roughly
+            '2xl': '0.75rem',
+          },
+          boxShadow: {
+            'sm': '0 1px 2px 0 rgba(0, 0, 0, 0.05)',
+            DEFAULT: '0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.1)',
+            'md': '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1)',
+          }
+        }
+      }
+    }
+  </script>
+<style data-purpose="custom-utilities">
+    body {
+      background-color: theme('colors.surface.DEFAULT');
+      color: theme('colors.neutral.800');
+    }
+    
+    /* Custom scrollbar for sidebar if needed */
+    .sidebar-scroll::-webkit-scrollbar {
+      width: 4px;
+    }
+    .sidebar-scroll::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    .sidebar-scroll::-webkit-scrollbar-thumb {
+      background-color: theme('colors.sidebar.border');
+      border-radius: 4px;
+    }
+  </style>
+</head>
+<body class="flex h-screen overflow-hidden text-sm">
+<!-- BEGIN: Sidebar -->
+<aside class="w-64 bg-sidebar-bg flex flex-col h-full border-r border-sidebar-border z-20 flex-shrink-0 transition-all duration-300">
+<!-- Brand / Logo Area -->
+<div class="h-16 flex items-center px-6 mb-6">
+<div class="flex items-center gap-3">
+<div class="w-8 h-8 bg-primary rounded flex items-center justify-center text-primary-text font-bold text-lg leading-none shadow-sm">
+          P
+        </div>
+<div class="flex flex-col">
+<span class="text-white font-bold text-base leading-tight tracking-tight">ProFix</span>
+<span class="text-sidebar-text text-xs font-medium uppercase tracking-wider">Contractor Portal</span>
+</div>
+</div>
+</div>
+<!-- Create New Job Button (Sidebar) -->
+<div class="px-4 mb-6">
+<button class="w-full bg-primary hover:bg-primary-hover text-primary-text font-semibold py-2 px-4 rounded-xl flex items-center justify-center gap-2 transition-colors shadow-sm">
+<iconify-icon class="text-lg" icon="lucide:plus"></iconify-icon>
+        Create New Job
+      </button>
+</div>
+<!-- Navigation Links -->
+<nav class="flex-1 overflow-y-auto sidebar-scroll px-3 space-y-1">
+<a class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sidebar-text hover:bg-sidebar-hover hover:text-white transition-colors group" href="#">
+<iconify-icon class="text-xl group-hover:text-primary transition-colors" icon="lucide:layout-dashboard"></iconify-icon>
+<span class="font-medium">Dashboard</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sidebar-text hover:bg-sidebar-hover hover:text-white transition-colors group" href="#">
+<iconify-icon class="text-xl group-hover:text-primary transition-colors" icon="lucide:users"></iconify-icon>
+<span class="font-medium">Clients</span>
+</a>
+<!-- Active Link -->
+<div class="relative">
+<div class="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-8 bg-primary rounded-r-md"></div>
+<a class="flex items-center gap-3 px-3 py-2.5 rounded-lg bg-sidebar-hover text-white transition-colors group ml-1" href="#">
+<iconify-icon class="text-xl text-primary" icon="lucide:briefcase"></iconify-icon>
+<span class="font-semibold">Jobs</span>
+</a>
+</div>
+<a class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sidebar-text hover:bg-sidebar-hover hover:text-white transition-colors group" href="#">
+<iconify-icon class="text-xl group-hover:text-primary transition-colors" icon="lucide:receipt"></iconify-icon>
+<span class="font-medium">Invoices</span>
+</a>
+</nav>
+<!-- Bottom Actions -->
+<div class="p-4 border-t border-sidebar-border mt-auto">
+<a class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sidebar-text hover:bg-sidebar-hover hover:text-white transition-colors group" href="#">
+<iconify-icon class="text-xl group-hover:text-white transition-colors" icon="lucide:settings"></iconify-icon>
+<span class="font-medium">Settings</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sidebar-text hover:bg-sidebar-hover hover:text-white transition-colors group mt-1" href="#">
+<iconify-icon class="text-xl group-hover:text-white transition-colors" icon="lucide:help-circle"></iconify-icon>
+<span class="font-medium">Support</span>
+</a>
+</div>
+</aside>
+<!-- END: Sidebar -->
+<!-- BEGIN: Main Content Area -->
+<div class="flex-1 flex flex-col h-full overflow-hidden relative">
+<!-- BEGIN: Topbar -->
+<header class="h-16 bg-surface-container border-b border-neutral-200 flex items-center justify-between px-8 flex-shrink-0 z-10 shadow-sm">
+<div class="flex items-center gap-4">
+<h1 class="text-xl font-bold text-neutral-900 tracking-tight">ProFix</h1>
+</div>
+<div class="flex items-center gap-4">
+<!-- Search placeholder matching screenshot 13 -->
+<div class="relative hidden md:block">
+<div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+<iconify-icon class="text-neutral-400" icon="lucide:search"></iconify-icon>
+</div>
+<input class="block w-64 pl-10 pr-3 py-1.5 border border-neutral-300 rounded-lg leading-5 bg-surface-container placeholder-neutral-400 focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary sm:text-sm transition-shadow" placeholder="Search everywhere..." type="text"/>
+</div>
+<div class="h-6 w-px bg-neutral-200 mx-1"></div>
+<button class="text-neutral-500 hover:text-neutral-700 p-1.5 rounded-full hover:bg-neutral-100 transition-colors relative">
+<span class="absolute top-1.5 right-1.5 block h-2 w-2 rounded-full bg-red-500 ring-2 ring-white"></span>
+<iconify-icon class="text-xl" icon="lucide:bell"></iconify-icon>
+</button>
+<button class="text-neutral-500 hover:text-neutral-700 p-1.5 rounded-full hover:bg-neutral-100 transition-colors">
+<iconify-icon class="text-xl" icon="lucide:help-circle"></iconify-icon>
+</button>
+<div class="h-8 w-8 rounded-full bg-neutral-200 border border-neutral-300 overflow-hidden ml-2 cursor-pointer">
+<img alt="User Avatar" class="h-full w-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCpM8RhH1F57wOqyziH3kwsA3gO_2FZsVaxYaL9ozJpvxwCUfTlK9JzoS9iGjBWd64f2VYbLsYX6xLq-O-mlR-XFLjPXcgn0UBZuI6qUdjGix3rbvZsjAskS8RxhQBLNu2hdGaqMsOQWv5rira9--brePrhJlXvhl4C04zUAuGC4WG2BHvhzhkpiLka-6ZHsej3zO2HdHsX5OT3rxkDXFpmZWSA1sXlJibVBdlRsYKx2nJgO87y5MQ0vg"/>
+</div>
+</div>
+</header>
+<!-- END: Topbar -->
+<!-- BEGIN: Main Scrollable Content -->
+<main class="flex-1 overflow-y-auto p-8">
+<div class="max-w-7xl mx-auto space-y-6">
+<!-- BEGIN: Page Header -->
+<div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+<div>
+<h2 class="text-3xl font-bold text-primary tracking-tight">Job Tracking Engine</h2>
+<p class="text-neutral-500 mt-1">Manage, filter, and track all active and historical jobs.</p>
+</div>
+<div>
+<button class="bg-primary hover:bg-primary-hover text-white font-medium py-2 px-4 rounded-xl flex items-center gap-2 shadow-sm transition-colors">
+<iconify-icon class="text-lg" icon="lucide:plus"></iconify-icon>
+              New Job
+            </button>
+</div>
+</div>
+<!-- END: Page Header -->
+<!-- BEGIN: Filters & Search Area -->
+<div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+<!-- Tabs -->
+<div class="flex space-x-1 p-1 bg-neutral-100 rounded-lg rounded-xl border border-neutral-200 inline-flex">
+<button class="px-4 py-1.5 text-sm font-medium rounded-md bg-white text-neutral-900 shadow-sm border border-neutral-200">
+              All Jobs
+            </button>
+<button class="px-4 py-1.5 text-sm font-medium rounded-md text-neutral-600 hover:text-neutral-900 hover:bg-white/50 transition-colors">
+              Open
+            </button>
+<button class="px-4 py-1.5 text-sm font-medium rounded-md text-neutral-600 hover:text-neutral-900 hover:bg-white/50 transition-colors">
+              In Progress
+            </button>
+<button class="px-4 py-1.5 text-sm font-medium rounded-md text-neutral-600 hover:text-neutral-900 hover:bg-white/50 transition-colors">
+              Completed
+            </button>
+</div>
+<!-- Table Search -->
+<div class="relative w-full md:w-80">
+<div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+<iconify-icon class="text-neutral-400" icon="lucide:search"></iconify-icon>
+</div>
+<input class="block w-full pl-10 pr-3 py-2 border border-neutral-300 rounded-xl leading-5 bg-white placeholder-neutral-400 focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary sm:text-sm transition-shadow shadow-sm" placeholder="Search jobs, clients..." type="text"/>
+</div>
+</div>
+<!-- END: Filters & Search Area -->
+<!-- BEGIN: Data Table -->
+<div class="bg-surface-container rounded-xl shadow-sm border border-neutral-200 overflow-hidden flex flex-col">
+<div class="overflow-x-auto">
+<table class="min-w-full divide-y divide-neutral-200">
+<thead class="bg-neutral-800 text-white">
+<tr>
+<th class="px-6 py-3.5 text-left text-xs font-semibold uppercase tracking-wider font-mono" scope="col">Job Name &amp; ID</th>
+<th class="px-6 py-3.5 text-left text-xs font-semibold uppercase tracking-wider font-mono" scope="col">Client</th>
+<th class="px-6 py-3.5 text-left text-xs font-semibold uppercase tracking-wider font-mono" scope="col">Status</th>
+<th class="px-6 py-3.5 text-left text-xs font-semibold uppercase tracking-wider font-mono" scope="col">Rate Type</th>
+<th class="px-6 py-3.5 text-right text-xs font-semibold uppercase tracking-wider font-mono" scope="col">Actions</th>
+</tr>
+</thead>
+<tbody class="bg-white divide-y divide-neutral-200">
+<!-- Row 1 -->
+<tr class="hover:bg-neutral-50 transition-colors group">
+<td class="px-6 py-4 whitespace-nowrap">
+<div class="flex flex-col">
+<span class="text-sm font-semibold text-neutral-900">Kitchen things</span>
+<span class="text-xs font-mono text-neutral-500 mt-0.5">#JOB-476558EB</span>
+</div>
+</td>
+<td class="px-6 py-4 whitespace-nowrap">
+<div class="flex items-center gap-3">
+<div class="h-10 w-10 rounded bg-neutral-100 border border-neutral-200 flex items-center justify-center text-neutral-600 font-semibold text-sm">
+                        RE
+                      </div>
+<div class="flex flex-col">
+<span class="text-sm font-medium text-neutral-900">Rezan dude</span>
+<span class="text-xs text-neutral-500 mt-0.5">No email provided</span>
+</div>
+</div>
+</td>
+<td class="px-6 py-4 whitespace-nowrap">
+<!-- Dropdown style status pill -->
+<button class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-bold uppercase tracking-wide bg-status-completed-bg text-status-completed-text border border-green-200 hover:bg-green-200 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-green-500">
+<span class="h-1.5 w-1.5 rounded-full bg-status-completed-dot"></span>
+                      Completed
+                      <iconify-icon class="text-sm ml-1 opacity-70" icon="lucide:chevron-down"></iconify-icon>
+</button>
+</td>
+<td class="px-6 py-4 whitespace-nowrap">
+<div class="flex flex-col">
+<span class="text-sm font-medium text-neutral-900">Hourly Rate</span>
+<span class="text-xs text-neutral-500 mt-0.5">$65/hr</span>
+</div>
+</td>
+<td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+<button class="text-neutral-400 hover:text-neutral-900 p-1 rounded-md hover:bg-neutral-100 transition-colors opacity-0 group-hover:opacity-100 focus:opacity-100">
+<iconify-icon class="text-lg" icon="lucide:more-vertical"></iconify-icon>
+</button>
+</td>
+</tr>
+<!-- Row 2 -->
+<tr class="hover:bg-neutral-50 transition-colors group">
+<td class="px-6 py-4 whitespace-nowrap">
+<div class="flex flex-col">
+<span class="text-sm font-semibold text-neutral-900">Doing that</span>
+<span class="text-xs font-mono text-neutral-500 mt-0.5">#JOB-DD49A894</span>
+</div>
+</td>
+<td class="px-6 py-4 whitespace-nowrap">
+<div class="flex items-center gap-3">
+<div class="h-10 w-10 rounded bg-neutral-100 border border-neutral-200 flex items-center justify-center text-neutral-600 font-semibold text-sm">
+                        AL
+                      </div>
+<div class="flex flex-col">
+<span class="text-sm font-medium text-neutral-900">Alhasan</span>
+<span class="text-xs text-neutral-500 mt-0.5">No email provided</span>
+</div>
+</div>
+</td>
+<td class="px-6 py-4 whitespace-nowrap">
+<!-- Dropdown style status pill -->
+<button class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-bold uppercase tracking-wide bg-status-open-bg text-status-open-text border border-orange-200 hover:bg-orange-200 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-orange-500">
+<span class="h-1.5 w-1.5 rounded-full bg-status-open-dot"></span>
+                      Open
+                      <iconify-icon class="text-sm ml-1 opacity-70" icon="lucide:chevron-down"></iconify-icon>
+</button>
+</td>
+<td class="px-6 py-4 whitespace-nowrap">
+<div class="flex flex-col">
+<span class="text-sm font-medium text-neutral-900">Hourly Rate</span>
+<span class="text-xs text-neutral-500 mt-0.5">$65/hr</span>
+</div>
+</td>
+<td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+<button class="text-neutral-400 hover:text-neutral-900 p-1 rounded-md hover:bg-neutral-100 transition-colors opacity-0 group-hover:opacity-100 focus:opacity-100">
+<iconify-icon class="text-lg" icon="lucide:more-vertical"></iconify-icon>
+</button>
+</td>
+</tr>
+<!-- Spacer row to match original height visually before footer -->
+<tr>
+<td class="px-6 py-24 bg-white" colspan="5"></td>
+</tr>
+</tbody>
+</table>
+</div>
+<!-- Table Footer / Pagination -->
+<div class="px-6 py-3 border-t border-neutral-200 bg-neutral-50 flex items-center justify-between">
+<span class="text-sm text-neutral-500">Showing 2 jobs</span>
+<div class="flex items-center space-x-2">
+<button class="px-3 py-1.5 border border-neutral-300 text-sm font-medium rounded-md text-neutral-400 bg-white cursor-not-allowed" disabled="">
+                Prev
+              </button>
+<button class="px-3 py-1.5 border border-neutral-300 text-sm font-medium rounded-md text-neutral-400 bg-white cursor-not-allowed" disabled="">
+                Next
+              </button>
+</div>
+</div>
+</div>
+<!-- END: Data Table -->
+</div>
+</main>
+<!-- END: Main Scrollable Content -->
+</div>
+<!-- END: Main Content Area -->
+</body></html>

@@ -165,7 +165,7 @@ export const AddClientModal = ({ open, onClose, onSubmit, formData, setFormData,
           <button 
             type="submit"
             form="add-client-form"
-            className="px-5 py-2 bg-primary-container text-on-primary hover:bg-primary transition-colors rounded-md font-title-md text-sm flex items-center justify-center shadow-sm disabled:opacity-50"
+            className="px-5 py-2 bg-primary text-black hover:bg-opacity-90 transition-colors rounded font-body-md font-bold flex items-center justify-center shadow-sm disabled:opacity-50 cursor-pointer h-10"
             disabled={!formData.name || !formData.phone || Object.values(errors).some(Boolean)}
           >
             {editMode ? 'Save Changes' : 'Add Client'}

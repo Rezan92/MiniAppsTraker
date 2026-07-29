@@ -12,7 +12,8 @@ const clientSchema = z.object({
   email: z.string().email().optional().or(z.literal('')),
   phone: z.string().regex(/^\+?[\d\s\-\(\)]+$/, "Phone number must contain only numbers and formatting characters"),
   address: z.string().optional(),
-  notes: z.string().optional()
+  notes: z.string().optional(),
+  status: z.enum(['active', 'inactive']).default('active')
 });
 
 router.get('/', async (req, res, next) => {
@@ -54,11 +55,11 @@ router.post('/', async (req, res, next) => {
       return next(err);
     }
 
-    const { name, client_type, email, phone, address, notes } = result.data;
+    const { name, client_type, email, phone, address, notes, status } = result.data;
 
     const { data, error } = await supabase
       .from('clients')
-      .insert([{ name, client_type, email, phone, address, notes, tenant_id: req.user.tenant_id }])
+      .insert([{ name, client_type, email, phone, address, notes, status, tenant_id: req.user.tenant_id }])
       .select();
 
     if (error) return next(error);
@@ -86,11 +87,11 @@ router.put('/:id', async (req, res, next) => {
       return next(err);
     }
 
-    const { name, client_type, email, phone, address, notes } = result.data;
+    const { name, client_type, email, phone, address, notes, status } = result.data;
 
     const { data, error } = await supabase
       .from('clients')
-      .update({ name, client_type, email, phone, address, notes })
+      .update({ name, client_type, email, phone, address, notes, status })
       .eq('id', req.params.id)
       .eq('tenant_id', req.user.tenant_id)
       .select();

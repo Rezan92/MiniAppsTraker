@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useToast } from '../../contexts/ToastContext';
 import { AddClientModal } from './AddClientModal';
+import { DeleteConfirmationModal } from './DeleteConfirmationModal';
 
 export const ClientList = () => {
   const { session } = useAuth();
@@ -12,7 +13,10 @@ export const ClientList = () => {
   const [editMode, setEditMode] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [search, setSearch] = useState('');
-  const [formData, setFormData] = useState({ client_type: 'residential', name: '', email: '', phone: '', address: '', notes: '' });
+  const [formData, setFormData] = useState({ client_type: 'residential', name: '', email: '', phone: '', address: '', notes: '', status: 'active' });
+  const [openMenuId, setOpenMenuId] = useState(null);
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [clientToDelete, setClientToDelete] = useState(null);
 
   useEffect(() => {
     const delayDebounce = setTimeout(() => {
@@ -68,16 +72,47 @@ export const ClientList = () => {
     }
   };
 
-  const handleDelete = async (id) => {
-    if (!window.confirm("Are you sure you want to delete this client?")) return;
+  const handleUpdateStatus = async (client, newStatus) => {
     try {
-      const res = await fetch(`http://localhost:4000/api/clients/${id}`, {
+      const res = await fetch(`http://localhost:4000/api/clients/${client.id}`, {
+        method: 'PUT',
+        headers: { 
+          'Authorization': `Bearer ${session?.access_token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ ...client, status: newStatus })
+      });
+      if (res.ok) {
+        fetchClients();
+        setOpenMenuId(null);
+        showSuccess('Client status updated!');
+      } else {
+        const errorData = await res.json();
+        showError(errorData.error?.message || 'Failed to update status');
+      }
+    } catch (err) {
+      console.error(err);
+      showError('An unexpected error occurred.');
+    }
+  };
+
+  const confirmDelete = (client) => {
+    setClientToDelete(client);
+    setDeleteModalOpen(true);
+  };
+
+  const executeDelete = async () => {
+    if (!clientToDelete) return;
+    try {
+      const res = await fetch(`http://localhost:4000/api/clients/${clientToDelete.id}`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${session?.access_token}` }
       });
       if (res.ok) {
         fetchClients();
         showSuccess('Client deleted successfully!');
+        setDeleteModalOpen(false);
+        setClientToDelete(null);
       } else {
         const errorData = await res.json();
         showError(errorData.error?.message || 'Failed to delete client');
@@ -104,7 +139,8 @@ export const ClientList = () => {
       email: client.email || '', 
       phone: client.phone || '', 
       address: client.address || '', 
-      notes: client.notes || '' 
+      notes: client.notes || '',
+      status: client.status || 'active'
     });
     setOpen(true);
   };
@@ -163,8 +199,8 @@ export const ClientList = () => {
                     </tr>
                   ) : (
                     clients.map((c, idx) => (
-                      <tr key={c.id} className={`hover:bg-gray-50 transition-colors group ${idx % 2 !== 0 ? 'bg-[#F9FAFB]' : 'bg-white'}`}>
-                        <td className="py-3 px-4 cursor-pointer hover:bg-gray-100 transition-colors rounded-l-lg">
+                      <tr key={c.id} onClick={() => console.log('Navigate to client profile:', c.id)} className={`hover:bg-gray-100 transition-colors group cursor-pointer ${idx % 2 !== 0 ? 'bg-[#F9FAFB]' : 'bg-white'}`}>
+                        <td className="py-3 px-4 rounded-l-lg">
                           <div className="flex items-center gap-3">
                             <div className="w-8 h-8 rounded bg-gray-100 flex items-center justify-center text-gray-500 font-bold border border-gray-200">
                               {(c.name || 'C').substring(0, 2).toUpperCase()}
@@ -182,15 +218,35 @@ export const ClientList = () => {
                           <div className="text-on-surface">{c.email || 'No email'}</div>
                           <div className="text-xs text-gray-500">{c.phone || 'No phone'}</div>
                         </td>
-                        <td className="py-3 px-4">
-                          <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-emerald-100 text-emerald-800 border border-emerald-200">Active</span>
+                        <td className="py-3 px-4 relative">
+                          <button 
+                            onClick={(e) => { e.stopPropagation(); setOpenMenuId(openMenuId === c.id ? null : c.id); }}
+                            className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-bold uppercase tracking-wide border focus:outline-none focus:ring-2 focus:ring-offset-1 ${
+                              c.status === 'inactive' ? 'bg-gray-100 text-gray-800 border-gray-200 focus:ring-gray-500' : 'bg-emerald-100 text-emerald-800 border-emerald-200 focus:ring-emerald-500'
+                            }`}
+                          >
+                            <span className={`w-1.5 h-1.5 rounded-full ${c.status === 'inactive' ? 'bg-gray-500' : 'bg-emerald-500'}`}></span>
+                            {c.status === 'inactive' ? 'INACTIVE' : 'ACTIVE'}
+                            <span className="material-symbols-outlined text-[14px]">expand_more</span>
+                          </button>
+                          
+                          {/* Status Dropdown */}
+                          {openMenuId === c.id && (
+                            <>
+                              <div className="fixed inset-0 z-40" onClick={(e) => { e.stopPropagation(); setOpenMenuId(null); }}></div>
+                              <div className="absolute top-full left-4 mt-1 bg-white border border-gray-200 rounded-md shadow-lg z-50 flex flex-col min-w-[120px] overflow-hidden" onClick={e => e.stopPropagation()}>
+                                <button onClick={(e) => { e.stopPropagation(); handleUpdateStatus(c, 'active'); }} className="px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 transition-colors font-medium">Active</button>
+                                <button onClick={(e) => { e.stopPropagation(); handleUpdateStatus(c, 'inactive'); }} className="px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 transition-colors font-medium">Inactive</button>
+                              </div>
+                            </>
+                          )}
                         </td>
                         <td className="py-3 px-4 text-center">
                           <div className="flex justify-center gap-2">
-                            <button onClick={() => openEditClient(c)} aria-label="Edit Client" className="p-1 text-black hover:text-gray-600 transition-colors rounded hover:bg-gray-200">
+                            <button onClick={(e) => { e.stopPropagation(); openEditClient(c); }} aria-label="Edit Client" className="p-1 text-black hover:text-gray-600 transition-colors rounded hover:bg-gray-200">
                               <span className="material-symbols-outlined text-[20px]">edit</span>
                             </button>
-                            <button onClick={() => handleDelete(c.id)} aria-label="Delete Client" className="p-1 text-black hover:text-gray-600 transition-colors rounded hover:bg-gray-200">
+                            <button onClick={(e) => { e.stopPropagation(); confirmDelete(c); }} aria-label="Delete Client" className="p-1 text-black hover:text-gray-600 transition-colors rounded hover:bg-gray-200">
                               <span className="material-symbols-outlined text-[20px]">delete</span>
                             </button>
                           </div>
@@ -220,6 +276,12 @@ export const ClientList = () => {
         formData={formData}
         setFormData={setFormData}
         editMode={editMode}
+      />
+      <DeleteConfirmationModal
+        open={deleteModalOpen}
+        onClose={() => setDeleteModalOpen(false)}
+        onConfirm={executeDelete}
+        clientName={clientToDelete?.name}
       />
     </>
   );
