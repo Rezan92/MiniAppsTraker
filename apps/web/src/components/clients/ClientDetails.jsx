@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { useToast } from '../../contexts/ToastContext';
+import { AddJobModal } from '../jobs/AddJobModal';
 
 export const ClientDetails = () => {
   const { id } = useParams();
@@ -12,6 +13,9 @@ export const ClientDetails = () => {
   const [client, setClient] = useState(null);
   const [jobs, setJobs] = useState([]);
   const [loading, setLoading] = useState(true);
+
+  const [jobModalOpen, setJobModalOpen] = useState(false);
+  const [jobFormData, setJobFormData] = useState({ client_id: '', title: '', rate_type: 'flat', hourly_rate: '', flat_rate: '', start_date: '', end_date: '', notes: '' });
 
   useEffect(() => {
     fetchClientData();
@@ -45,6 +49,36 @@ export const ClientDetails = () => {
     }
   };
 
+  const handleCreateJob = async () => {
+    try {
+      const payload = {
+        ...jobFormData,
+        hourly_rate: jobFormData.rate_type === 'hourly' ? parseFloat(jobFormData.hourly_rate) : undefined,
+        flat_rate: jobFormData.rate_type === 'flat' ? parseFloat(jobFormData.flat_rate) : undefined
+      };
+      const res = await fetch('http://localhost:4000/api/jobs', {
+        method: 'POST',
+        headers: { 
+          'Authorization': `Bearer ${session?.access_token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(payload)
+      });
+      if (res.ok) {
+        fetchClientData();
+        setJobModalOpen(false);
+        setJobFormData({ client_id: '', title: '', rate_type: 'flat', hourly_rate: '', flat_rate: '', start_date: '', end_date: '', notes: '' });
+        showSuccess('Job successfully created!');
+      } else {
+        const errorData = await res.json();
+        showError(errorData.error?.message || 'Failed to create job');
+      }
+    } catch (err) {
+      console.error(err);
+      showError('An unexpected error occurred.');
+    }
+  };
+
   if (loading) {
     return <div className="p-8 text-center text-gray-500">Loading client details...</div>;
   }
@@ -71,10 +105,16 @@ export const ClientDetails = () => {
           <p className="font-body-md text-gray-500 mt-1 capitalize">{client.client_type} Client</p>
         </div>
         <div className="flex items-center gap-3">
-          <button className="px-4 py-2 bg-white border border-gray-300 text-gray-700 font-label-caps text-label-caps uppercase rounded hover:bg-gray-50 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-sm">
+          <button className="px-4 py-2 bg-white border border-gray-300 text-gray-700 font-body-md font-bold rounded hover:bg-gray-50 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-sm">
             Edit Details
           </button>
-          <button className="px-4 py-2 bg-primary-container text-black font-label-caps text-label-caps uppercase rounded hover:bg-opacity-90 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-sm flex items-center gap-2">
+          <button 
+            onClick={() => {
+              setJobFormData({ ...jobFormData, client_id: client.id });
+              setJobModalOpen(true);
+            }}
+            className="px-4 py-2 bg-primary text-black font-body-md font-bold rounded hover:bg-opacity-90 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-sm flex items-center gap-2"
+          >
             <span className="material-symbols-outlined text-[18px]">add</span>
             New Job
           </button>
@@ -193,6 +233,15 @@ export const ClientDetails = () => {
         </div>
 
       </div>
+
+      <AddJobModal 
+        open={jobModalOpen}
+        onClose={() => setJobModalOpen(false)}
+        onSubmit={handleCreateJob}
+        formData={jobFormData}
+        setFormData={setJobFormData}
+        clients={[{ id: client.id, name: client.name }]}
+      />
     </div>
   );
 };

@@ -164,7 +164,7 @@ export const JobDetails = () => {
           </div>
         </div>
         <div className="flex gap-3">
-          <button className="px-4 py-2 bg-white border border-gray-300 rounded text-gray-700 font-label-caps text-label-caps uppercase hover:bg-gray-50 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2 shadow-sm">
+          <button className="px-4 py-2 bg-white border border-gray-300 rounded text-gray-700 font-body-md font-bold hover:bg-gray-50 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2 shadow-sm">
             <span className="material-symbols-outlined text-[18px]">edit</span>
             Edit Job
           </button>
@@ -232,7 +232,7 @@ export const JobDetails = () => {
               <span className="material-symbols-outlined text-[18px]">schedule</span>
               Labor & Time
             </h3>
-            <button onClick={() => setHoursOpen(true)} className="px-3 py-1.5 bg-primary-container text-black font-label-caps text-label-caps uppercase rounded cursor-pointer hover:bg-opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-sm flex items-center gap-1">
+            <button onClick={() => setHoursOpen(true)} className="px-3 py-1.5 bg-primary text-black font-body-md font-bold rounded cursor-pointer hover:bg-opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-sm flex items-center gap-1">
               <span className="material-symbols-outlined text-[16px]">add</span>
               Add Time
             </button>
@@ -281,7 +281,7 @@ export const JobDetails = () => {
               <span className="material-symbols-outlined text-[18px]">shopping_cart</span>
               Materials & Expenses
             </h3>
-            <button onClick={() => setMatOpen(true)} className="px-3 py-1.5 bg-primary-container text-black font-label-caps text-label-caps uppercase rounded cursor-pointer hover:bg-opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-sm flex items-center gap-1">
+            <button onClick={() => setMatOpen(true)} className="px-3 py-1.5 bg-primary text-black font-body-md font-bold rounded cursor-pointer hover:bg-opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-sm flex items-center gap-1">
               <span className="material-symbols-outlined text-[16px]">add</span>
               Add Material
             </button>

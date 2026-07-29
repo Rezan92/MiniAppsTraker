@@ -184,10 +184,10 @@ export const JobList = () => {
         </div>
         <button 
           onClick={() => setOpen(true)}
-          className="flex items-center justify-center gap-2 bg-primary text-black px-4 py-2 rounded font-body-md font-bold hover:bg-opacity-90 transition-colors shadow-[0_0_10px_rgba(245,158,11,0.15)] h-11"
+          className="flex items-center justify-center gap-2 bg-primary text-black px-4 py-2 rounded font-body-md font-bold cursor-pointer hover:bg-opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-[0_0_10px_rgba(245,158,11,0.15)] h-11"
         >
           <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>add</span>
-          New Job
+          Add Job
         </button>
       </div>
 
