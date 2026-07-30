@@ -1,16 +1,16 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useToast } from '../../contexts/ToastContext';
 import { useNavigate } from 'react-router-dom';
 import { AddClientModal } from './AddClientModal';
 import { DeleteConfirmationModal } from './DeleteConfirmationModal';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 
 export const ClientList = () => {
   const { session } = useAuth();
   const { showSuccess, showError } = useToast();
   const navigate = useNavigate();
-  const [clients, setClients] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
   const [editMode, setEditMode] = useState(false);
   const [editingId, setEditingId] = useState(null);
@@ -20,15 +20,9 @@ export const ClientList = () => {
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [clientToDelete, setClientToDelete] = useState(null);
 
-  useEffect(() => {
-    const delayDebounce = setTimeout(() => {
-      fetchClients();
-    }, 300);
-    return () => clearTimeout(delayDebounce);
-  }, [search]);
-
-  const fetchClients = async () => {
-    try {
+  const { data: clients = [], isLoading: loading } = useQuery({
+    queryKey: ['clients', search],
+    queryFn: async () => {
       const url = search 
         ? `http://localhost:4000/api/clients?search=${encodeURIComponent(search)}` 
         : 'http://localhost:4000/api/clients';
@@ -36,15 +30,11 @@ export const ClientList = () => {
         headers: { 'Authorization': `Bearer ${session?.access_token}` }
       });
       const data = await res.json();
-      if (data.success) {
-        setClients(data.data);
-      }
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
-  };
+      if (!data.success) throw new Error(data.error?.message || 'Failed to fetch clients');
+      return data.data;
+    },
+    enabled: !!session?.access_token
+  });
 
   const handleCreate = async () => {
     try {
@@ -58,7 +48,7 @@ export const ClientList = () => {
         body: JSON.stringify(formData)
       });
       if (res.ok) {
-        fetchClients();
+        queryClient.invalidateQueries({ queryKey: ['clients'] });
         setOpen(false);
         setEditMode(false);
         setEditingId(null);
@@ -85,7 +75,7 @@ export const ClientList = () => {
         body: JSON.stringify({ ...client, status: newStatus })
       });
       if (res.ok) {
-        fetchClients();
+        queryClient.invalidateQueries({ queryKey: ['clients'] });
         setOpenMenuId(null);
         showSuccess('Client status updated!');
       } else {
@@ -111,7 +101,7 @@ export const ClientList = () => {
         headers: { 'Authorization': `Bearer ${session?.access_token}` }
       });
       if (res.ok) {
-        fetchClients();
+        queryClient.invalidateQueries({ queryKey: ['clients'] });
         showSuccess('Client deleted successfully!');
         setDeleteModalOpen(false);
         setClientToDelete(null);

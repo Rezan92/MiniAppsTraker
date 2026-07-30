@@ -1,20 +1,17 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { useToast } from '../../contexts/ToastContext';
 import { AddMaterialModal } from './AddMaterialModal';
 import { AddJobHoursModal } from './AddJobHoursModal';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 
 export const JobDetails = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const { session } = useAuth();
   const { showError, showSuccess } = useToast();
-
-  const [job, setJob] = useState(null);
-  const [materials, setMaterials] = useState([]);
-  const [hours, setHours] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
 
   // Modals state
   const [matOpen, setMatOpen] = useState(false);
@@ -23,48 +20,44 @@ export const JobDetails = () => {
   const [hoursOpen, setHoursOpen] = useState(false);
   const [hoursData, setHoursData] = useState({ date: new Date().toISOString().split('T')[0], hours: '', description: '', start_time: '', end_time: '' });
 
-  useEffect(() => {
-    fetchJobData();
-  }, [id]);
-
-  const fetchJobData = async () => {
-    try {
-      setLoading(true);
-      
-      // Fetch Job Details
-      const jobRes = await fetch(`http://localhost:4000/api/jobs/${id}`, {
+  const { data: job, isLoading: loadingJob } = useQuery({
+    queryKey: ['job', id],
+    queryFn: async () => {
+      const res = await fetch(`http://localhost:4000/api/jobs/${id}`, {
         headers: { 'Authorization': `Bearer ${session?.access_token}` }
       });
-      if (!jobRes.ok) throw new Error('Failed to fetch job details');
-      const jobData = await jobRes.json();
-      setJob(jobData.data);
+      if (!res.ok) throw new Error('Failed to fetch job details');
+      const data = await res.json();
+      return data.data;
+    },
+    enabled: !!session?.access_token && !!id
+  });
 
-      // Fetch Materials
-      const matRes = await fetch(`http://localhost:4000/api/jobs/${id}/materials`, {
+  const { data: materials = [], isLoading: loadingMaterials } = useQuery({
+    queryKey: ['materials', 'job', id],
+    queryFn: async () => {
+      const res = await fetch(`http://localhost:4000/api/jobs/${id}/materials`, {
         headers: { 'Authorization': `Bearer ${session?.access_token}` }
       });
-      if (matRes.ok) {
-        const matJson = await matRes.json();
-        setMaterials(matJson.data || []);
-      }
+      if (!res.ok) throw new Error('Failed to fetch materials');
+      const data = await res.json();
+      return data.data || [];
+    },
+    enabled: !!session?.access_token && !!id
+  });
 
-      // Fetch Hours
-      const hoursRes = await fetch(`http://localhost:4000/api/jobs/${id}/hours`, {
+  const { data: hours = [], isLoading: loadingHours } = useQuery({
+    queryKey: ['hours', 'job', id],
+    queryFn: async () => {
+      const res = await fetch(`http://localhost:4000/api/jobs/${id}/hours`, {
         headers: { 'Authorization': `Bearer ${session?.access_token}` }
       });
-      if (hoursRes.ok) {
-        const hoursJson = await hoursRes.json();
-        setHours(hoursJson.data || []);
-      }
-
-    } catch (err) {
-      console.error(err);
-      showError(err.message || 'Error fetching job data');
-      navigate('/jobs');
-    } finally {
-      setLoading(false);
-    }
-  };
+      if (!res.ok) throw new Error('Failed to fetch hours');
+      const data = await res.json();
+      return data.data || [];
+    },
+    enabled: !!session?.access_token && !!id
+  });
 
   const handleAddMaterial = async () => {
     try {
@@ -81,7 +74,7 @@ export const JobDetails = () => {
         setMatOpen(false);
         setMatData({ description: '', cost: '', is_from_stock: false, store: '', purchase_date: '', notes: '' });
         showSuccess('Material added successfully!');
-        fetchJobData();
+        queryClient.invalidateQueries({ queryKey: ['materials', 'job', id] });
       } else {
         const errorData = await res.json();
         showError(errorData.error?.message || 'Failed to add material');
@@ -107,7 +100,7 @@ export const JobDetails = () => {
         setHoursOpen(false);
         setHoursData({ date: new Date().toISOString().split('T')[0], hours: '', description: '', start_time: '', end_time: '' });
         showSuccess('Hours logged successfully!');
-        fetchJobData();
+        queryClient.invalidateQueries({ queryKey: ['hours', 'job', id] });
       } else {
         const errorData = await res.json();
         showError(errorData.error?.message || 'Failed to log hours');
@@ -118,7 +111,7 @@ export const JobDetails = () => {
     }
   };
 
-  if (loading) {
+  if (loadingJob || loadingMaterials || loadingHours) {
     return <div className="p-8 text-center text-gray-500">Loading job details...</div>;
   }
 

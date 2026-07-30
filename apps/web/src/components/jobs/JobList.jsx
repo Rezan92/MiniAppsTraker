@@ -5,16 +5,14 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { AddJobModal } from './AddJobModal';
 import { AddMaterialModal } from './AddMaterialModal';
 import { AddJobHoursModal } from './AddJobHoursModal';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 
 export const JobList = () => {
   const { session } = useAuth();
   const { showSuccess, showError } = useToast();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
-  
-  const [jobs, setJobs] = useState([]);
-  const [clients, setClients] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
   
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
@@ -32,11 +30,6 @@ export const JobList = () => {
   const [openMenuId, setOpenMenuId] = useState(null);
 
   useEffect(() => {
-    fetchJobs();
-    fetchClients();
-  }, []);
-
-  useEffect(() => {
     if (searchParams.get('add') === 'true') {
       setOpen(true);
       searchParams.delete('add');
@@ -44,33 +37,31 @@ export const JobList = () => {
     }
   }, [searchParams, setSearchParams]);
 
-  const fetchJobs = async () => {
-    try {
+  const { data: jobs = [], isLoading: loading } = useQuery({
+    queryKey: ['jobs'],
+    queryFn: async () => {
       const res = await fetch('http://localhost:4000/api/jobs', {
         headers: { 'Authorization': `Bearer ${session?.access_token}` }
       });
       const data = await res.json();
-      if (data.success) setJobs(data.data);
-    } catch (err) {
-      console.error(err);
-      showError('Failed to fetch jobs.');
-    } finally {
-      setLoading(false);
-    }
-  };
+      if (!data.success) throw new Error(data.error?.message || 'Failed to fetch jobs');
+      return data.data;
+    },
+    enabled: !!session?.access_token
+  });
 
-  const fetchClients = async () => {
-    try {
+  const { data: clients = [] } = useQuery({
+    queryKey: ['clients'],
+    queryFn: async () => {
       const res = await fetch('http://localhost:4000/api/clients', {
         headers: { 'Authorization': `Bearer ${session?.access_token}` }
       });
       const data = await res.json();
-      if (data.success) setClients(data.data);
-    } catch (err) {
-      console.error(err);
-      showError('Failed to fetch clients.');
-    }
-  };
+      if (!data.success) throw new Error(data.error?.message || 'Failed to fetch clients');
+      return data.data;
+    },
+    enabled: !!session?.access_token
+  });
 
   const handleCreateJob = async () => {
     try {
@@ -88,7 +79,7 @@ export const JobList = () => {
         body: JSON.stringify(payload)
       });
       if (res.ok) {
-        fetchJobs();
+        queryClient.invalidateQueries({ queryKey: ['jobs'] });
         setOpen(false);
         setFormData({ client_id: '', title: '', rate_type: 'flat', hourly_rate: '', flat_rate: '', start_date: '', end_date: '', notes: '' });
         showSuccess('Job successfully created!');
@@ -138,7 +129,7 @@ export const JobList = () => {
         body: JSON.stringify({ status: newStatus })
       });
       if (res.ok) {
-        fetchJobs();
+        queryClient.invalidateQueries({ queryKey: ['jobs'] });
         setOpenMenuId(null);
         showSuccess('Job status updated!');
       } else {

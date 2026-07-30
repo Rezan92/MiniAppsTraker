@@ -1,53 +1,45 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { useToast } from '../../contexts/ToastContext';
 import { AddJobModal } from '../jobs/AddJobModal';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 
 export const ClientDetails = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const { session } = useAuth();
   const { showError } = useToast();
-
-  const [client, setClient] = useState(null);
-  const [jobs, setJobs] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
 
   const [jobModalOpen, setJobModalOpen] = useState(false);
   const [jobFormData, setJobFormData] = useState({ client_id: '', title: '', rate_type: 'flat', hourly_rate: '', flat_rate: '', start_date: '', end_date: '', notes: '' });
 
-  useEffect(() => {
-    fetchClientData();
-  }, [id]);
-
-  const fetchClientData = async () => {
-    try {
-      setLoading(true);
-      // Fetch Client Details
-      const clientRes = await fetch(`http://localhost:4000/api/clients/${id}`, {
+  const { data: client, isLoading: loadingClient, isError: errorClient } = useQuery({
+    queryKey: ['clients', id],
+    queryFn: async () => {
+      const res = await fetch(`http://localhost:4000/api/clients/${id}`, {
         headers: { 'Authorization': `Bearer ${session?.access_token}` }
       });
-      if (!clientRes.ok) throw new Error('Failed to fetch client details');
-      const clientData = await clientRes.json();
-      setClient(clientData.data);
+      if (!res.ok) throw new Error('Failed to fetch client details');
+      const data = await res.json();
+      return data.data;
+    },
+    enabled: !!session?.access_token && !!id
+  });
 
-      // Fetch Recent Jobs for this client
-      const jobsRes = await fetch(`http://localhost:4000/api/jobs?client_id=${id}`, {
+  const { data: jobs = [], isLoading: loadingJobs } = useQuery({
+    queryKey: ['jobs', 'client', id],
+    queryFn: async () => {
+      const res = await fetch(`http://localhost:4000/api/jobs?client_id=${id}`, {
         headers: { 'Authorization': `Bearer ${session?.access_token}` }
       });
-      if (jobsRes.ok) {
-        const jobsData = await jobsRes.json();
-        setJobs(jobsData.data || []);
-      }
-    } catch (err) {
-      console.error(err);
-      showError(err.message || 'Error fetching client data');
-      navigate('/clients');
-    } finally {
-      setLoading(false);
-    }
-  };
+      if (!res.ok) throw new Error('Failed to fetch jobs');
+      const data = await res.json();
+      return data.data || [];
+    },
+    enabled: !!session?.access_token && !!id
+  });
 
   const handleCreateJob = async () => {
     try {
@@ -65,7 +57,7 @@ export const ClientDetails = () => {
         body: JSON.stringify(payload)
       });
       if (res.ok) {
-        fetchClientData();
+        queryClient.invalidateQueries({ queryKey: ['jobs'] });
         setJobModalOpen(false);
         setJobFormData({ client_id: '', title: '', rate_type: 'flat', hourly_rate: '', flat_rate: '', start_date: '', end_date: '', notes: '' });
         showSuccess('Job successfully created!');
@@ -79,7 +71,7 @@ export const ClientDetails = () => {
     }
   };
 
-  if (loading) {
+  if (loadingClient || loadingJobs) {
     return <div className="p-8 text-center text-gray-500">Loading client details...</div>;
   }
 
