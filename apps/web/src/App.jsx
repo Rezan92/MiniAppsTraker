@@ -6,28 +6,31 @@ import { LoginCard } from './components/LoginCard';
 import { DashboardLayout } from './components/layout/DashboardLayout';
 import { ClientList } from './components/clients/ClientList';
 import { JobList } from './components/jobs/JobList';
-
 import { ClientDetails } from './components/clients/ClientDetails';
 import { JobDetails } from './components/jobs/JobDetails';
-
-const AuthenticatedApp = () => {
-  return (
-    <DashboardLayout>
-      <Routes>
-        <Route path="/" element={<Navigate to="/clients" replace />} />
-        <Route path="/clients" element={<ClientList />} />
-        <Route path="/clients/:id" element={<ClientDetails />} />
-        <Route path="/jobs" element={<JobList />} />
-        <Route path="/jobs/:id" element={<JobDetails />} />
-        <Route path="*" element={<Navigate to="/clients" replace />} />
-      </Routes>
-    </DashboardLayout>
-  );
-};
+import { ProtectedRoute } from './components/layout/ProtectedRoute';
+import { NotFound } from './components/errors/NotFound';
+import { Unauthorized } from './components/errors/Unauthorized';
 
 const MainApp = () => {
   const { user } = useAuth();
-  return user ? <AuthenticatedApp /> : <LoginCard />;
+  
+  return (
+    <Routes>
+      <Route path="/login" element={user ? <Navigate to="/clients" replace /> : <LoginCard />} />
+      
+      <Route path="/" element={<ProtectedRoute><DashboardLayout /></ProtectedRoute>}>
+        <Route index element={<Navigate to="/clients" replace />} />
+        <Route path="clients" element={<ClientList />} />
+        <Route path="clients/:id" element={<ClientDetails />} />
+        <Route path="jobs" element={<JobList />} />
+        <Route path="jobs/:id" element={<JobDetails />} />
+      </Route>
+      
+      <Route path="/unauthorized" element={<Unauthorized />} />
+      <Route path="*" element={<NotFound />} />
+    </Routes>
+  );
 };
 
 function App() {
