@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useToast } from '../../contexts/ToastContext';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { AddJobModal } from './AddJobModal';
 import { AddMaterialModal } from './AddMaterialModal';
 import { AddJobHoursModal } from './AddJobHoursModal';
@@ -10,6 +10,7 @@ export const JobList = () => {
   const { session } = useAuth();
   const { showSuccess, showError } = useToast();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   
   const [jobs, setJobs] = useState([]);
   const [clients, setClients] = useState([]);
@@ -34,6 +35,14 @@ export const JobList = () => {
     fetchJobs();
     fetchClients();
   }, []);
+
+  useEffect(() => {
+    if (searchParams.get('add') === 'true') {
+      setOpen(true);
+      searchParams.delete('add');
+      setSearchParams(searchParams, { replace: true });
+    }
+  }, [searchParams, setSearchParams]);
 
   const fetchJobs = async () => {
     try {

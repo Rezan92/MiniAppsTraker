@@ -1,9 +1,10 @@
 import React from 'react';
-import { NavLink, Outlet } from 'react-router-dom';
+import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 
 export const DashboardLayout = ({ children }) => {
   const { user } = useAuth();
+  const navigate = useNavigate();
   
   // Placeholder tenant data
   const tenantName = "ProFix Solutions"; 
@@ -85,9 +86,12 @@ export const DashboardLayout = ({ children }) => {
           </li>
         </ul>
         
-        <button className="w-full flex items-center justify-center gap-2 bg-primary hover:bg-opacity-90 text-black py-2.5 rounded font-body-md font-bold transition-all shadow-[0_0_15px_rgba(245,158,11,0.2)] active:scale-95 duration-150">
+        <button 
+          onClick={() => navigate('/jobs?add=true')}
+          className="w-full flex items-center justify-center gap-2 bg-primary hover:bg-opacity-90 text-black py-2.5 rounded font-body-md font-bold transition-all shadow-[0_0_15px_rgba(245,158,11,0.2)] active:scale-95 duration-150 cursor-pointer"
+        >
           <span className="material-symbols-outlined text-black" style={{ fontSize: '18px' }}>add</span>
-          Create New Job
+          Add Job
         </button>
       </nav>
 
