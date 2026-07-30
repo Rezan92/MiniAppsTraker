@@ -40,7 +40,7 @@ export const JobList = () => {
   const { data: jobs = [], isLoading: loading } = useQuery({
     queryKey: ['jobs'],
     queryFn: async () => {
-      const res = await fetch('http://localhost:4000/api/jobs', {
+      const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:4000'}/api/jobs`, {
         headers: { 'Authorization': `Bearer ${session?.access_token}` }
       });
       const data = await res.json();
@@ -53,7 +53,7 @@ export const JobList = () => {
   const { data: clients = [] } = useQuery({
     queryKey: ['clients'],
     queryFn: async () => {
-      const res = await fetch('http://localhost:4000/api/clients', {
+      const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:4000'}/api/clients`, {
         headers: { 'Authorization': `Bearer ${session?.access_token}` }
       });
       const data = await res.json();
@@ -70,7 +70,7 @@ export const JobList = () => {
         hourly_rate: formData.rate_type === 'hourly' ? parseFloat(formData.hourly_rate) : undefined,
         flat_rate: formData.rate_type === 'flat' ? parseFloat(formData.flat_rate) : undefined
       };
-      const res = await fetch('http://localhost:4000/api/jobs', {
+      const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:4000'}/api/jobs`, {
         method: 'POST',
         headers: { 
           'Authorization': `Bearer ${session?.access_token}`,
@@ -96,7 +96,7 @@ export const JobList = () => {
   const handleAddMaterial = async () => {
     try {
       const payload = { ...matData, cost: parseFloat(matData.cost) };
-      const res = await fetch(`http://localhost:4000/api/jobs/${selectedJobId}/materials`, {
+      const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:4000'}/api/jobs/${selectedJobId}/materials`, {
         method: 'POST',
         headers: { 
           'Authorization': `Bearer ${session?.access_token}`,
@@ -120,7 +120,7 @@ export const JobList = () => {
 
   const handleUpdateStatus = async (jobId, newStatus) => {
     try {
-      const res = await fetch(`http://localhost:4000/api/jobs/${jobId}/status`, {
+      const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:4000'}/api/jobs/${jobId}/status`, {
         method: 'PATCH',
         headers: { 
           'Authorization': `Bearer ${session?.access_token}`,
@@ -145,7 +145,7 @@ export const JobList = () => {
   const handleLogHours = async () => {
     try {
       const payload = { ...hoursData, hours: parseFloat(hoursData.hours) };
-      const res = await fetch(`http://localhost:4000/api/jobs/${selectedJobId}/hours`, {
+      const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:4000'}/api/jobs/${selectedJobId}/hours`, {
         method: 'POST',
         headers: { 
           'Authorization': `Bearer ${session?.access_token}`,

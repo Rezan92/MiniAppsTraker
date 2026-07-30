@@ -23,7 +23,7 @@ export const JobDetails = () => {
   const { data: job, isLoading: loadingJob } = useQuery({
     queryKey: ['job', id],
     queryFn: async () => {
-      const res = await fetch(`http://localhost:4000/api/jobs/${id}`, {
+      const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:4000'}/api/jobs/${id}`, {
         headers: { 'Authorization': `Bearer ${session?.access_token}` }
       });
       if (!res.ok) throw new Error('Failed to fetch job details');
@@ -36,7 +36,7 @@ export const JobDetails = () => {
   const { data: materials = [], isLoading: loadingMaterials } = useQuery({
     queryKey: ['materials', 'job', id],
     queryFn: async () => {
-      const res = await fetch(`http://localhost:4000/api/jobs/${id}/materials`, {
+      const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:4000'}/api/jobs/${id}/materials`, {
         headers: { 'Authorization': `Bearer ${session?.access_token}` }
       });
       if (!res.ok) throw new Error('Failed to fetch materials');
@@ -49,7 +49,7 @@ export const JobDetails = () => {
   const { data: hours = [], isLoading: loadingHours } = useQuery({
     queryKey: ['hours', 'job', id],
     queryFn: async () => {
-      const res = await fetch(`http://localhost:4000/api/jobs/${id}/hours`, {
+      const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:4000'}/api/jobs/${id}/hours`, {
         headers: { 'Authorization': `Bearer ${session?.access_token}` }
       });
       if (!res.ok) throw new Error('Failed to fetch hours');
@@ -62,7 +62,7 @@ export const JobDetails = () => {
   const handleAddMaterial = async () => {
     try {
       const payload = { ...matData, cost: parseFloat(matData.cost) };
-      const res = await fetch(`http://localhost:4000/api/jobs/${id}/materials`, {
+      const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:4000'}/api/jobs/${id}/materials`, {
         method: 'POST',
         headers: { 
           'Authorization': `Bearer ${session?.access_token}`,
@@ -88,7 +88,7 @@ export const JobDetails = () => {
   const handleLogHours = async () => {
     try {
       const payload = { ...hoursData, hours: parseFloat(hoursData.hours) };
-      const res = await fetch(`http://localhost:4000/api/jobs/${id}/hours`, {
+      const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:4000'}/api/jobs/${id}/hours`, {
         method: 'POST',
         headers: { 
           'Authorization': `Bearer ${session?.access_token}`,
@@ -111,7 +111,7 @@ export const JobDetails = () => {
     }
   };
 
-  if (loadingJob || loadingMaterials || loadingHours) {
+  if (loadingJob) {
     return <div className="p-8 text-center text-gray-500">Loading job details...</div>;
   }
 
@@ -240,7 +240,11 @@ export const JobDetails = () => {
                 </tr>
               </thead>
               <tbody className="text-gray-700">
-                {hours.length === 0 ? (
+                {loadingHours ? (
+                  <tr>
+                    <td colSpan="3" className="p-4 text-center text-gray-500">Loading hours...</td>
+                  </tr>
+                ) : hours.length === 0 ? (
                   <tr>
                     <td colSpan="3" className="p-4 text-center text-gray-400 italic">No hours logged yet.</td>
                   </tr>
@@ -289,7 +293,11 @@ export const JobDetails = () => {
                 </tr>
               </thead>
               <tbody className="text-gray-700">
-                {materials.length === 0 ? (
+                {loadingMaterials ? (
+                  <tr>
+                    <td colSpan="3" className="p-4 text-center text-gray-500">Loading materials...</td>
+                  </tr>
+                ) : materials.length === 0 ? (
                   <tr>
                     <td colSpan="3" className="p-4 text-center text-gray-400 italic">No materials added yet.</td>
                   </tr>

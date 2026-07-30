@@ -4,7 +4,8 @@ import { useToast } from '../../contexts/ToastContext';
 import { useNavigate } from 'react-router-dom';
 import { AddClientModal } from './AddClientModal';
 import { DeleteConfirmationModal } from './DeleteConfirmationModal';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient, keepPreviousData } from '@tanstack/react-query';
+import { useDebounce } from '../../hooks/useDebounce';
 
 export const ClientList = () => {
   const { session } = useAuth();
@@ -15,17 +16,19 @@ export const ClientList = () => {
   const [editMode, setEditMode] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [search, setSearch] = useState('');
+  const debouncedSearch = useDebounce(search, 500);
   const [formData, setFormData] = useState({ client_type: 'residential', name: '', email: '', phone: '', address: '', notes: '', status: 'active' });
   const [openMenuId, setOpenMenuId] = useState(null);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [clientToDelete, setClientToDelete] = useState(null);
 
   const { data: clients = [], isLoading: loading } = useQuery({
-    queryKey: ['clients', search],
+    queryKey: ['clients', debouncedSearch],
+    placeholderData: keepPreviousData,
     queryFn: async () => {
-      const url = search 
-        ? `http://localhost:4000/api/clients?search=${encodeURIComponent(search)}` 
-        : 'http://localhost:4000/api/clients';
+      const url = debouncedSearch 
+        ? `${import.meta.env.VITE_API_URL || 'http://localhost:4000'}/api/clients?search=${encodeURIComponent(debouncedSearch)}` 
+        : `${import.meta.env.VITE_API_URL || 'http://localhost:4000'}/api/clients`;
       const res = await fetch(url, {
         headers: { 'Authorization': `Bearer ${session?.access_token}` }
       });
@@ -38,7 +41,7 @@ export const ClientList = () => {
 
   const handleCreate = async () => {
     try {
-      const url = editMode ? `http://localhost:4000/api/clients/${editingId}` : 'http://localhost:4000/api/clients';
+      const url = editMode ? `${import.meta.env.VITE_API_URL || 'http://localhost:4000'}/api/clients/${editingId}` : `${import.meta.env.VITE_API_URL || 'http://localhost:4000'}/api/clients`;
       const res = await fetch(url, {
         method: editMode ? 'PUT' : 'POST',
         headers: { 
@@ -66,7 +69,7 @@ export const ClientList = () => {
 
   const handleUpdateStatus = async (client, newStatus) => {
     try {
-      const res = await fetch(`http://localhost:4000/api/clients/${client.id}`, {
+      const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:4000'}/api/clients/${client.id}`, {
         method: 'PUT',
         headers: { 
           'Authorization': `Bearer ${session?.access_token}`,
@@ -96,7 +99,7 @@ export const ClientList = () => {
   const executeDelete = async () => {
     if (!clientToDelete) return;
     try {
-      const res = await fetch(`http://localhost:4000/api/clients/${clientToDelete.id}`, {
+      const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:4000'}/api/clients/${clientToDelete.id}`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${session?.access_token}` }
       });

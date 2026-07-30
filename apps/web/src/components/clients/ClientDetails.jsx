@@ -18,7 +18,7 @@ export const ClientDetails = () => {
   const { data: client, isLoading: loadingClient, isError: errorClient } = useQuery({
     queryKey: ['clients', id],
     queryFn: async () => {
-      const res = await fetch(`http://localhost:4000/api/clients/${id}`, {
+      const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:4000'}/api/clients/${id}`, {
         headers: { 'Authorization': `Bearer ${session?.access_token}` }
       });
       if (!res.ok) throw new Error('Failed to fetch client details');
@@ -31,7 +31,7 @@ export const ClientDetails = () => {
   const { data: jobs = [], isLoading: loadingJobs } = useQuery({
     queryKey: ['jobs', 'client', id],
     queryFn: async () => {
-      const res = await fetch(`http://localhost:4000/api/jobs?client_id=${id}`, {
+      const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:4000'}/api/jobs?client_id=${id}`, {
         headers: { 'Authorization': `Bearer ${session?.access_token}` }
       });
       if (!res.ok) throw new Error('Failed to fetch jobs');
@@ -48,7 +48,7 @@ export const ClientDetails = () => {
         hourly_rate: jobFormData.rate_type === 'hourly' ? parseFloat(jobFormData.hourly_rate) : undefined,
         flat_rate: jobFormData.rate_type === 'flat' ? parseFloat(jobFormData.flat_rate) : undefined
       };
-      const res = await fetch('http://localhost:4000/api/jobs', {
+      const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:4000'}/api/jobs`, {
         method: 'POST',
         headers: { 
           'Authorization': `Bearer ${session?.access_token}`,
