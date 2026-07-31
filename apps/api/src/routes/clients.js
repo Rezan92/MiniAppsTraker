@@ -82,10 +82,12 @@ router.post('/', async (req, res, next) => {
     }
 
     const { name, client_type, email, phone, address, notes, status } = result.data;
+    const cleanEmail = email?.trim() ? email.trim() : null;
+    const cleanPhone = phone?.trim() ? phone.trim() : null;
 
     const { data, error } = await supabase
       .from('clients')
-      .insert([{ name, client_type, email, phone, address, notes, status, tenant_id: req.user.tenant_id }])
+      .insert([{ name, client_type, email: cleanEmail, phone: cleanPhone, address, notes, status, tenant_id: req.user.tenant_id }])
       .select();
 
     if (error) return next(error);
@@ -114,10 +116,12 @@ router.put('/:id', async (req, res, next) => {
     }
 
     const { name, client_type, email, phone, address, notes, status } = result.data;
+    const cleanEmail = email?.trim() ? email.trim() : null;
+    const cleanPhone = phone?.trim() ? phone.trim() : null;
 
     const { data, error } = await supabase
       .from('clients')
-      .update({ name, client_type, email, phone, address, notes, status })
+      .update({ name, client_type, email: cleanEmail, phone: cleanPhone, address, notes, status })
       .eq('id', req.params.id)
       .eq('tenant_id', req.user.tenant_id)
       .select();
