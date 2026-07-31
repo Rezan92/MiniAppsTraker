@@ -4,6 +4,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useToast } from '../../contexts/ToastContext';
 import { AddJobModal } from '../jobs/AddJobModal';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { NotFound } from '../errors/NotFound';
 
 export const ClientDetails = () => {
   const { id } = useParams();
@@ -71,11 +72,13 @@ export const ClientDetails = () => {
     }
   };
 
-  if (loadingClient || loadingJobs) {
+  if (loadingClient) {
     return <div className="p-8 text-center text-gray-500">Loading client details...</div>;
   }
 
-  if (!client) return null;
+  if (errorClient || !client) {
+    return <NotFound />;
+  }
 
   return (
     <div className="flex flex-col gap-6">

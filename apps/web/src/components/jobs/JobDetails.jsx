@@ -5,6 +5,7 @@ import { useToast } from '../../contexts/ToastContext';
 import { AddMaterialModal } from './AddMaterialModal';
 import { AddJobHoursModal } from './AddJobHoursModal';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { NotFound } from '../errors/NotFound';
 
 export const JobDetails = () => {
   const { id } = useParams();
@@ -20,7 +21,7 @@ export const JobDetails = () => {
   const [hoursOpen, setHoursOpen] = useState(false);
   const [hoursData, setHoursData] = useState({ date: new Date().toISOString().split('T')[0], hours: '', description: '', start_time: '', end_time: '' });
 
-  const { data: job, isLoading: loadingJob } = useQuery({
+  const { data: job, isLoading: loadingJob, isError: errorJob } = useQuery({
     queryKey: ['job', id],
     queryFn: async () => {
       const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:4000'}/api/jobs/${id}`, {
@@ -115,7 +116,9 @@ export const JobDetails = () => {
     return <div className="p-8 text-center text-gray-500">Loading job details...</div>;
   }
 
-  if (!job) return null;
+  if (errorJob || !job) {
+    return <NotFound />;
+  }
 
   const totalMaterialsCost = materials.reduce((acc, m) => acc + Number(m.cost), 0);
   const totalHours = hours.reduce((acc, h) => acc + Number(h.hours), 0);
