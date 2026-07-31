@@ -11,4 +11,4 @@ Elevate the mobile/field experience by allowing users to continue working even w
 - [ ] **Task 14.3: Background Sync Manager**
   Create a listener that detects when the network is restored, iterates through the offline queue, and executes the API calls.
 - [ ] **Task 14.4: Offline UI Indicators**
-  Add visual indicators to the UI for pending syncs (e.g., a cloud icon next to pending rows) and update the banner to show "Changes pending sync."
+  Add visual indicators to the UI for pending syncs (e.g., a cloud icon next to pending rows).
