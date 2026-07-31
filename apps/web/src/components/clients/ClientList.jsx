@@ -6,6 +6,7 @@ import { AddClientModal } from './AddClientModal';
 import { DeleteConfirmationModal } from './DeleteConfirmationModal';
 import { useQuery, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import { useDebounce } from '../../hooks/useDebounce';
+import { translateApiError } from '../../utils/errorTranslator';
 
 export const ClientList = () => {
   const { session } = useAuth();
@@ -59,11 +60,11 @@ export const ClientList = () => {
         showSuccess(editMode ? 'Client updated successfully!' : 'Client successfully added!');
       } else {
         const errorData = await res.json();
-        showError(errorData.error?.message || `Failed to ${editMode ? 'update' : 'add'} client`);
+        showError(translateApiError(errorData.error?.message || errorData.message || `Failed to ${editMode ? 'update' : 'add'} client`));
       }
     } catch (err) {
       console.error(err);
-      showError('An unexpected error occurred. Please try again.');
+      showError(translateApiError(err));
     }
   };
 
@@ -83,11 +84,11 @@ export const ClientList = () => {
         showSuccess('Client status updated!');
       } else {
         const errorData = await res.json();
-        showError(errorData.error?.message || 'Failed to update status');
+        showError(translateApiError(errorData.error?.message || errorData.message || 'Failed to update client status'));
       }
     } catch (err) {
       console.error(err);
-      showError('An unexpected error occurred.');
+      showError(translateApiError(err));
     }
   };
 
@@ -110,11 +111,11 @@ export const ClientList = () => {
         setClientToDelete(null);
       } else {
         const errorData = await res.json();
-        showError(errorData.error?.message || 'Failed to delete client');
+        showError(translateApiError(errorData.error?.message || errorData.message || 'Failed to delete client'));
       }
     } catch (err) {
       console.error(err);
-      showError('An unexpected error occurred while deleting.');
+      showError(translateApiError(err));
     }
   };
 

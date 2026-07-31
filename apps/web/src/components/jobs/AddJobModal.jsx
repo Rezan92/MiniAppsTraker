@@ -1,7 +1,29 @@
-import React from 'react';
+import React, { useState } from 'react';
 
 export const AddJobModal = ({ open, onClose, onSubmit, formData, setFormData, clients }) => {
+  const [errors, setErrors] = useState({});
+
   if (!open) return null;
+
+  const validateField = (name, value) => {
+    let errorMsg = null;
+    if (name === 'title') {
+      if (!value.trim()) errorMsg = "Title is required";
+    } else if (name === 'hourly_rate' || name === 'flat_rate') {
+      if (value && parseFloat(value) < 0) errorMsg = "Rate cannot be negative";
+    } else if (name === 'end_date') {
+      if (formData.start_date && value && new Date(value) < new Date(formData.start_date)) {
+        errorMsg = "End date cannot be before start date";
+      }
+    }
+    setErrors(prev => ({ ...prev, [name]: errorMsg }));
+  };
+
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
+    validateField(name, value);
+  };
 
   return (
     <div 
@@ -46,13 +68,15 @@ export const AddJobModal = ({ open, onClose, onSubmit, formData, setFormData, cl
             <div>
               <label className="block font-label-md text-label-md text-on-surface-variant mb-1">Job Title *</label>
               <input 
-                className="w-full px-3 py-2 border border-outline-variant rounded-md bg-surface text-on-surface focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-shadow placeholder:text-on-surface-variant/50" 
+                className={`w-full px-3 py-2 border rounded-md bg-surface text-on-surface focus:outline-none focus:ring-1 transition-shadow placeholder:text-on-surface-variant/50 ${errors.title ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : 'border-outline-variant focus:border-primary focus:ring-primary'}`} 
                 placeholder="e.g. Kitchen Remodel Plumbing" 
+                name="title"
                 type="text" 
                 value={formData.title}
-                onChange={e => setFormData({...formData, title: e.target.value})}
+                onChange={handleInputChange}
                 required
               />
+              {errors.title && <p className="text-red-500 text-xs mt-1">{errors.title}</p>}
             </div>
             
             {/* Rate Type and Hourly Rate Grid */}
@@ -76,30 +100,34 @@ export const AddJobModal = ({ open, onClose, onSubmit, formData, setFormData, cl
                 <div>
                   <label className="block font-label-md text-label-md text-on-surface-variant mb-1">Hourly Rate ($) *</label>
                   <input 
-                    className="w-full px-3 py-2 border border-outline-variant rounded-md bg-surface text-on-surface focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-shadow placeholder:text-on-surface-variant/50" 
+                    className={`w-full px-3 py-2 border rounded-md bg-surface text-on-surface focus:outline-none focus:ring-1 transition-shadow placeholder:text-on-surface-variant/50 ${errors.hourly_rate ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : 'border-outline-variant focus:border-primary focus:ring-primary'}`} 
                     placeholder="e.g. 75.00" 
+                    name="hourly_rate"
                     type="number" 
                     min="0"
                     step="0.01"
                     value={formData.hourly_rate}
-                    onChange={e => setFormData({...formData, hourly_rate: e.target.value})}
+                    onChange={handleInputChange}
                     required
                   />
+                  {errors.hourly_rate && <p className="text-red-500 text-xs mt-1">{errors.hourly_rate}</p>}
                 </div>
               )}
               {formData.rate_type === 'flat' && (
                 <div>
                   <label className="block font-label-md text-label-md text-on-surface-variant mb-1">Flat Rate ($) *</label>
                   <input 
-                    className="w-full px-3 py-2 border border-outline-variant rounded-md bg-surface text-on-surface focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-shadow placeholder:text-on-surface-variant/50" 
+                    className={`w-full px-3 py-2 border rounded-md bg-surface text-on-surface focus:outline-none focus:ring-1 transition-shadow placeholder:text-on-surface-variant/50 ${errors.flat_rate ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : 'border-outline-variant focus:border-primary focus:ring-primary'}`} 
                     placeholder="e.g. 500.00" 
+                    name="flat_rate"
                     type="number" 
                     min="0"
                     step="0.01"
                     value={formData.flat_rate}
-                    onChange={e => setFormData({...formData, flat_rate: e.target.value})}
+                    onChange={handleInputChange}
                     required
                   />
+                  {errors.flat_rate && <p className="text-red-500 text-xs mt-1">{errors.flat_rate}</p>}
                 </div>
               )}
             </div>
@@ -118,11 +146,13 @@ export const AddJobModal = ({ open, onClose, onSubmit, formData, setFormData, cl
               <div>
                 <label className="block font-label-md text-label-md text-on-surface-variant mb-1">End Date</label>
                 <input 
-                  className="w-full px-3 py-2 border border-outline-variant rounded-md bg-surface text-on-surface focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-shadow" 
+                  className={`w-full px-3 py-2 border rounded-md bg-surface text-on-surface focus:outline-none focus:ring-1 transition-shadow ${errors.end_date ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : 'border-outline-variant focus:border-primary focus:ring-primary'}`} 
+                  name="end_date"
                   type="date" 
                   value={formData.end_date || ''}
-                  onChange={e => setFormData({...formData, end_date: e.target.value})}
+                  onChange={handleInputChange}
                 />
+                {errors.end_date && <p className="text-red-500 text-xs mt-1">{errors.end_date}</p>}
               </div>
             </div>
 
@@ -150,7 +180,7 @@ export const AddJobModal = ({ open, onClose, onSubmit, formData, setFormData, cl
           <button 
             type="submit"
             form="add-job-form"
-            disabled={!formData.client_id || !formData.title || !formData.rate_type || (formData.rate_type === 'hourly' && !formData.hourly_rate) || (formData.rate_type === 'flat' && !formData.flat_rate)}
+            disabled={!formData.client_id || !formData.title || !formData.rate_type || (formData.rate_type === 'hourly' && !formData.hourly_rate) || (formData.rate_type === 'flat' && !formData.flat_rate) || Object.values(errors).some(Boolean)}
             className="px-4 py-2 bg-primary text-black font-body-md font-bold rounded cursor-pointer hover:bg-opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors focus:outline-none focus:ring-2 focus:ring-primary shadow-sm"
           >
             Create Job

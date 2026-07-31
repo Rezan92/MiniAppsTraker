@@ -6,6 +6,7 @@ import { AddJobModal } from './AddJobModal';
 import { AddMaterialModal } from './AddMaterialModal';
 import { AddJobHoursModal } from './AddJobHoursModal';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { translateApiError } from '../../utils/errorTranslator';
 
 export const JobList = () => {
   const { session } = useAuth();
@@ -85,11 +86,11 @@ export const JobList = () => {
         showSuccess('Job successfully created!');
       } else {
         const errorData = await res.json();
-        showError(errorData.error?.message || 'Failed to create job');
+        showError(translateApiError(errorData.error?.message || errorData.message || 'Failed to create job'));
       }
     } catch (err) {
       console.error(err);
-      showError('An unexpected error occurred.');
+      showError(translateApiError(err));
     }
   };
 

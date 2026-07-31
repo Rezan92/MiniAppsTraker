@@ -8,12 +8,14 @@ export const AddClientModal = ({ open, onClose, onSubmit, formData, setFormData,
   const validateField = (name, value) => {
     let errorMsg = null;
     if (name === 'name') {
-      if (/[0-9]/.test(value)) {
-        errorMsg = "Name cannot contain numbers";
-      }
+      if (!value.trim()) errorMsg = "Name is required";
+      else if (/[0-9]/.test(value)) errorMsg = "Name cannot contain numbers";
     } else if (name === 'phone') {
-      if (/[a-zA-Z]/.test(value)) {
-        errorMsg = "Phone number cannot contain letters";
+      if (!value.trim()) errorMsg = "Phone number is required";
+      else if (/[a-zA-Z]/.test(value)) errorMsg = "Phone number cannot contain letters";
+    } else if (name === 'email') {
+      if (value && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
+        errorMsg = "Please enter a valid email address";
       }
     }
     setErrors(prev => ({ ...prev, [name]: errorMsg }));
@@ -107,12 +109,14 @@ export const AddClientModal = ({ open, onClose, onSubmit, formData, setFormData,
               <div>
                 <label className="block font-label-md text-label-md text-on-surface-variant mb-1">Email Address</label>
                 <input 
-                  className="w-full px-3 py-2 border border-outline-variant rounded-md bg-surface text-on-surface focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-shadow placeholder:text-on-surface-variant/50" 
+                  className={`w-full px-3 py-2 border rounded-md bg-surface text-on-surface focus:outline-none focus:ring-1 transition-shadow placeholder:text-on-surface-variant/50 ${errors.email ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : 'border-outline-variant focus:border-primary focus:ring-primary'}`} 
                   placeholder="email@example.com" 
+                  name="email"
                   type="email" 
                   value={formData.email}
-                  onChange={e => setFormData({...formData, email: e.target.value})}
+                  onChange={handleInputChange}
                 />
+                {errors.email && <p className="text-red-500 text-xs mt-1">{errors.email}</p>}
               </div>
               <div>
                 <label className="block font-label-md text-label-md text-on-surface-variant mb-1">Phone Number *</label>

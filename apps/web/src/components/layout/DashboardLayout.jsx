@@ -1,6 +1,7 @@
 import React from 'react';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
+import { NetworkBanner } from './NetworkBanner';
 
 export const DashboardLayout = ({ children }) => {
   const { user } = useAuth();
@@ -96,7 +97,9 @@ export const DashboardLayout = ({ children }) => {
       </nav>
 
       {/* Main Content Area */}
-      <main className="flex-1 md:ml-[280px] flex flex-col h-screen bg-[#F9FAFB]">
+      <main className="flex-1 md:ml-[280px] flex flex-col h-screen bg-[#F9FAFB] relative overflow-hidden">
+        <NetworkBanner />
+        
         {/* TopAppBar */}
         <header className="bg-white border-b border-gray-200 flex justify-between items-center px-6 py-4 sticky top-0 z-30">
           <div className="flex items-center gap-4">

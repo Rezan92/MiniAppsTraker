@@ -12,6 +12,8 @@ import { ProtectedRoute } from './components/layout/ProtectedRoute';
 import { NotFound } from './components/errors/NotFound';
 import { Unauthorized } from './components/errors/Unauthorized';
 
+import { ErrorBoundary } from './components/errors/ErrorBoundary';
+
 const MainApp = () => {
   const { user } = useAuth();
   
@@ -35,13 +37,15 @@ const MainApp = () => {
 
 function App() {
   return (
-    <AuthProvider>
-      <ToastProvider>
-        <BrowserRouter>
-          <MainApp />
-        </BrowserRouter>
-      </ToastProvider>
-    </AuthProvider>
+    <ErrorBoundary>
+      <AuthProvider>
+        <ToastProvider>
+          <BrowserRouter>
+            <MainApp />
+          </BrowserRouter>
+        </ToastProvider>
+      </AuthProvider>
+    </ErrorBoundary>
   );
 }
 
