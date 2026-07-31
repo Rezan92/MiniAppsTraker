@@ -11,8 +11,8 @@ import { JobDetails } from './components/jobs/JobDetails';
 import { ProtectedRoute } from './components/layout/ProtectedRoute';
 import { NotFound } from './components/errors/NotFound';
 import { Unauthorized } from './components/errors/Unauthorized';
-
 import { ErrorBoundary } from './components/errors/ErrorBoundary';
+import { NetworkBanner } from './components/layout/NetworkBanner';
 
 const MainApp = () => {
   const { user } = useAuth();
@@ -41,6 +41,7 @@ function App() {
       <AuthProvider>
         <ToastProvider>
           <BrowserRouter>
+            <NetworkBanner />
             <MainApp />
           </BrowserRouter>
         </ToastProvider>
