@@ -7,7 +7,7 @@ Ensure the application is strictly protected against unauthorized access, enforc
 - [x] **Task 9.1: Global Route Protection (Auth Guard)**
   - Implement a React Router wrapper (e.g., `ProtectedRoute.jsx`) that checks the AuthContext.
   - Automatically redirect any unauthenticated user attempting to access the dashboard or internal pages back to the `/login` route.
-- [ ] **Task 9.2: Tenant Isolation Enforcement (Row Level Security)**
+- [x] **Task 9.2: Tenant Isolation Enforcement (Row Level Security)**
   - Verify and audit all Supabase RLS (Row Level Security) policies.
   - Ensure users can only `SELECT`, `INSERT`, `UPDATE`, or `DELETE` rows where the `tenant_id` matches their authenticated JWT token's tenant.
 - [x] **Task 9.3: Error Boundaries & Fallback Pages**
