@@ -5,7 +5,7 @@ export const Unauthorized = () => {
   const navigate = useNavigate();
   return (
     <div className="w-full h-full min-h-[calc(100vh-12rem)] flex flex-col items-center justify-center p-4">
-      <main className="w-full max-w-md bg-surface-container-lowest border border-outline-variant rounded-xl p-8 shadow-sm flex flex-col items-center text-center gap-8">
+      <main className="w-full max-w-[400px] bg-surface-container-lowest border border-outline-variant rounded-xl p-8 shadow-sm flex flex-col items-center text-center gap-8">
         
         {/* Header / Icon */}
         <div className="flex flex-col items-center gap-2">
@@ -29,7 +29,7 @@ export const Unauthorized = () => {
         {/* Actions */}
         <div className="flex flex-col sm:flex-row gap-4 w-full mt-4">
           <button 
-            className="flex-1 bg-primary-container text-on-primary-container font-label-md text-label-md rounded-lg py-3 px-4 hover:bg-primary hover:text-on-primary hover:shadow-[0_4px_14px_rgba(245,158,11,0.2)] transition-all duration-200 cursor-pointer"
+            className="flex-1 bg-primary text-on-primary font-label-md text-label-md rounded-lg py-3 px-4 hover:bg-amber-600 hover:shadow-[0_4px_14px_rgba(245,158,11,0.2)] transition-all duration-200 cursor-pointer"
             onClick={() => navigate('/')}
           >
             Return to Dashboard

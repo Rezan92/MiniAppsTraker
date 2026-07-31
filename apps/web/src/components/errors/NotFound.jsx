@@ -23,13 +23,13 @@ export const NotFound = () => {
             <h2 className="font-headline-md text-headline-md text-on-surface mb-2">System Location Unknown</h2>
             
             {/* Body */}
-            <p className="font-body-lg text-body-lg text-secondary max-w-md mx-auto mb-8">
+            <p className="font-body-lg text-body-lg text-secondary max-w-[400px] mx-auto mb-8">
               The requested directory or resource could not be found. Please verify the URL or return to the main dashboard.
             </p>
             
             {/* CTA Button */}
             <button 
-              className="bg-primary-container text-[#000000] font-label-md text-label-md font-semibold py-3 px-8 rounded flex items-center justify-center gap-2 hover:bg-[#d97706] transition-colors shadow-[0_4px_14px_rgba(245,158,11,0.2)] w-full sm:w-auto cursor-pointer"
+              className="bg-primary text-[#000000] font-label-md text-label-md font-semibold py-3 px-8 rounded flex items-center justify-center gap-2 hover:bg-amber-600 transition-colors shadow-[0_4px_14px_rgba(245,158,11,0.2)] w-full sm:w-auto cursor-pointer"
               onClick={() => navigate('/')}
             >
               <span className="material-symbols-outlined text-[18px]">dashboard</span>
