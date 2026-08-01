@@ -2,8 +2,8 @@ import React, { useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
-import { AddClientModal } from '../clients/AddClientModal';
-import { AddJobModal } from '../jobs/AddJobModal';
+import { CreateClientModal } from '../shared/CreateClientModal';
+import { CreateJobModal } from '../shared/CreateJobModal';
 
 export const Dashboard = () => {
   const { session, userData } = useAuth();
@@ -126,8 +126,8 @@ export const Dashboard = () => {
           </button>
         </div>
 
-        <AddClientModal isOpen={clientModalOpen} onClose={() => { setClientModalOpen(false); refetch(); }} />
-        <AddJobModal isOpen={jobModalOpen} onClose={() => { setJobModalOpen(false); refetch(); }} />
+        <CreateClientModal open={clientModalOpen} onClose={() => { setClientModalOpen(false); refetch(); }} />
+        <CreateJobModal open={jobModalOpen} onClose={() => { setJobModalOpen(false); refetch(); }} />
       </div>
     );
   }
@@ -295,8 +295,8 @@ export const Dashboard = () => {
         </div>
       </div>
 
-      <AddClientModal isOpen={clientModalOpen} onClose={() => { setClientModalOpen(false); refetch(); }} />
-      <AddJobModal isOpen={jobModalOpen} onClose={() => { setJobModalOpen(false); refetch(); }} />
+      <CreateClientModal open={clientModalOpen} onClose={() => { setClientModalOpen(false); refetch(); }} />
+      <CreateJobModal open={jobModalOpen} onClose={() => { setJobModalOpen(false); refetch(); }} />
     </div>
   );
 };

@@ -3,6 +3,7 @@ import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { useToast } from '../../contexts/ToastContext';
 import { CreateWorkspaceModal } from './CreateWorkspaceModal';
+import { CreateJobModal } from '../shared/CreateJobModal';
 
 export const DashboardLayout = ({ children }) => {
   const { user, session, userData } = useAuth();
@@ -14,6 +15,7 @@ export const DashboardLayout = ({ children }) => {
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const [createModalOpen, setCreateModalOpen] = useState(false);
+  const [jobModalOpen, setJobModalOpen] = useState(false);
   const dropdownRef = useRef(null);
   const profileRef = useRef(null);
 
@@ -170,7 +172,7 @@ export const DashboardLayout = ({ children }) => {
         </ul>
         
         <button 
-          onClick={() => navigate('/jobs?add=true')}
+          onClick={() => setJobModalOpen(true)}
           className="w-full flex items-center justify-center gap-2 bg-primary hover:bg-opacity-90 text-black py-2.5 rounded font-body-md font-bold transition-all shadow-[0_0_15px_rgba(245,158,11,0.2)] active:scale-95 duration-150 cursor-pointer"
         >
           <span className="material-symbols-outlined text-black" style={{ fontSize: '18px' }}>add</span>
@@ -287,6 +289,10 @@ export const DashboardLayout = ({ children }) => {
       <CreateWorkspaceModal 
         isOpen={createModalOpen} 
         onClose={() => setCreateModalOpen(false)} 
+      />
+      <CreateJobModal 
+        open={jobModalOpen}
+        onClose={() => setJobModalOpen(false)}
       />
     </div>
   );
