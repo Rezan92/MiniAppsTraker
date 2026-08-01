@@ -15,11 +15,6 @@ export const Onboarding = () => {
   });
   const [loading, setLoading] = useState(false);
 
-  // If they already have a tenant, redirect to dashboard
-  if (userData?.tenant_id) {
-    navigate('/', { replace: true });
-    return null;
-  }
 
   const handleChange = (e) => {
     setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
