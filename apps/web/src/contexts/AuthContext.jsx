@@ -71,6 +71,16 @@ export const AuthProvider = ({ children }) => {
     return supabase.auth.signInWithPassword({ email, password });
   };
 
+  const signUpWithEmail = async (email, password) => {
+    return supabase.auth.signUp({ email, password });
+  };
+
+  const resetPassword = async (email) => {
+    return supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/update-password`,
+    });
+  };
+
   const signOut = async () => {
     setUserData(null);
     return supabase.auth.signOut();
@@ -84,7 +94,7 @@ export const AuthProvider = ({ children }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ session, user, userData, loading, signInWithGoogle, signInWithEmail, signOut, refreshUserData }}>
+    <AuthContext.Provider value={{ session, user, userData, loading, signInWithGoogle, signInWithEmail, signUpWithEmail, resetPassword, signOut, refreshUserData }}>
       {!loading && children}
     </AuthContext.Provider>
   );

@@ -2,8 +2,8 @@ import React, { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 
 export const LoginCard = () => {
-  const { signInWithGoogle, signInWithEmail } = useAuth();
-  const [view, setView] = useState('choice'); // 'choice', 'login', 'employee'
+  const { signInWithGoogle, signInWithEmail, signUpWithEmail } = useAuth();
+  const [view, setView] = useState('choice'); // 'choice', 'login', 'signup', 'employee'
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -13,9 +13,20 @@ export const LoginCard = () => {
     e.preventDefault();
     setLoading(true);
     setError(null);
-    const { error: signInError } = await signInWithEmail(email, password);
-    if (signInError) {
-      setError(signInError.message);
+    
+    if (view === 'signup') {
+      const { error: signUpError } = await signUpWithEmail(email, password);
+      if (signUpError) {
+        setError(signUpError.message);
+      } else {
+        // Success: usually triggers auth state change, but if email confirm is on, inform user.
+        // Assuming auto-confirm for now or Supabase handles UI toast if needed.
+      }
+    } else {
+      const { error: signInError } = await signInWithEmail(email, password);
+      if (signInError) {
+        setError(signInError.message);
+      }
     }
     setLoading(false);
   };
@@ -44,10 +55,10 @@ export const LoginCard = () => {
           {/* Header */}
           <div className="text-center mb-lg">
             <h2 className="font-title-md text-title-md text-on-surface mb-xs">
-              {view === 'choice' ? 'Welcome to ProFix' : view === 'employee' ? 'Employee Access' : 'Welcome back'}
+              {view === 'choice' ? 'Welcome to ProFix' : view === 'employee' ? 'Employee Access' : view === 'signup' ? 'Create an Account' : 'Welcome back'}
             </h2>
             <p className="font-body-md text-body-md text-on-surface-variant">
-              {view === 'choice' ? 'How would you like to continue?' : view === 'employee' ? 'Join your team workspace' : 'Sign in to your account to continue'}
+              {view === 'choice' ? 'How would you like to continue?' : view === 'employee' ? 'Join your team workspace' : view === 'signup' ? 'Sign up to get started' : 'Sign in to your account to continue'}
             </p>
           </div>
 
@@ -109,7 +120,7 @@ export const LoginCard = () => {
             </div>
           )}
 
-          {view === 'login' && (
+          {(view === 'login' || view === 'signup') && (
             <>
               {/* Sign in with Google (Prominent) */}
           <button 
@@ -165,9 +176,11 @@ export const LoginCard = () => {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
               />
-              <div className="flex justify-end mt-2">
-                <a className="font-body-md text-body-md text-primary hover:underline hover:text-primary-container transition-colors" href="#">Forgot password?</a>
-              </div>
+              {view === 'login' && (
+                <div className="flex justify-end mt-2">
+                  <a className="font-body-md text-body-md text-primary hover:underline hover:text-primary-container transition-colors" href="/forgot-password">Forgot password?</a>
+                </div>
+              )}
             </div>
             
               <button 
@@ -175,7 +188,7 @@ export const LoginCard = () => {
                 disabled={loading}
                 className="w-full bg-primary text-on-primary font-title-md text-title-md py-3 px-4 rounded-DEFAULT hover:bg-primary-container transition-colors min-h-[44px] flex items-center justify-center disabled:opacity-50 mb-4"
               >
-                {loading ? 'Signing In...' : 'Sign In'}
+                {loading ? (view === 'signup' ? 'Signing Up...' : 'Signing In...') : (view === 'signup' ? 'Sign Up' : 'Sign In')}
               </button>
 
               <button 
@@ -192,11 +205,17 @@ export const LoginCard = () => {
         </div>
 
         {/* Footer Links */}
-        {view === 'login' && (
+        {(view === 'login' || view === 'signup') && (
           <div className="mt-lg text-center">
-            <p className="font-body-md text-body-md text-on-surface-variant">
-              Don't have an account? <a className="font-title-md text-primary hover:underline" href="#">Sign up</a>
-            </p>
+            {view === 'login' ? (
+              <p className="font-body-md text-body-md text-on-surface-variant">
+                Don't have an account? <button onClick={() => setView('signup')} className="font-title-md text-primary hover:underline">Sign up</button>
+              </p>
+            ) : (
+              <p className="font-body-md text-body-md text-on-surface-variant">
+                Already have an account? <button onClick={() => setView('login')} className="font-title-md text-primary hover:underline">Log in</button>
+              </p>
+            )}
           </div>
         )}
       </main>

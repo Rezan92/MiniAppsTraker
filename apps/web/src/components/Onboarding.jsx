@@ -119,15 +119,25 @@ export const Onboarding = () => {
             </button>
           </form>
 
-          <div className="mt-6 pt-6 border-t border-outline-variant text-center">
-            <button 
-              type="button"
-              onClick={signOut}
-              className="text-error hover:underline font-body-md flex items-center justify-center gap-2 mx-auto"
-            >
-              <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>logout</span>
-              Sign out instead
-            </button>
+          {/* Escape Hatch for Employees */}
+          <div className="mt-8 pt-6 border-t border-outline-variant">
+            <div className="bg-surface-container p-4 rounded-lg text-center">
+              <h3 className="font-title-sm text-on-surface mb-2">Are you an employee?</h3>
+              <p className="font-body-sm text-on-surface-variant mb-4">
+                Please log out and click the invitation link sent to your email by your manager.
+              </p>
+              <button 
+                type="button"
+                onClick={async () => {
+                  await signOut();
+                  window.location.href = '/login';
+                }}
+                className="w-full text-on-surface border border-outline-variant hover:bg-surface-container-high transition-colors font-title-sm py-2 px-4 rounded-DEFAULT flex items-center justify-center gap-2"
+              >
+                <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>logout</span>
+                Log Out
+              </button>
+            </div>
           </div>
         </div>
       </main>

@@ -15,6 +15,7 @@ import { ErrorBoundary } from './components/errors/ErrorBoundary';
 import { NetworkBanner } from './components/layout/NetworkBanner';
 import { Onboarding } from './components/Onboarding';
 import { Join } from './components/Join';
+import { ForgotPassword } from './components/ForgotPassword';
 
 const MainApp = () => {
   const { user } = useAuth();
@@ -22,6 +23,7 @@ const MainApp = () => {
   return (
     <Routes>
       <Route path="/login" element={user ? <Navigate to="/clients" replace /> : <LoginCard />} />
+      <Route path="/forgot-password" element={user ? <Navigate to="/clients" replace /> : <ForgotPassword />} />
       <Route path="/join/:token" element={<Join />} />
       <Route path="/onboarding" element={<ProtectedRoute><Onboarding /></ProtectedRoute>} />
       

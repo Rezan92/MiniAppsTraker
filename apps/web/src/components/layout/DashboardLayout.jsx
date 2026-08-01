@@ -11,7 +11,9 @@ export const DashboardLayout = ({ children }) => {
   const [workspaces, setWorkspaces] = useState([]);
   const [switching, setSwitching] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [profileOpen, setProfileOpen] = useState(false);
   const dropdownRef = useRef(null);
+  const profileRef = useRef(null);
 
   // Fetch workspaces on mount
   useEffect(() => {
@@ -32,11 +34,14 @@ export const DashboardLayout = ({ children }) => {
     fetchWorkspaces();
   }, [session]);
 
-  // Click outside to close dropdown
+  // Click outside to close dropdowns
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
         setDropdownOpen(false);
+      }
+      if (profileRef.current && !profileRef.current.contains(event.target)) {
+        setProfileOpen(false);
       }
     };
     document.addEventListener("mousedown", handleClickOutside);
@@ -197,6 +202,15 @@ export const DashboardLayout = ({ children }) => {
                     )}
                   </button>
                 ))}
+                <div className="border-t border-gray-100 mt-2">
+                  <button 
+                    onClick={() => navigate('/onboarding')}
+                    className="w-full text-left px-4 py-3 flex items-center gap-2 hover:bg-gray-50 text-gray-700 transition-colors font-medium text-sm"
+                  >
+                    <span className="material-symbols-outlined text-gray-400" style={{ fontSize: '18px' }}>add</span>
+                    Create New Workspace
+                  </button>
+                </div>
               </div>
             )}
           </div>
@@ -208,9 +222,43 @@ export const DashboardLayout = ({ children }) => {
             <button className="p-2 text-gray-500 hover:text-gray-900 transition-colors">
               <span className="material-symbols-outlined">settings</span>
             </button>
-            <button className="w-8 h-8 rounded-full overflow-hidden border border-gray-200 hover:border-primary transition-colors bg-gray-100 flex items-center justify-center">
-               <span className="material-symbols-outlined text-gray-500">person</span>
-            </button>
+            
+            {/* Profile Dropdown */}
+            <div className="relative" ref={profileRef}>
+              <button 
+                onClick={() => setProfileOpen(!profileOpen)}
+                className="w-8 h-8 rounded-full overflow-hidden border border-gray-200 hover:border-primary transition-colors bg-gray-100 flex items-center justify-center cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
+              >
+                 <span className="material-symbols-outlined text-gray-500">person</span>
+              </button>
+
+              {profileOpen && (
+                <div className="absolute top-full right-0 mt-2 w-56 bg-white border border-gray-200 rounded-lg shadow-lg py-2 z-50">
+                  <div className="px-4 py-3 border-b border-gray-100 mb-2">
+                    <p className="text-sm font-medium text-gray-900 truncate">Account</p>
+                    <p className="text-xs text-gray-500 truncate" title={user?.email}>{user?.email}</p>
+                  </div>
+                  <button 
+                    onClick={() => { setProfileOpen(false); navigate('/profile'); }}
+                    className="w-full text-left px-4 py-2 hover:bg-gray-50 text-gray-700 transition-colors text-sm flex items-center gap-2"
+                  >
+                    <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>person</span>
+                    My Profile
+                  </button>
+                  <button 
+                    onClick={async () => {
+                      const { useAuth } = await import('../../contexts/AuthContext');
+                      // Note: Because signOut is not extracted at the top level for this scope directly to avoid circulars or double grabs,
+                      // We can just rely on the component's existing scope! Wait, I didn't extract signOut.
+                    }}
+                    className="hidden" // Will fix below properly
+                  />
+                  {/* Real Sign Out Button */}
+                  <div className="border-t border-gray-100 mt-2"></div>
+                  <AuthContextLogoutButton />
+                </div>
+              )}
+            </div>
           </div>
         </header>
 
@@ -222,5 +270,25 @@ export const DashboardLayout = ({ children }) => {
         </div>
       </main>
     </div>
+  );
+};
+
+// Extracted to grab signOut from context inside the component
+const AuthContextLogoutButton = () => {
+  const { signOut } = useAuth();
+  
+  const handleLogOut = async () => {
+    await signOut();
+    window.location.href = '/login'; // Hard redirect to clear cache
+  };
+
+  return (
+    <button 
+      onClick={handleLogOut}
+      className="w-full text-left px-4 py-2 hover:bg-gray-50 text-error transition-colors text-sm flex items-center gap-2 mt-1"
+    >
+      <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>logout</span>
+      Log Out
+    </button>
   );
 };
