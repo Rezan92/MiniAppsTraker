@@ -13,6 +13,30 @@ router.get('/me', authenticate, (req, res) => {
   });
 });
 
+// GET /api/auth/workspaces
+router.get('/workspaces', authenticate, async (req, res, next) => {
+  try {
+    const { data: members, error } = await supabase
+      .from('tenant_members')
+      .select('role, tenants(id, name, logo_url)')
+      .eq('user_id', req.user.id)
+      .eq('status', 'active');
+
+    if (error) throw error;
+
+    const workspaces = members.map(m => ({
+      tenant_id: m.tenants.id,
+      name: m.tenants.name,
+      logo_url: m.tenants.logo_url,
+      role: m.role
+    }));
+
+    res.json({ success: true, data: workspaces });
+  } catch (err) {
+    next(err);
+  }
+});
+
 // POST /api/auth/onboarding
 const onboardSchema = z.object({
   name: z.string().min(2, "Business name must be at least 2 characters"),

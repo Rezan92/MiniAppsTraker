@@ -1,14 +1,77 @@
-import React from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
+import { useToast } from '../../contexts/ToastContext';
 
 export const DashboardLayout = ({ children }) => {
-  const { user } = useAuth();
+  const { user, session, userData } = useAuth();
   const navigate = useNavigate();
+  const { addToast } = useToast();
   
-  // Placeholder tenant data
-  const tenantName = "ProFix Solutions"; 
-  const tenantSubtitle = "Independent Contractor";
+  const [workspaces, setWorkspaces] = useState([]);
+  const [switching, setSwitching] = useState(false);
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const dropdownRef = useRef(null);
+
+  // Fetch workspaces on mount
+  useEffect(() => {
+    if (!session) return;
+    const fetchWorkspaces = async () => {
+      try {
+        const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:4000'}/api/auth/workspaces`, {
+          headers: { 'Authorization': `Bearer ${session.access_token}` }
+        });
+        const json = await res.json();
+        if (json.success) {
+          setWorkspaces(json.data);
+        }
+      } catch (err) {
+        console.error("Failed to fetch workspaces", err);
+      }
+    };
+    fetchWorkspaces();
+  }, [session]);
+
+  // Click outside to close dropdown
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setDropdownOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const handleSwitchWorkspace = async (targetId) => {
+    if (targetId === userData?.tenant_id) {
+      setDropdownOpen(false);
+      return;
+    }
+    setSwitching(true);
+    try {
+      const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:4000'}/api/auth/switch-workspace`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`
+        },
+        body: JSON.stringify({ target_tenant_id: targetId })
+      });
+      const json = await res.json();
+      if (!res.ok || !json.success) throw new Error(json.error);
+      
+      // Hard reload to clear query cache
+      window.location.href = '/';
+    } catch (err) {
+      addToast('error', 'Workspace Switch Failed', err.message);
+      setSwitching(false);
+    }
+  };
+  
+  const currentWorkspace = workspaces.find(w => w.tenant_id === userData?.tenant_id);
+  const tenantName = currentWorkspace?.name || "Loading..."; 
+  const tenantSubtitle = currentWorkspace?.role === 'admin' ? "Business Admin" : "Employee";
 
   return (
     <div className="antialiased min-h-screen flex font-body-md text-body-md text-on-surface bg-background">
@@ -100,8 +163,42 @@ export const DashboardLayout = ({ children }) => {
         
         {/* TopAppBar */}
         <header className="bg-white border-b border-gray-200 flex justify-between items-center px-6 py-4 sticky top-0 z-30">
-          <div className="flex items-center gap-4">
-            <h2 className="font-headline-md text-headline-md font-bold text-gray-900">ProFix</h2>
+          <div className="flex items-center gap-4 relative" ref={dropdownRef}>
+            {/* Workspace Switcher */}
+            <div 
+              className={`flex items-center gap-2 cursor-pointer p-2 -ml-2 rounded-lg transition-colors ${workspaces.length > 1 ? 'hover:bg-gray-100' : ''}`}
+              onClick={() => workspaces.length > 1 && setDropdownOpen(!dropdownOpen)}
+            >
+              <h2 className="font-headline-md text-headline-md font-bold text-gray-900">{tenantName}</h2>
+              {workspaces.length > 1 && (
+                <span className={`material-symbols-outlined text-gray-500 transition-transform ${dropdownOpen ? 'rotate-180' : ''}`}>expand_more</span>
+              )}
+            </div>
+
+            {/* Dropdown Menu */}
+            {dropdownOpen && workspaces.length > 1 && (
+              <div className="absolute top-full left-0 mt-1 w-64 bg-white border border-gray-200 rounded-lg shadow-lg py-2 z-50">
+                <div className="px-4 py-2 border-b border-gray-100 mb-2">
+                  <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Switch Workspace</span>
+                </div>
+                {workspaces.map(ws => (
+                  <button
+                    key={ws.tenant_id}
+                    onClick={() => handleSwitchWorkspace(ws.tenant_id)}
+                    disabled={switching}
+                    className={`w-full text-left px-4 py-2.5 flex items-center justify-between transition-colors ${ws.tenant_id === userData?.tenant_id ? 'bg-primary/10 text-primary' : 'hover:bg-gray-50 text-gray-700'}`}
+                  >
+                    <div className="flex flex-col">
+                      <span className={`font-medium ${ws.tenant_id === userData?.tenant_id ? 'font-bold text-primary' : ''}`}>{ws.name}</span>
+                      <span className="text-xs text-gray-500 capitalize">{ws.role}</span>
+                    </div>
+                    {ws.tenant_id === userData?.tenant_id && (
+                      <span className="material-symbols-outlined text-primary" style={{ fontSize: '18px' }}>check</span>
+                    )}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
           
           <div className="flex justify-end items-center gap-4">

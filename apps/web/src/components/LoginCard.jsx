@@ -3,6 +3,7 @@ import { useAuth } from '../contexts/AuthContext';
 
 export const LoginCard = () => {
   const { signInWithGoogle, signInWithEmail } = useAuth();
+  const [view, setView] = useState('choice'); // 'choice', 'login', 'employee'
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -42,8 +43,12 @@ export const LoginCard = () => {
 
           {/* Header */}
           <div className="text-center mb-lg">
-            <h2 className="font-title-md text-title-md text-on-surface mb-xs">Welcome back</h2>
-            <p className="font-body-md text-body-md text-on-surface-variant">Sign in to your account to continue</p>
+            <h2 className="font-title-md text-title-md text-on-surface mb-xs">
+              {view === 'choice' ? 'Welcome to ProFix' : view === 'employee' ? 'Employee Access' : 'Welcome back'}
+            </h2>
+            <p className="font-body-md text-body-md text-on-surface-variant">
+              {view === 'choice' ? 'How would you like to continue?' : view === 'employee' ? 'Join your team workspace' : 'Sign in to your account to continue'}
+            </p>
           </div>
 
           {error && (
@@ -52,7 +57,61 @@ export const LoginCard = () => {
             </div>
           )}
 
-          {/* Sign in with Google (Prominent) */}
+          {view === 'choice' && (
+            <div className="flex flex-col gap-4">
+              <button 
+                onClick={() => setView('login')}
+                className="w-full bg-primary text-on-primary font-title-md text-title-md py-4 px-4 rounded-DEFAULT hover:bg-primary-container transition-colors shadow-sm flex items-center justify-between"
+              >
+                <div className="flex items-center gap-3">
+                  <span className="material-symbols-outlined">storefront</span>
+                  <span>I am a Business Owner</span>
+                </div>
+                <span className="material-symbols-outlined">arrow_forward</span>
+              </button>
+              
+              <button 
+                onClick={() => setView('employee')}
+                className="w-full bg-surface-container-low text-on-surface font-title-md text-title-md py-4 px-4 rounded-DEFAULT border border-outline-variant hover:bg-surface-container transition-colors shadow-sm flex items-center justify-between"
+              >
+                <div className="flex items-center gap-3">
+                  <span className="material-symbols-outlined">badge</span>
+                  <span>I am an Employee</span>
+                </div>
+                <span className="material-symbols-outlined">arrow_forward</span>
+              </button>
+            </div>
+          )}
+
+          {view === 'employee' && (
+            <div className="flex flex-col text-center">
+              <div className="bg-primary/10 p-4 rounded-lg mb-6 border border-primary/20">
+                <span className="material-symbols-outlined text-primary mb-2" style={{ fontSize: '32px' }}>mark_email_unread</span>
+                <p className="text-on-surface font-body-md leading-relaxed">
+                  Employees must join their company's workspace using a secure invite link.
+                  <br/><br/>
+                  <strong>Please check your email inbox for an invitation from your manager.</strong>
+                </p>
+              </div>
+              <button 
+                onClick={() => setView('login')}
+                className="text-primary hover:underline font-body-md"
+              >
+                I already have an account and want to log in
+              </button>
+              <button 
+                onClick={() => setView('choice')}
+                className="mt-6 text-on-surface-variant hover:text-on-surface font-body-sm flex items-center justify-center gap-1"
+              >
+                <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>arrow_back</span>
+                Back
+              </button>
+            </div>
+          )}
+
+          {view === 'login' && (
+            <>
+              {/* Sign in with Google (Prominent) */}
           <button 
             type="button"
             onClick={signInWithGoogle}
@@ -111,22 +170,35 @@ export const LoginCard = () => {
               </div>
             </div>
             
-            <button 
-              type="submit" 
-              disabled={loading}
-              className="w-full bg-primary text-on-primary font-title-md text-title-md py-3 px-4 rounded-DEFAULT hover:bg-primary-container transition-colors min-h-[44px] flex items-center justify-center disabled:opacity-50"
-            >
-              {loading ? 'Signing In...' : 'Sign In'}
-            </button>
-          </form>
+              <button 
+                type="submit" 
+                disabled={loading}
+                className="w-full bg-primary text-on-primary font-title-md text-title-md py-3 px-4 rounded-DEFAULT hover:bg-primary-container transition-colors min-h-[44px] flex items-center justify-center disabled:opacity-50 mb-4"
+              >
+                {loading ? 'Signing In...' : 'Sign In'}
+              </button>
+
+              <button 
+                type="button"
+                onClick={() => setView('choice')}
+                className="w-full text-on-surface-variant hover:text-on-surface font-body-sm flex items-center justify-center gap-1"
+              >
+                <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>arrow_back</span>
+                Back to choices
+              </button>
+            </form>
+            </>
+          )}
         </div>
 
         {/* Footer Links */}
-        <div className="mt-lg text-center">
-          <p className="font-body-md text-body-md text-on-surface-variant">
-            Don't have an account? <a className="font-title-md text-primary hover:underline" href="#">Sign up</a>
-          </p>
-        </div>
+        {view === 'login' && (
+          <div className="mt-lg text-center">
+            <p className="font-body-md text-body-md text-on-surface-variant">
+              Don't have an account? <a className="font-title-md text-primary hover:underline" href="#">Sign up</a>
+            </p>
+          </div>
+        )}
       </main>
     </div>
   );

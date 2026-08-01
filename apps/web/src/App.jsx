@@ -13,6 +13,8 @@ import { NotFound } from './components/errors/NotFound';
 import { Unauthorized } from './components/errors/Unauthorized';
 import { ErrorBoundary } from './components/errors/ErrorBoundary';
 import { NetworkBanner } from './components/layout/NetworkBanner';
+import { Onboarding } from './components/Onboarding';
+import { Join } from './components/Join';
 
 const MainApp = () => {
   const { user } = useAuth();
@@ -20,6 +22,8 @@ const MainApp = () => {
   return (
     <Routes>
       <Route path="/login" element={user ? <Navigate to="/clients" replace /> : <LoginCard />} />
+      <Route path="/join/:token" element={<Join />} />
+      <Route path="/onboarding" element={<ProtectedRoute><Onboarding /></ProtectedRoute>} />
       
       <Route path="/" element={<ProtectedRoute><DashboardLayout /></ProtectedRoute>}>
         <Route index element={<Navigate to="/clients" replace />} />
