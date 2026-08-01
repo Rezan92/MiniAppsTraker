@@ -16,6 +16,8 @@ import { NetworkBanner } from './components/layout/NetworkBanner';
 import { Onboarding } from './components/Onboarding';
 import { Join } from './components/Join';
 import { ForgotPassword } from './components/ForgotPassword';
+import { SettingsLayout } from './components/settings/SettingsLayout';
+import { CompanyProfile } from './components/settings/CompanyProfile';
 
 const MainApp = () => {
   const { user } = useAuth();
@@ -33,6 +35,13 @@ const MainApp = () => {
         <Route path="clients/:id" element={<ClientDetails />} />
         <Route path="jobs" element={<JobList />} />
         <Route path="jobs/:id" element={<JobDetails />} />
+        <Route path="settings" element={<SettingsLayout />}>
+          <Route index element={<Navigate to="company" replace />} />
+          <Route path="company" element={<CompanyProfile />} />
+          <Route path="team" element={<div className="p-8">Team Management UI Pending (Task 15.2)</div>} />
+          <Route path="services" element={<div className="p-8">Service Configuration UI Pending (Task 15.3)</div>} />
+          <Route path="account" element={<div className="p-8">My Account UI Pending (Task 15.4)</div>} />
+        </Route>
       </Route>
       
       <Route path="/unauthorized" element={<Unauthorized />} />

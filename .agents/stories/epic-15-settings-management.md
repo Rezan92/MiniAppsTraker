@@ -4,8 +4,10 @@
 Build the centralized Settings interface where Business Admins can manage their tenant profile, invite and manage team members, and configure operational defaults (tax rates, hourly rates). Provide personal profile management for all users.
 
 ## Tasks
-- [ ] **Task 15.1: Settings Layout & Routing**
+- [ ] **Task 15.1: Settings Layout & Company Profile**
   - Create a new `SettingsLayout.jsx` with a sub-navigation menu (e.g., "Company Profile", "Team Management", "Service Configuration", "My Account").
+  - Build the "Company Profile" tab to edit basic business details.
+  - **Danger Zone:** Implement a type-to-confirm workspace deletion modal at the bottom of the Company Profile.
   - Implement RBAC (Role-Based Access Control) on the tabs: Only users with the `admin` role in the current `tenant_members` context can view/access Company Profile, Team Management, and Service Configuration.
 
 - [ ] **Task 15.2: Team Management Interface**

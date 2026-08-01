@@ -27,6 +27,9 @@ export const DashboardLayout = ({ children }) => {
     } else if (toastParam === 'joined_workspace') {
       showSuccess('You have successfully joined the team workspace.');
       window.history.replaceState({}, '', '/');
+    } else if (toastParam === 'workspace_deleted') {
+      showSuccess('Workspace has been permanently deleted.');
+      window.history.replaceState({}, '', '/');
     }
 
     if (!session) return;
@@ -244,19 +247,21 @@ export const DashboardLayout = ({ children }) => {
 
               {profileOpen && (
                 <div className="absolute top-full right-0 mt-2 w-56 bg-white border border-gray-200 rounded-lg shadow-lg py-2 z-50">
-                  <div className="px-4 py-3 border-b border-gray-100 mb-2">
-                    <p className="text-sm font-medium text-gray-900 truncate">Account</p>
+                  <div className="px-4 py-2 border-b border-gray-100 mb-2">
+                    <p className="text-sm font-medium text-gray-900 truncate" title={user?.user_metadata?.full_name || 'My Profile'}>
+                      {user?.user_metadata?.full_name || 'My Profile'}
+                    </p>
                     <p className="text-xs text-gray-500 truncate" title={user?.email}>{user?.email}</p>
                   </div>
                   <button 
-                    onClick={() => { setProfileOpen(false); navigate('/'); }}
+                    onClick={() => { setProfileOpen(false); navigate('/settings/account'); }}
                     className="w-full text-left px-4 py-2 hover:bg-gray-50 text-gray-700 transition-colors text-sm flex items-center gap-2"
                   >
                     <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>person</span>
                     My Profile
                   </button>
                   <button 
-                    onClick={() => { setProfileOpen(false); navigate('/'); }}
+                    onClick={() => { setProfileOpen(false); navigate('/settings'); }}
                     className="w-full text-left px-4 py-2 hover:bg-gray-50 text-gray-700 transition-colors text-sm flex items-center gap-2"
                   >
                     <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>settings</span>

@@ -29,11 +29,30 @@ This epic tracks all pending HTML/Tailwind screen designs required from the UI/U
   - **Description:** Standard split-pane layout for password recovery.
   - **Content:** Email input, "Send Reset Link" button, and "Back to Login" text link.
 
-- [ ] **Task 17.6: Settings Hub (From Epic 15)**
-  - **Description:** The internal dashboard `/settings` layout with a side-navigation menu.
-  - **Tab A (Team Management):** Form to invite an email, table for Pending Invites, table for Active Team (Name, Email, Role).
-  - **Tab B (Service Configuration):** Form for Default Hourly Rate, Tax Rate, and Service Categories.
+- [ ] **Task 17.6: Settings Hub Shell**
+  - **Description:** The master dashboard `/settings` layout.
+  - **Content:** A side-navigation menu connecting to the sub-tabs.
 
 - [ ] **Task 17.7: Create Workspace Modal (From Epic 11.5 Patch)**
   - **Description:** A centered, in-app pop-up modal overlay for creating secondary workspaces.
   - **Content:** Business Name, Phone, and Address inputs with a creation button.
+
+- [ ] **Task 17.8: Settings - Company Profile Tab**
+  - **Description:** The form for updating basic business details.
+  - **Content:** Business Name, Phone, Address, Logo Upload.
+
+- [ ] **Task 17.9: Settings - Danger Zone & Destructive Deletion Modal**
+  - **Description:** The red-themed deletion container at the bottom of the Company Profile, and its type-to-confirm modal.
+  - **Content:** "Delete Workspace" button, confirmation input matching the business name, and final delete button.
+
+- [ ] **Task 17.10: Settings - Team Management Tab**
+  - **Description:** Interface for managing members and invites.
+  - **Content:** Invite form (Email, Role), Pending Invites table, Active Team table.
+
+- [ ] **Task 17.11: Settings - Service Configuration Tab**
+  - **Description:** Form for operational defaults.
+  - **Content:** Default hourly rates, tax rates, and service categories.
+
+- [ ] **Task 17.12: Settings - My Account Tab**
+  - **Description:** Personal user details.
+  - **Content:** Name, Phone, Password Reset form.

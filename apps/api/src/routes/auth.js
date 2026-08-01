@@ -64,6 +64,20 @@ router.post('/onboarding', authenticate, async (req, res, next) => {
       return res.status(403).json({ success: false, error: 'Maximum limit of 5 workspaces reached.' });
     }
 
+    // Check for duplicate workspace name by this user
+    const { data: duplicate, error: dupError } = await supabase
+      .from('tenant_members')
+      .select('tenants!inner(name)')
+      .eq('user_id', req.user.id)
+      .eq('role', 'admin')
+      .ilike('tenants.name', name)
+      .maybeSingle();
+
+    if (dupError) throw dupError;
+    if (duplicate) {
+      return res.status(400).json({ success: false, error: 'You already have a workspace with this name.' });
+    }
+
     // 1. Create the tenant
     const { data: tenant, error: tenantError } = await supabase
       .from('tenants')
@@ -146,6 +160,50 @@ router.post('/switch-workspace', authenticate, async (req, res, next) => {
         role: member.role,
         message: 'Switched workspace successfully'
       }
+    });
+
+  } catch (err) {
+    next(err);
+  }
+});
+
+// DELETE /api/auth/workspaces/:id
+router.delete('/workspaces/:id', authenticate, async (req, res, next) => {
+  try {
+    const tenant_id = req.params.id;
+
+    // Verify user is an admin of this tenant
+    const { data: member, error: memError } = await supabase
+      .from('tenant_members')
+      .select('role')
+      .eq('tenant_id', tenant_id)
+      .eq('user_id', req.user.id)
+      .eq('role', 'admin')
+      .maybeSingle();
+
+    if (memError || !member) {
+      return res.status(403).json({ success: false, error: 'You do not have permission to delete this workspace' });
+    }
+
+    // Delete the tenant (cascade handles all related records)
+    const { error: deleteError } = await supabase
+      .from('tenants')
+      .delete()
+      .eq('id', tenant_id);
+
+    if (deleteError) {
+      throw new Error(`Failed to delete workspace: ${deleteError.message}`);
+    }
+
+    // Nullify active tenant ID for any users who had this active
+    await supabase
+      .from('users')
+      .update({ last_active_tenant_id: null })
+      .eq('last_active_tenant_id', tenant_id);
+
+    res.json({
+      success: true,
+      message: 'Workspace permanently deleted'
     });
 
   } catch (err) {
