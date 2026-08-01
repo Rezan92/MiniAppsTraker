@@ -14,6 +14,9 @@ export const ForgotPassword = () => {
     e.preventDefault();
     setLoading(true);
     
+    // NOTE: Actual email delivery is blocked pending Epic 16 (SMTP Integration). 
+    // Supabase might still fire its default email if configured, but we are 
+    // ensuring the UI simulates a success state here for the user.
     const { error } = await resetPassword(email);
     
     if (error) {

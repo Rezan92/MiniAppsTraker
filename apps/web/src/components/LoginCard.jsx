@@ -6,6 +6,9 @@ export const LoginCard = () => {
   const [view, setView] = useState('choice'); // 'choice', 'login', 'signup', 'employee'
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
+  const [phone, setPhone] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
@@ -15,7 +18,11 @@ export const LoginCard = () => {
     setError(null);
     
     if (view === 'signup') {
-      const { error: signUpError } = await signUpWithEmail(email, password);
+      const { error: signUpError } = await signUpWithEmail(email, password, {
+        first_name: firstName,
+        last_name: lastName,
+        phone: phone
+      });
       if (signUpError) {
         setError(signUpError.message);
       } else {
@@ -148,8 +155,50 @@ export const LoginCard = () => {
 
           {/* Email Form */}
           <form onSubmit={handleSubmit}>
+            {view === 'signup' && (
+              <>
+                <div className="flex gap-4 mb-4">
+                  <div className="w-1/2">
+                    <label className="block font-label-md text-label-md text-on-surface mb-xs" htmlFor="firstName">First Name *</label>
+                    <input 
+                      id="firstName" 
+                      name="firstName" 
+                      type="text" 
+                      required 
+                      className="w-full px-4 py-3 border border-outline-variant rounded-DEFAULT bg-surface-container-lowest font-body-md text-on-surface focus:outline-none focus:ring-0 focus:border-primary focus:border-[2px] transition-all min-h-[44px]" 
+                      value={firstName}
+                      onChange={(e) => setFirstName(e.target.value)}
+                    />
+                  </div>
+                  <div className="w-1/2">
+                    <label className="block font-label-md text-label-md text-on-surface mb-xs" htmlFor="lastName">Last Name *</label>
+                    <input 
+                      id="lastName" 
+                      name="lastName" 
+                      type="text" 
+                      required 
+                      className="w-full px-4 py-3 border border-outline-variant rounded-DEFAULT bg-surface-container-lowest font-body-md text-on-surface focus:outline-none focus:ring-0 focus:border-primary focus:border-[2px] transition-all min-h-[44px]" 
+                      value={lastName}
+                      onChange={(e) => setLastName(e.target.value)}
+                    />
+                  </div>
+                </div>
+                <div className="mb-4">
+                  <label className="block font-label-md text-label-md text-on-surface mb-xs" htmlFor="phone">Phone Number (Optional)</label>
+                  <input 
+                    id="phone" 
+                    name="phone" 
+                    type="tel" 
+                    className="w-full px-4 py-3 border border-outline-variant rounded-DEFAULT bg-surface-container-lowest font-body-md text-on-surface focus:outline-none focus:ring-0 focus:border-primary focus:border-[2px] transition-all min-h-[44px]" 
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
+                  />
+                </div>
+              </>
+            )}
+
             <div className="mb-sm">
-              <label className="block font-label-md text-label-md text-on-surface mb-xs" htmlFor="email">Email address</label>
+              <label className="block font-label-md text-label-md text-on-surface mb-xs" htmlFor="email">Email address *</label>
               <input 
                 id="email" 
                 name="email" 

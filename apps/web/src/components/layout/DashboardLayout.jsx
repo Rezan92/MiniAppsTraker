@@ -171,17 +171,15 @@ export const DashboardLayout = ({ children }) => {
           <div className="flex items-center gap-4 relative" ref={dropdownRef}>
             {/* Workspace Switcher */}
             <div 
-              className={`flex items-center gap-2 cursor-pointer p-2 -ml-2 rounded-lg transition-colors ${workspaces.length > 1 ? 'hover:bg-gray-100' : ''}`}
-              onClick={() => workspaces.length > 1 && setDropdownOpen(!dropdownOpen)}
+              className="flex items-center gap-2 cursor-pointer p-2 -ml-2 rounded-lg transition-colors hover:bg-gray-100"
+              onClick={() => setDropdownOpen(!dropdownOpen)}
             >
               <h2 className="font-headline-md text-headline-md font-bold text-gray-900">{tenantName}</h2>
-              {workspaces.length > 1 && (
-                <span className={`material-symbols-outlined text-gray-500 transition-transform ${dropdownOpen ? 'rotate-180' : ''}`}>expand_more</span>
-              )}
+              <span className={`material-symbols-outlined text-gray-500 transition-transform ${dropdownOpen ? 'rotate-180' : ''}`}>expand_more</span>
             </div>
 
             {/* Dropdown Menu */}
-            {dropdownOpen && workspaces.length > 1 && (
+            {dropdownOpen && (
               <div className="absolute top-full left-0 mt-1 w-64 bg-white border border-gray-200 rounded-lg shadow-lg py-2 z-50">
                 <div className="px-4 py-2 border-b border-gray-100 mb-2">
                   <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Switch Workspace</span>
@@ -239,20 +237,19 @@ export const DashboardLayout = ({ children }) => {
                     <p className="text-xs text-gray-500 truncate" title={user?.email}>{user?.email}</p>
                   </div>
                   <button 
-                    onClick={() => { setProfileOpen(false); navigate('/profile'); }}
+                    onClick={() => { setProfileOpen(false); navigate('/'); }}
                     className="w-full text-left px-4 py-2 hover:bg-gray-50 text-gray-700 transition-colors text-sm flex items-center gap-2"
                   >
                     <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>person</span>
                     My Profile
                   </button>
                   <button 
-                    onClick={async () => {
-                      const { useAuth } = await import('../../contexts/AuthContext');
-                      // Note: Because signOut is not extracted at the top level for this scope directly to avoid circulars or double grabs,
-                      // We can just rely on the component's existing scope! Wait, I didn't extract signOut.
-                    }}
-                    className="hidden" // Will fix below properly
-                  />
+                    onClick={() => { setProfileOpen(false); navigate('/'); }}
+                    className="w-full text-left px-4 py-2 hover:bg-gray-50 text-gray-700 transition-colors text-sm flex items-center gap-2"
+                  >
+                    <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>settings</span>
+                    Settings
+                  </button>
                   {/* Real Sign Out Button */}
                   <div className="border-t border-gray-100 mt-2"></div>
                   <AuthContextLogoutButton />
