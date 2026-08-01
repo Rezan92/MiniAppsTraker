@@ -37,8 +37,7 @@ export const CreateJobModal = ({ open, onClose }) => {
     enabled: open && !!session
   });
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  const handleSubmit = async () => {
     if (!formData.title.trim()) {
       showError("Job Title is required");
       return;

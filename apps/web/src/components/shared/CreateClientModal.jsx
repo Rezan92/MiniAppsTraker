@@ -9,11 +9,10 @@ export const CreateClientModal = ({ open, onClose }) => {
   const { showSuccess, showError } = useToast();
   const queryClient = useQueryClient();
 
-  const initialForm = { name: '', email: '', phone: '', address: '' };
+  const initialForm = { client_type: 'residential', name: '', email: '', phone: '', address: '' };
   const [formData, setFormData] = useState(initialForm);
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  const handleSubmit = async () => {
     if (!formData.name.trim()) {
       showError("Name is required");
       return;
