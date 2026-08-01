@@ -7,7 +7,7 @@ export const Join = () => {
   const { token } = useParams();
   const { session, user, refreshUserData, signInWithGoogle } = useAuth();
   const navigate = useNavigate();
-  const { addToast } = useToast();
+  const { showSuccess, showError } = useToast();
   
   const [inviteData, setInviteData] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -49,12 +49,11 @@ export const Join = () => {
         throw new Error(json.error || 'Failed to accept invitation');
       }
 
-      addToast('success', 'Joined Workspace', `You have successfully joined ${inviteData.tenant_name}`);
       await refreshUserData();
       // Hard redirect to clear any previous tenant cache
-      window.location.href = '/'; 
+      window.location.href = '/?toast=joined_workspace'; 
     } catch (err) {
-      addToast('error', 'Action Failed', err.message);
+      showError(err.message);
     } finally {
       setAccepting(false);
     }

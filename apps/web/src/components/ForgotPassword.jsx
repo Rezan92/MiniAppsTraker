@@ -5,7 +5,7 @@ import { Link } from 'react-router-dom';
 
 export const ForgotPassword = () => {
   const { resetPassword } = useAuth();
-  const { addToast } = useToast();
+  const { showError } = useToast();
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
@@ -20,7 +20,7 @@ export const ForgotPassword = () => {
     const { error } = await resetPassword(email);
     
     if (error) {
-      addToast('error', 'Reset Failed', error.message);
+      showError(error.message);
     } else {
       setSuccess(true);
     }

@@ -7,7 +7,7 @@ import { CreateWorkspaceModal } from './CreateWorkspaceModal';
 export const DashboardLayout = ({ children }) => {
   const { user, session, userData } = useAuth();
   const navigate = useNavigate();
-  const { addToast } = useToast();
+  const { showSuccess, showError } = useToast();
   
   const [workspaces, setWorkspaces] = useState([]);
   const [switching, setSwitching] = useState(false);
@@ -17,8 +17,18 @@ export const DashboardLayout = ({ children }) => {
   const dropdownRef = useRef(null);
   const profileRef = useRef(null);
 
-  // Fetch workspaces on mount
+  // Fetch workspaces on mount and handle post-reload toasts
   useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const toastParam = params.get('toast');
+    if (toastParam === 'workspace_created') {
+      showSuccess('Your new business profile is successfully created and active.');
+      window.history.replaceState({}, '', '/');
+    } else if (toastParam === 'joined_workspace') {
+      showSuccess('You have successfully joined the team workspace.');
+      window.history.replaceState({}, '', '/');
+    }
+
     if (!session) return;
     const fetchWorkspaces = async () => {
       try {
@@ -71,7 +81,7 @@ export const DashboardLayout = ({ children }) => {
       // Hard reload to clear query cache
       window.location.href = '/';
     } catch (err) {
-      addToast('error', 'Workspace Switch Failed', err.message);
+      showError(err.message);
       setSwitching(false);
     }
   };

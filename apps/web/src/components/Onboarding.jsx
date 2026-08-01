@@ -6,7 +6,7 @@ import { useToast } from '../contexts/ToastContext';
 export const Onboarding = () => {
   const { session, userData, refreshUserData, signOut } = useAuth();
   const navigate = useNavigate();
-  const { addToast } = useToast();
+  const { showSuccess, showError } = useToast();
   
   const [formData, setFormData] = useState({
     name: '',
@@ -40,11 +40,11 @@ export const Onboarding = () => {
         throw new Error(json.error || 'Failed to complete onboarding');
       }
 
-      addToast('success', 'Workspace Created', 'Your business profile has been successfully set up.');
+      showSuccess('Your business profile has been successfully set up.');
       await refreshUserData();
       navigate('/');
     } catch (err) {
-      addToast('error', 'Onboarding Failed', err.message);
+      showError(err.message);
     } finally {
       setLoading(false);
     }

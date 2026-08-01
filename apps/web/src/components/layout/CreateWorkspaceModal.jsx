@@ -4,7 +4,7 @@ import { useToast } from '../../contexts/ToastContext';
 
 export const CreateWorkspaceModal = ({ isOpen, onClose }) => {
   const { session, refreshUserData } = useAuth();
-  const { addToast } = useToast();
+  const { showSuccess, showError } = useToast();
   
   const [formData, setFormData] = useState({
     name: '',
@@ -39,13 +39,12 @@ export const CreateWorkspaceModal = ({ isOpen, onClose }) => {
         throw new Error(json.error || 'Failed to create workspace');
       }
 
-      addToast('success', 'Workspace Created', 'Your new business profile is ready.');
       await refreshUserData();
       onClose();
       // Hard redirect to clear cache and switch to new workspace
-      window.location.href = '/';
+      window.location.href = '/?toast=workspace_created';
     } catch (err) {
-      addToast('error', 'Creation Failed', err.message);
+      showError(err.message);
     } finally {
       setLoading(false);
     }
