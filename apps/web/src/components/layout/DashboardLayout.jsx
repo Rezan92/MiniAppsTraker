@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { useToast } from '../../contexts/ToastContext';
+import { CreateWorkspaceModal } from './CreateWorkspaceModal';
 
 export const DashboardLayout = ({ children }) => {
   const { user, session, userData } = useAuth();
@@ -12,6 +13,7 @@ export const DashboardLayout = ({ children }) => {
   const [switching, setSwitching] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
+  const [createModalOpen, setCreateModalOpen] = useState(false);
   const dropdownRef = useRef(null);
   const profileRef = useRef(null);
 
@@ -202,7 +204,7 @@ export const DashboardLayout = ({ children }) => {
                 ))}
                 <div className="border-t border-gray-100 mt-2">
                   <button 
-                    onClick={() => navigate('/onboarding')}
+                    onClick={() => { setDropdownOpen(false); setCreateModalOpen(true); }}
                     className="w-full text-left px-4 py-3 flex items-center gap-2 hover:bg-gray-50 text-gray-700 transition-colors font-medium text-sm"
                   >
                     <span className="material-symbols-outlined text-gray-400" style={{ fontSize: '18px' }}>add</span>
@@ -266,6 +268,11 @@ export const DashboardLayout = ({ children }) => {
           </div>
         </div>
       </main>
+
+      <CreateWorkspaceModal 
+        isOpen={createModalOpen} 
+        onClose={() => setCreateModalOpen(false)} 
+      />
     </div>
   );
 };

@@ -18,10 +18,14 @@ Implement permanent, production-grade application controls to allow users to sec
   - Update `Onboarding.jsx`. Add a secondary layout block stating: "Are you an employee? Please log out and click the invitation link sent to your email."
   - Wire up a "Log Out" button specifically for this block to un-trap employees.
 
-- [ ] **Task 11.5.4: Auth Expansion (Email & Password)**
+- [x] **Task 11.5.4: Auth Expansion (Email & Password)**
   - Ensure standard Email/Password Sign Up and Log In methods are fully wired up in the Supabase Auth context.
   - Build the `/forgot-password` React route.
   - Wire up the Supabase `resetPasswordForEmail` trigger.
 
-- [ ] **Task 11.5.5: Apply Final Designer HTML (Pending)**
+- [ ] **Task 11.5.5: In-App Workspace Creation & Limits (Patch)**
+  - Replace the `/onboarding` redirect in the Workspace Switcher with a local state toggle that opens a `<CreateWorkspaceModal />`.
+  - Add a backend task to enforce a 5-workspace limit per user.
+
+- [ ] **Task 11.5.6: Apply Final Designer HTML (Pending)**
   - Once the designer provides the polished HTML/Tailwind for these components, overwrite the base Tailwind structures with the final designs while preserving React logic.

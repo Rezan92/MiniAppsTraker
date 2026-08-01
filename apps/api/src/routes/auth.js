@@ -52,9 +52,16 @@ router.post('/onboarding', authenticate, async (req, res, next) => {
     }
     const { name, phone, address } = result.data;
 
-    // Check if user already has an active tenant
-    if (req.user.tenant_id) {
-      return res.status(400).json({ success: false, error: 'User is already associated with an active tenant workspace' });
+    // Enforce 5 workspace limit for admins
+    const { count, error: countError } = await supabase
+      .from('tenant_members')
+      .select('*', { count: 'exact', head: true })
+      .eq('user_id', req.user.id)
+      .eq('role', 'admin');
+
+    if (countError) throw countError;
+    if (count >= 5) {
+      return res.status(403).json({ success: false, error: 'Maximum limit of 5 workspaces reached.' });
     }
 
     // 1. Create the tenant

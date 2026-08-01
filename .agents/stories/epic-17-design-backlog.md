@@ -33,3 +33,7 @@ This epic tracks all pending HTML/Tailwind screen designs required from the UI/U
   - **Description:** The internal dashboard `/settings` layout with a side-navigation menu.
   - **Tab A (Team Management):** Form to invite an email, table for Pending Invites, table for Active Team (Name, Email, Role).
   - **Tab B (Service Configuration):** Form for Default Hourly Rate, Tax Rate, and Service Categories.
+
+- [ ] **Task 17.7: Create Workspace Modal (From Epic 11.5 Patch)**
+  - **Description:** A centered, in-app pop-up modal overlay for creating secondary workspaces.
+  - **Content:** Business Name, Phone, and Address inputs with a creation button.
