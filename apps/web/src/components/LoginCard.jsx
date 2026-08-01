@@ -2,9 +2,13 @@ import React, { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 
 export const LoginCard = () => {
-  const { signInWithGoogle, signInWithEmail } = useAuth();
+  const { signInWithGoogle, signInWithEmail, signUpWithEmail } = useAuth();
+  const [view, setView] = useState('choice'); // 'choice', 'login', 'signup', 'employee'
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
+  const [phone, setPhone] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
@@ -12,9 +16,24 @@ export const LoginCard = () => {
     e.preventDefault();
     setLoading(true);
     setError(null);
-    const { error: signInError } = await signInWithEmail(email, password);
-    if (signInError) {
-      setError(signInError.message);
+    
+    if (view === 'signup') {
+      const { error: signUpError } = await signUpWithEmail(email, password, {
+        first_name: firstName,
+        last_name: lastName,
+        phone: phone
+      });
+      if (signUpError) {
+        setError(signUpError.message);
+      } else {
+        // Success: usually triggers auth state change, but if email confirm is on, inform user.
+        // Assuming auto-confirm for now or Supabase handles UI toast if needed.
+      }
+    } else {
+      const { error: signInError } = await signInWithEmail(email, password);
+      if (signInError) {
+        setError(signInError.message);
+      }
     }
     setLoading(false);
   };
@@ -42,8 +61,12 @@ export const LoginCard = () => {
 
           {/* Header */}
           <div className="text-center mb-lg">
-            <h2 className="font-title-md text-title-md text-on-surface mb-xs">Welcome back</h2>
-            <p className="font-body-md text-body-md text-on-surface-variant">Sign in to your account to continue</p>
+            <h2 className="font-title-md text-title-md text-on-surface mb-xs">
+              {view === 'choice' ? 'Welcome to ProFix' : view === 'employee' ? 'Employee Access' : view === 'signup' ? 'Create an Account' : 'Welcome back'}
+            </h2>
+            <p className="font-body-md text-body-md text-on-surface-variant">
+              {view === 'choice' ? 'How would you like to continue?' : view === 'employee' ? 'Join your team workspace' : view === 'signup' ? 'Sign up to get started' : 'Sign in to your account to continue'}
+            </p>
           </div>
 
           {error && (
@@ -52,7 +75,61 @@ export const LoginCard = () => {
             </div>
           )}
 
-          {/* Sign in with Google (Prominent) */}
+          {view === 'choice' && (
+            <div className="flex flex-col gap-4">
+              <button 
+                onClick={() => setView('login')}
+                className="w-full bg-primary text-on-primary font-title-md text-title-md py-4 px-4 rounded-DEFAULT hover:bg-primary-container transition-colors shadow-sm flex items-center justify-between"
+              >
+                <div className="flex items-center gap-3">
+                  <span className="material-symbols-outlined">storefront</span>
+                  <span>I am a Business Owner</span>
+                </div>
+                <span className="material-symbols-outlined">arrow_forward</span>
+              </button>
+              
+              <button 
+                onClick={() => setView('employee')}
+                className="w-full bg-surface-container-low text-on-surface font-title-md text-title-md py-4 px-4 rounded-DEFAULT border border-outline-variant hover:bg-surface-container transition-colors shadow-sm flex items-center justify-between"
+              >
+                <div className="flex items-center gap-3">
+                  <span className="material-symbols-outlined">badge</span>
+                  <span>I am an Employee</span>
+                </div>
+                <span className="material-symbols-outlined">arrow_forward</span>
+              </button>
+            </div>
+          )}
+
+          {view === 'employee' && (
+            <div className="flex flex-col text-center">
+              <div className="bg-primary/10 p-4 rounded-lg mb-6 border border-primary/20">
+                <span className="material-symbols-outlined text-primary mb-2" style={{ fontSize: '32px' }}>mark_email_unread</span>
+                <p className="text-on-surface font-body-md leading-relaxed">
+                  Employees must join their company's workspace using a secure invite link.
+                  <br/><br/>
+                  <strong>Please check your email inbox for an invitation from your manager.</strong>
+                </p>
+              </div>
+              <button 
+                onClick={() => setView('login')}
+                className="text-primary hover:underline font-body-md"
+              >
+                I already have an account and want to log in
+              </button>
+              <button 
+                onClick={() => setView('choice')}
+                className="mt-6 text-on-surface-variant hover:text-on-surface font-body-sm flex items-center justify-center gap-1"
+              >
+                <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>arrow_back</span>
+                Back
+              </button>
+            </div>
+          )}
+
+          {(view === 'login' || view === 'signup') && (
+            <>
+              {/* Sign in with Google (Prominent) */}
           <button 
             type="button"
             onClick={signInWithGoogle}
@@ -78,8 +155,50 @@ export const LoginCard = () => {
 
           {/* Email Form */}
           <form onSubmit={handleSubmit}>
+            {view === 'signup' && (
+              <>
+                <div className="flex gap-4 mb-4">
+                  <div className="w-1/2">
+                    <label className="block font-label-md text-label-md text-on-surface mb-xs" htmlFor="firstName">First Name *</label>
+                    <input 
+                      id="firstName" 
+                      name="firstName" 
+                      type="text" 
+                      required 
+                      className="w-full px-4 py-3 border border-outline-variant rounded-DEFAULT bg-surface-container-lowest font-body-md text-on-surface focus:outline-none focus:ring-0 focus:border-primary focus:border-[2px] transition-all min-h-[44px]" 
+                      value={firstName}
+                      onChange={(e) => setFirstName(e.target.value)}
+                    />
+                  </div>
+                  <div className="w-1/2">
+                    <label className="block font-label-md text-label-md text-on-surface mb-xs" htmlFor="lastName">Last Name *</label>
+                    <input 
+                      id="lastName" 
+                      name="lastName" 
+                      type="text" 
+                      required 
+                      className="w-full px-4 py-3 border border-outline-variant rounded-DEFAULT bg-surface-container-lowest font-body-md text-on-surface focus:outline-none focus:ring-0 focus:border-primary focus:border-[2px] transition-all min-h-[44px]" 
+                      value={lastName}
+                      onChange={(e) => setLastName(e.target.value)}
+                    />
+                  </div>
+                </div>
+                <div className="mb-4">
+                  <label className="block font-label-md text-label-md text-on-surface mb-xs" htmlFor="phone">Phone Number (Optional)</label>
+                  <input 
+                    id="phone" 
+                    name="phone" 
+                    type="tel" 
+                    className="w-full px-4 py-3 border border-outline-variant rounded-DEFAULT bg-surface-container-lowest font-body-md text-on-surface focus:outline-none focus:ring-0 focus:border-primary focus:border-[2px] transition-all min-h-[44px]" 
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
+                  />
+                </div>
+              </>
+            )}
+
             <div className="mb-sm">
-              <label className="block font-label-md text-label-md text-on-surface mb-xs" htmlFor="email">Email address</label>
+              <label className="block font-label-md text-label-md text-on-surface mb-xs" htmlFor="email">Email address *</label>
               <input 
                 id="email" 
                 name="email" 
@@ -106,27 +225,48 @@ export const LoginCard = () => {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
               />
-              <div className="flex justify-end mt-2">
-                <a className="font-body-md text-body-md text-primary hover:underline hover:text-primary-container transition-colors" href="#">Forgot password?</a>
-              </div>
+              {view === 'login' && (
+                <div className="flex justify-end mt-2">
+                  <a className="font-body-md text-body-md text-primary hover:underline hover:text-primary-container transition-colors" href="/forgot-password">Forgot password?</a>
+                </div>
+              )}
             </div>
             
-            <button 
-              type="submit" 
-              disabled={loading}
-              className="w-full bg-primary text-on-primary font-title-md text-title-md py-3 px-4 rounded-DEFAULT hover:bg-primary-container transition-colors min-h-[44px] flex items-center justify-center disabled:opacity-50"
-            >
-              {loading ? 'Signing In...' : 'Sign In'}
-            </button>
-          </form>
+              <button 
+                type="submit" 
+                disabled={loading}
+                className="w-full bg-primary text-on-primary font-title-md text-title-md py-3 px-4 rounded-DEFAULT hover:bg-primary-container transition-colors min-h-[44px] flex items-center justify-center disabled:opacity-50 mb-4"
+              >
+                {loading ? (view === 'signup' ? 'Signing Up...' : 'Signing In...') : (view === 'signup' ? 'Sign Up' : 'Sign In')}
+              </button>
+
+              <button 
+                type="button"
+                onClick={() => setView('choice')}
+                className="w-full text-on-surface-variant hover:text-on-surface font-body-sm flex items-center justify-center gap-1"
+              >
+                <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>arrow_back</span>
+                Back to choices
+              </button>
+            </form>
+            </>
+          )}
         </div>
 
         {/* Footer Links */}
-        <div className="mt-lg text-center">
-          <p className="font-body-md text-body-md text-on-surface-variant">
-            Don't have an account? <a className="font-title-md text-primary hover:underline" href="#">Sign up</a>
-          </p>
-        </div>
+        {(view === 'login' || view === 'signup') && (
+          <div className="mt-lg text-center">
+            {view === 'login' ? (
+              <p className="font-body-md text-body-md text-on-surface-variant">
+                Don't have an account? <button onClick={() => setView('signup')} className="font-title-md text-primary hover:underline">Sign up</button>
+              </p>
+            ) : (
+              <p className="font-body-md text-body-md text-on-surface-variant">
+                Already have an account? <button onClick={() => setView('login')} className="font-title-md text-primary hover:underline">Log in</button>
+              </p>
+            )}
+          </div>
+        )}
       </main>
     </div>
   );
