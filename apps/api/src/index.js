@@ -6,6 +6,7 @@ import authRoutes from './routes/auth.js';
 import clientRoutes from './routes/clients.js';
 import jobRoutes from './routes/jobs.js';
 import invitationRoutes from './routes/invitations.js';
+import dashboardRoutes from './routes/dashboard.js';
 import { errorHandler } from './middleware/errorHandler.js';
 
 const app = express();
@@ -20,6 +21,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/clients', clientRoutes);
 app.use('/api/jobs', jobRoutes);
 app.use('/api/invitations', invitationRoutes);
+app.use('/api/dashboard', dashboardRoutes);
 
 // Health Check Endpoint
 app.get('/api/health', (req, res) => {

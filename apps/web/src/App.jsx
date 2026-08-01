@@ -4,6 +4,7 @@ import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { ToastProvider } from './contexts/ToastContext';
 import { LoginCard } from './components/LoginCard';
 import { DashboardLayout } from './components/layout/DashboardLayout';
+import { Dashboard } from './components/dashboard/Dashboard';
 import { ClientList } from './components/clients/ClientList';
 import { JobList } from './components/jobs/JobList';
 import { ClientDetails } from './components/clients/ClientDetails';
@@ -25,13 +26,13 @@ const MainApp = () => {
   
   return (
     <Routes>
-      <Route path="/login" element={user ? <Navigate to="/clients" replace /> : <LoginCard />} />
-      <Route path="/forgot-password" element={user ? <Navigate to="/clients" replace /> : <ForgotPassword />} />
+      <Route path="/login" element={user ? <Navigate to="/" replace /> : <LoginCard />} />
+      <Route path="/forgot-password" element={user ? <Navigate to="/" replace /> : <ForgotPassword />} />
       <Route path="/join/:token" element={<Join />} />
       <Route path="/onboarding" element={<ProtectedRoute><Onboarding /></ProtectedRoute>} />
       
       <Route path="/" element={<ProtectedRoute><DashboardLayout /></ProtectedRoute>}>
-        <Route index element={<Navigate to="/clients" replace />} />
+        <Route index element={<Dashboard />} />
         <Route path="clients" element={<ClientList />} />
         <Route path="clients/:id" element={<ClientDetails />} />
         <Route path="jobs" element={<JobList />} />

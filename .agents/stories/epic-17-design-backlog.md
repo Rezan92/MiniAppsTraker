@@ -56,3 +56,11 @@ This epic tracks all pending HTML/Tailwind screen designs required from the UI/U
 - [ ] **Task 17.12: Settings - My Account Tab**
   - **Description:** Personal user details.
   - **Content:** Name, Phone, Password Reset form.
+
+- [ ] **Task 17.13: Dashboard Screen**
+  - **Description:** The main `/dashboard` landing page.
+  - **Content:** KPI cards row at top, split section with Active Jobs table and Upcoming Schedule, Recent Activity feed below. Quick action buttons for New Client and New Job. Must feel like a premium command center, not a basic table page.
+
+- [ ] **Task 17.14: Calendar View Screen**
+  - **Description:** The `/calendar` tab. (Future — do not design yet, just track.)
+  - **Content:** Day/week/month toggle, job blocks color-coded by status, click-to-create interaction. Reference: Google Calendar, Cal.com, Calendly for visual inspiration.
