@@ -192,7 +192,7 @@ export const CompanyProfile = () => {
               Danger Zone
             </h3>
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mt-4">
-              <div>
+              <div className="flex-1 min-w-0">
                 <h4 className="font-title-sm text-on-surface mb-1">Delete Workspace</h4>
                 <p className="font-body-sm text-on-surface-variant max-w-xl">
                   Permanently delete this workspace and all associated data. This action is irreversible and affects all members.
