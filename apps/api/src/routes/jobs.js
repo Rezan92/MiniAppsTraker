@@ -84,7 +84,7 @@ router.post('/', async (req, res, next) => {
   try {
     const result = jobSchema.safeParse(req.body);
     if (!result.success) {
-      return res.status(400).json({ success: false, error: result.error.errors[0].message });
+      return res.status(400).json({ success: false, error: result.error.issues[0].message });
     }
 
     const { data, error } = await supabase
@@ -104,7 +104,7 @@ router.patch('/:id/status', async (req, res, next) => {
   try {
     const result = statusSchema.safeParse(req.body);
     if (!result.success) {
-      return res.status(400).json({ success: false, error: result.error.errors[0].message });
+      return res.status(400).json({ success: false, error: result.error.issues[0].message });
     }
 
     const { data, error } = await supabase

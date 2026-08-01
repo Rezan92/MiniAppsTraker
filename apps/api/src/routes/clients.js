@@ -75,7 +75,7 @@ router.post('/', async (req, res, next) => {
 
     const result = clientSchema.safeParse(req.body);
     if (!result.success) {
-      const err = new Error(result.error.errors[0].message);
+      const err = new Error(result.error.issues[0].message);
       err.status = 400;
       err.code = 'VALIDATION_ERROR';
       return next(err);
@@ -109,7 +109,7 @@ router.put('/:id', async (req, res, next) => {
 
     const result = clientSchema.safeParse(req.body);
     if (!result.success) {
-      const err = new Error(result.error.errors[0].message);
+      const err = new Error(result.error.issues[0].message);
       err.status = 400;
       err.code = 'VALIDATION_ERROR';
       return next(err);

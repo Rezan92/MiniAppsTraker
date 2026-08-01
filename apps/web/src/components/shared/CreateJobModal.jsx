@@ -50,11 +50,11 @@ export const CreateJobModal = ({ open, onClose }) => {
     // Clean up numeric fields
     const payload = { ...formData };
     if (payload.rate_type === 'hourly') {
-      payload.hourly_rate = payload.hourly_rate ? parseFloat(payload.hourly_rate) : null;
-      payload.flat_rate = null;
+      payload.hourly_rate = payload.hourly_rate ? parseFloat(payload.hourly_rate) : undefined;
+      payload.flat_rate = undefined;
     } else {
-      payload.flat_rate = payload.flat_rate ? parseFloat(payload.flat_rate) : null;
-      payload.hourly_rate = null;
+      payload.flat_rate = payload.flat_rate ? parseFloat(payload.flat_rate) : undefined;
+      payload.hourly_rate = undefined;
     }
     
     try {
