@@ -167,6 +167,92 @@ router.post('/switch-workspace', authenticate, async (req, res, next) => {
   }
 });
 
+// GET /api/auth/workspaces/:id
+router.get('/workspaces/:id', authenticate, async (req, res, next) => {
+  try {
+    const tenant_id = req.params.id;
+
+    // Verify user belongs to this tenant
+    const { data: member, error: memError } = await supabase
+      .from('tenant_members')
+      .select('role')
+      .eq('tenant_id', tenant_id)
+      .eq('user_id', req.user.id)
+      .eq('status', 'active')
+      .maybeSingle();
+
+    if (memError || !member) {
+      return res.status(403).json({ success: false, error: 'Access denied' });
+    }
+
+    const { data: tenant, error: tenantError } = await supabase
+      .from('tenants')
+      .select('*')
+      .eq('id', tenant_id)
+      .single();
+
+    if (tenantError) {
+      return res.status(404).json({ success: false, error: 'Workspace not found' });
+    }
+
+    res.json({ success: true, data: tenant });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// PATCH /api/auth/workspaces/:id
+router.patch('/workspaces/:id', authenticate, async (req, res, next) => {
+  try {
+    const tenant_id = req.params.id;
+    const { name, address, phone, timezone } = req.body;
+
+    // Verify user is an admin of this tenant
+    const { data: member, error: memError } = await supabase
+      .from('tenant_members')
+      .select('role')
+      .eq('tenant_id', tenant_id)
+      .eq('user_id', req.user.id)
+      .eq('role', 'admin')
+      .maybeSingle();
+
+    if (memError || !member) {
+      return res.status(403).json({ success: false, error: 'You do not have permission to update this workspace' });
+    }
+
+    if (!name || name.trim() === '') {
+      return res.status(400).json({ success: false, error: 'Business name is required' });
+    }
+
+    // Sanitize unique optional fields like phone: mapping empty strings to NULL
+    const sanitizedPhone = phone === '' ? null : phone;
+
+    const { data: updatedTenant, error: updateError } = await supabase
+      .from('tenants')
+      .update({ 
+        name: name.trim(), 
+        address, 
+        phone: sanitizedPhone, 
+        timezone: timezone || 'UTC' 
+      })
+      .eq('id', tenant_id)
+      .select('*')
+      .single();
+
+    if (updateError) {
+      throw new Error(`Failed to update workspace: ${updateError.message}`);
+    }
+
+    res.json({
+      success: true,
+      data: updatedTenant,
+      message: 'Workspace updated successfully'
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
 // DELETE /api/auth/workspaces/:id
 router.delete('/workspaces/:id', authenticate, async (req, res, next) => {
   try {

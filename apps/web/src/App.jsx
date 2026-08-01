@@ -18,6 +18,7 @@ import { Join } from './components/Join';
 import { ForgotPassword } from './components/ForgotPassword';
 import { SettingsLayout } from './components/settings/SettingsLayout';
 import { CompanyProfile } from './components/settings/CompanyProfile';
+import { AdminRoute } from './components/layout/AdminRoute';
 
 const MainApp = () => {
   const { user } = useAuth();
@@ -37,9 +38,9 @@ const MainApp = () => {
         <Route path="jobs/:id" element={<JobDetails />} />
         <Route path="settings" element={<SettingsLayout />}>
           <Route index element={<Navigate to="company" replace />} />
-          <Route path="company" element={<CompanyProfile />} />
-          <Route path="team" element={<div className="p-8">Team Management UI Pending (Task 15.2)</div>} />
-          <Route path="services" element={<div className="p-8">Service Configuration UI Pending (Task 15.3)</div>} />
+          <Route path="company" element={<AdminRoute><CompanyProfile /></AdminRoute>} />
+          <Route path="team" element={<AdminRoute><div className="p-8">Team Management UI Pending (Task 15.2)</div></AdminRoute>} />
+          <Route path="services" element={<AdminRoute><div className="p-8">Service Configuration UI Pending (Task 15.3)</div></AdminRoute>} />
           <Route path="account" element={<div className="p-8">My Account UI Pending (Task 15.4)</div>} />
         </Route>
       </Route>

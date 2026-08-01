@@ -80,14 +80,14 @@ export const DeleteWorkspaceModal = ({ isOpen, onClose, tenantName, tenantId }) 
               type="button" 
               onClick={onClose}
               disabled={loading}
-              className="w-1/2 text-on-surface border border-outline-variant hover:bg-surface-container-high transition-colors font-title-sm py-2 px-4 rounded-DEFAULT"
+              className="w-1/2 text-on-surface border border-outline-variant hover:bg-surface-container-high transition-colors font-title-sm py-2 px-4 rounded-DEFAULT cursor-pointer disabled:opacity-50"
             >
               Cancel
             </button>
             <button 
               onClick={handleDelete}
               disabled={!isMatch || loading}
-              className="w-1/2 bg-red-600 text-white font-title-md text-title-md py-3 px-4 rounded-DEFAULT hover:bg-red-700 transition-colors disabled:opacity-50"
+              className="w-1/2 bg-red-600 text-white font-title-md text-title-md py-3 px-4 rounded-DEFAULT hover:bg-red-700 transition-colors cursor-pointer disabled:opacity-50"
             >
               {loading ? 'Deleting...' : 'Delete Permanently'}
             </button>
