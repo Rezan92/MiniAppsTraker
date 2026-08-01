@@ -191,10 +191,10 @@ export const CompanyProfile = () => {
               <span className="material-symbols-outlined text-red-600" style={{ fontSize: '20px' }}>warning</span>
               Danger Zone
             </h3>
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mt-4">
-              <div className="flex-1 min-w-0">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mt-4 w-full">
+              <div className="w-full md:flex-1">
                 <h4 className="font-title-sm text-on-surface mb-1">Delete Workspace</h4>
-                <p className="font-body-sm text-on-surface-variant max-w-xl">
+                <p className="font-body-sm text-on-surface-variant">
                   Permanently delete this workspace and all associated data. This action is irreversible and affects all members.
                 </p>
               </div>
