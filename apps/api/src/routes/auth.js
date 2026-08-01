@@ -13,46 +13,54 @@ router.get('/me', authenticate, (req, res) => {
   });
 });
 
-// POST /api/auth/onboard-tenant
+// POST /api/auth/onboarding
 const onboardSchema = z.object({
-  company_name: z.string().min(2, "Company name must be at least 2 characters")
+  name: z.string().min(2, "Business name must be at least 2 characters"),
+  phone: z.string().optional(),
+  address: z.string().optional()
 });
 
-router.post('/onboard-tenant', authenticate, async (req, res, next) => {
+router.post('/onboarding', authenticate, async (req, res, next) => {
   try {
     const result = onboardSchema.safeParse(req.body);
     if (!result.success) {
       return res.status(400).json({ success: false, error: result.error.errors[0].message });
     }
-    const { company_name } = result.data;
+    const { name, phone, address } = result.data;
 
+    // Check if user already has an active tenant
     if (req.user.tenant_id) {
-      return res.status(400).json({ success: false, error: 'User is already associated with a tenant' });
+      return res.status(400).json({ success: false, error: 'User is already associated with an active tenant workspace' });
     }
 
-    // Insert new tenant
+    // 1. Create the tenant
     const { data: tenant, error: tenantError } = await supabase
       .from('tenants')
-      .insert([{ company_name }])
+      .insert([{ name, phone, address }])
       .select('id')
       .single();
 
     if (tenantError || !tenant) {
-      throw new Error(`Failed to create tenant: ${tenantError?.message || 'Unknown error'}`);
+      throw new Error(`Failed to create business profile: ${tenantError?.message || 'Unknown error'}`);
     }
 
-    // Assign tenant to user and set role to admin
+    // 2. Create the tenant_members record linking user as admin
+    const { error: memberError } = await supabase
+      .from('tenant_members')
+      .insert([{ tenant_id: tenant.id, user_id: req.user.id, role: 'admin' }]);
+    
+    if (memberError) {
+      throw new Error(`Failed to link user to business: ${memberError.message}`);
+    }
+
+    // 3. Set users.last_active_tenant_id
     const { error: userError } = await supabase
       .from('users')
-      .upsert({
-        id: req.user.id,
-        email: req.user.email,
-        tenant_id: tenant.id,
-        role: 'admin'
-      });
+      .update({ last_active_tenant_id: tenant.id })
+      .eq('id', req.user.id);
 
     if (userError) {
-      throw new Error(`Failed to link user to tenant: ${userError.message}`);
+      throw new Error(`Failed to update active workspace: ${userError.message}`);
     }
 
     res.json({
@@ -60,7 +68,52 @@ router.post('/onboard-tenant', authenticate, async (req, res, next) => {
       data: {
         tenant_id: tenant.id,
         role: 'admin',
-        message: 'Tenant successfully created and linked'
+        message: 'Business profile successfully created'
+      }
+    });
+
+  } catch (err) {
+    next(err);
+  }
+});
+
+// POST /api/auth/switch-workspace
+router.post('/switch-workspace', authenticate, async (req, res, next) => {
+  try {
+    const { target_tenant_id } = req.body;
+    if (!target_tenant_id) {
+      return res.status(400).json({ success: false, error: 'target_tenant_id is required' });
+    }
+
+    // Verify user belongs to this tenant
+    const { data: member, error: memError } = await supabase
+      .from('tenant_members')
+      .select('role')
+      .eq('tenant_id', target_tenant_id)
+      .eq('user_id', req.user.id)
+      .eq('status', 'active')
+      .maybeSingle();
+
+    if (memError || !member) {
+      return res.status(403).json({ success: false, error: 'Access denied to this workspace' });
+    }
+
+    // Update last_active_tenant_id
+    const { error: updateError } = await supabase
+      .from('users')
+      .update({ last_active_tenant_id: target_tenant_id })
+      .eq('id', req.user.id);
+
+    if (updateError) {
+      throw new Error(`Failed to switch workspace: ${updateError.message}`);
+    }
+
+    res.json({
+      success: true,
+      data: {
+        tenant_id: target_tenant_id,
+        role: member.role,
+        message: 'Switched workspace successfully'
       }
     });
 
