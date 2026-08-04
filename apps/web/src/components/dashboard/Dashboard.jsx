@@ -106,7 +106,7 @@ export const Dashboard = () => {
           <span className="material-symbols-outlined text-5xl">rocket_launch</span>
         </div>
         <h1 className="font-headline-lg text-headline-lg font-bold text-gray-900 mb-4">Welcome to Your Workspace!</h1>
-        <p className="font-body-lg text-gray-600 mb-8 max-w-lg">
+        <p className="font-body-lg text-gray-600 mb-8 w-full max-w-[500px]">
           You have no active clients or jobs yet. Let's get started by creating your first client and setting up your first job.
         </p>
         <div className="flex flex-col sm:flex-row gap-4">
