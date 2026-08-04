@@ -213,8 +213,7 @@
 @media print {
     @page {
         size: A4;
-        margin: 15mm 15mm;
-        background-color: #ffffff;
+        margin: 0;
     }
     body {
         margin: 0;
@@ -229,7 +228,7 @@
     }
     .invoice-preview-paper {
         box-shadow: none;
-        padding: 0;
+        padding: 15mm 15mm;
         width: 100%;
         min-height: auto;
     }
