@@ -11,3 +11,6 @@
   - UI Verification: Integrate an address autocomplete provider (e.g., Google Places API) in Client and Property creation forms to enforce standardized US addresses.
   - Schema Enforcement: Enhance frontend and backend Zod schemas with regex validation for US phone numbers `(XXX) XXX-XXXX` and strict RFC email validation.
   - UX: Implement clear, inline error handling in the Material UI forms for invalid data entry.
+
+- [ ] **Task 4.3: Invoice Property Address Integration**
+  - "When rental properties are built, update the Invoice Builder to allow selecting a rental property from the client's properties list, auto-populating the invoice's property_address field."

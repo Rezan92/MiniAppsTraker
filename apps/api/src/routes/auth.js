@@ -205,7 +205,7 @@ router.get('/workspaces/:id', authenticate, async (req, res, next) => {
 router.patch('/workspaces/:id', authenticate, async (req, res, next) => {
   try {
     const tenant_id = req.params.id;
-    const { name, address, phone, timezone } = req.body;
+    const { name, address, phone, timezone, business_tagline, payment_method, payment_details } = req.body;
 
     // Verify user is an admin of this tenant
     const { data: member, error: memError } = await supabase
@@ -233,7 +233,10 @@ router.patch('/workspaces/:id', authenticate, async (req, res, next) => {
         name: name.trim(), 
         address, 
         phone: sanitizedPhone, 
-        timezone: timezone || 'UTC' 
+        timezone: timezone || 'UTC',
+        business_tagline: business_tagline || null,
+        payment_method: payment_method || null,
+        payment_details: payment_details || null
       })
       .eq('id', tenant_id)
       .select('*')

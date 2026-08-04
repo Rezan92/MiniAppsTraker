@@ -64,3 +64,12 @@ This epic tracks all pending HTML/Tailwind screen designs required from the UI/U
 - [ ] **Task 17.14: Calendar View Screen**
   - **Description:** The `/calendar` tab. (Future — do not design yet, just track.)
   - **Content:** Day/week/month toggle, job blocks color-coded by status, click-to-create interaction. Reference: Google Calendar, Cal.com, Calendly for visual inspiration.
+
+- [ ] **Task 17.15: Invoice List Screen**
+  - **Description:** The `/invoices` tab showing all invoices in a data table with status badges, filters, and a "+ Create Invoice" button.
+
+- [ ] **Task 17.16: Invoice Builder/Editor Screen**
+  - **Description:** The form for creating or editing a draft invoice. Client selector, optional job selector, labor section, materials section.
+
+- [ ] **Task 17.17: Invoice Preview/PDF Screen**
+  - **Description:** The full invoice rendered in the exact PDF format (header, bill-to, work description table, summary, payment instructions). This doubles as the print template.

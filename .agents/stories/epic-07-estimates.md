@@ -16,3 +16,6 @@ A dedicated module allowing the user to generate, send, and track pre-job estima
   - Build `EstimateList.jsx`: A data table tracking all quotes by status.
   - Build `EstimateBuilder.jsx`: A dynamic form allowing users to add line items, calculate totals, and save the quote.
   - Add a "Convert to Job" action button on the Estimate Details view.
+
+- [ ] **Task 7.4: Estimate-to-Invoice Pipeline Verification**
+  - "When estimates are built and the estimate-to-job conversion is functional, verify that the Job → Invoice auto-populate flow works correctly for jobs that originated from approved estimates."

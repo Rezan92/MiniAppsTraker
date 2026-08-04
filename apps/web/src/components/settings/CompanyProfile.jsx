@@ -15,7 +15,10 @@ export const CompanyProfile = () => {
     name: '',
     address: '',
     phone: '',
-    timezone: 'UTC'
+    timezone: 'UTC',
+    business_tagline: '',
+    payment_method: '',
+    payment_details: ''
   });
 
   const isAdmin = userData?.role === 'admin';
@@ -33,7 +36,10 @@ export const CompanyProfile = () => {
             name: json.data.name || '',
             address: json.data.address || '',
             phone: json.data.phone || '',
-            timezone: json.data.timezone || 'UTC'
+            timezone: json.data.timezone || 'UTC',
+            business_tagline: json.data.business_tagline || '',
+            payment_method: json.data.payment_method || '',
+            payment_details: json.data.payment_details || ''
           });
         }
       } catch (err) {
@@ -158,6 +164,51 @@ export const CompanyProfile = () => {
                 <option value="America/Denver">Mountain Time (US & Canada)</option>
                 <option value="America/Los_Angeles">Pacific Time (US & Canada)</option>
               </select>
+            </div>
+          </div>
+          
+          {/* Invoice & Payment Settings */}
+          <div className="pt-6 border-t border-outline-variant mt-6">
+            <h4 className="font-title-sm text-title-sm text-on-surface mb-4">Invoice & Payment Settings</h4>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="md:col-span-2">
+                <label className="block font-label-md text-label-md text-on-surface mb-xs">Business Tagline (Printed on Invoices)</label>
+                <input 
+                  type="text" 
+                  name="business_tagline"
+                  disabled={!isAdmin}
+                  value={formData.business_tagline}
+                  onChange={handleChange}
+                  placeholder="e.g. Quality work at a fair price"
+                  className="w-full px-4 py-3 border border-outline-variant rounded-DEFAULT bg-surface-container-lowest font-body-md text-on-surface focus:ring-1 focus:ring-primary focus:border-primary transition-all disabled:opacity-60"
+                />
+              </div>
+
+              <div>
+                <label className="block font-label-md text-label-md text-on-surface mb-xs">Payment Method Name</label>
+                <input 
+                  type="text" 
+                  name="payment_method"
+                  disabled={!isAdmin}
+                  value={formData.payment_method}
+                  onChange={handleChange}
+                  placeholder="e.g. Bank Transfer, Venmo, Check"
+                  className="w-full px-4 py-3 border border-outline-variant rounded-DEFAULT bg-surface-container-lowest font-body-md text-on-surface focus:ring-1 focus:ring-primary focus:border-primary transition-all disabled:opacity-60"
+                />
+              </div>
+
+              <div>
+                <label className="block font-label-md text-label-md text-on-surface mb-xs">Payment Details</label>
+                <input 
+                  type="text" 
+                  name="payment_details"
+                  disabled={!isAdmin}
+                  value={formData.payment_details}
+                  onChange={handleChange}
+                  placeholder="e.g. Routing/Account # or @username"
+                  className="w-full px-4 py-3 border border-outline-variant rounded-DEFAULT bg-surface-container-lowest font-body-md text-on-surface focus:ring-1 focus:ring-primary focus:border-primary transition-all disabled:opacity-60"
+                />
+              </div>
             </div>
           </div>
         </div>

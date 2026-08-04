@@ -9,6 +9,9 @@ import { ClientList } from './components/clients/ClientList';
 import { JobList } from './components/jobs/JobList';
 import { ClientDetails } from './components/clients/ClientDetails';
 import { JobDetails } from './components/jobs/JobDetails';
+import { InvoiceList } from './components/invoices/InvoiceList';
+import { InvoiceBuilder } from './components/invoices/InvoiceBuilder';
+import { InvoiceDetails } from './components/invoices/InvoiceDetails';
 import { ProtectedRoute } from './components/layout/ProtectedRoute';
 import { NotFound } from './components/errors/NotFound';
 import { Unauthorized } from './components/errors/Unauthorized';
@@ -37,6 +40,10 @@ const MainApp = () => {
         <Route path="clients/:id" element={<ClientDetails />} />
         <Route path="jobs" element={<JobList />} />
         <Route path="jobs/:id" element={<JobDetails />} />
+        <Route path="invoices" element={<InvoiceList />} />
+        <Route path="invoices/new" element={<InvoiceBuilder />} />
+        <Route path="invoices/:id" element={<InvoiceDetails />} />
+        <Route path="invoices/:id/edit" element={<InvoiceBuilder />} />
         <Route path="settings" element={<SettingsLayout />}>
           <Route index element={<Navigate to="company" replace />} />
           <Route path="company" element={<AdminRoute><CompanyProfile /></AdminRoute>} />

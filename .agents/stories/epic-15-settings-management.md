@@ -21,6 +21,9 @@ Build the centralized Settings interface where Business Admins can manage their 
   - Build the UI for Admins to update these defaults.
   - Ensure the Estimate and Job creation forms automatically pull from these tenant defaults when a new record is created.
 
+- [ ] **Task 15.3b: Tax Calculation in Invoices**
+  - "When default_tax_rate is implemented in Service Configuration, add tax line calculation to the invoice builder, update the InvoicePreview PDF template to show tax as a line item before Total Due, and update the backend to persist and calculate tax amounts."
+
 - [ ] **Task 15.4: Personal Account Management**
   - Build a "My Account" tab accessible to ALL users (Admins and Employees).
   - Allow users to update their global `users` record (Full Name, Phone Number, Avatar) and reset their password.
