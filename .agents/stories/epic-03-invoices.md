@@ -25,3 +25,4 @@
 - [x] **US-3.6:** "As an Admin, I want to manage invoice status (draft → sent → paid) so I can track the payment lifecycle."
 - [x] **US-3.7:** "As an Admin, I want to see a list of all invoices with filters by status, client, and date range."
 - [x] **US-3.8:** "As an Admin, I want my business tagline and payment instructions to appear on every invoice, configured once in my tenant settings."
+- [ ] **US-3.9: Quick Job Creation from Invoice Builder** — "As an Admin, I want a 'Create New Job' shortcut in the job selector dropdown when building an invoice, so I can create a job on the fly without leaving the invoice form."

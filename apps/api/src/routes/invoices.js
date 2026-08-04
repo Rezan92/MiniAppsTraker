@@ -61,7 +61,7 @@ router.get('/:id', async (req, res, next) => {
       .select(`
         *,
         clients(name, email, phone, address),
-        tenants(company_name, business_tagline, payment_method, payment_details),
+        tenants(name, business_tagline, payment_method, payment_details),
         invoice_items(*)
       `)
       .eq('id', req.params.id)
@@ -87,7 +87,8 @@ router.post('/', async (req, res, next) => {
       return res.status(400).json({ success: false, error: result.error.issues[0].message });
     }
 
-    const { materials, labor_details, ...invoiceData } = result.data;
+    const { materials, labor_details, due_date, ...invoiceData } = result.data;
+    const sanitizedDueDate = due_date === '' ? null : due_date;
     const materialsAmount = materials.reduce((sum, m) => sum + m.cost, 0);
     const totalAmount = (invoiceData.labor_amount || 0) + materialsAmount;
 
@@ -107,6 +108,7 @@ router.post('/', async (req, res, next) => {
       .from('invoices')
       .insert([{
         ...invoiceData,
+        due_date: sanitizedDueDate,
         tenant_id: req.user.tenant_id,
         invoice_number: invoiceNumber,
         materials_amount: materialsAmount,
@@ -169,7 +171,8 @@ router.patch('/:id', async (req, res, next) => {
       return res.status(400).json({ success: false, error: result.error.issues[0].message });
     }
 
-    const { materials, labor_details, ...invoiceData } = result.data;
+    const { materials, labor_details, due_date, ...invoiceData } = result.data;
+    const sanitizedDueDate = due_date === '' ? null : due_date;
     const materialsAmount = materials.reduce((sum, m) => sum + m.cost, 0);
     const totalAmount = (invoiceData.labor_amount || 0) + materialsAmount;
 
@@ -191,6 +194,7 @@ router.patch('/:id', async (req, res, next) => {
       .from('invoices')
       .update({
         ...invoiceData,
+        due_date: sanitizedDueDate,
         materials_amount: materialsAmount,
         total_amount: totalAmount
       })
