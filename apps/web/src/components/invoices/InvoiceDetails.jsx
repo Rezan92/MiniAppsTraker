@@ -58,7 +58,7 @@ export const InvoiceDetails = () => {
   };
 
   const handlePrint = useReactToPrint({
-    content: () => componentRef.current,
+    contentRef: componentRef,
     documentTitle: generateFilename(),
   });
 
@@ -120,7 +120,7 @@ export const InvoiceDetails = () => {
       {/* Action Bar */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4 bg-white p-4 rounded-xl shadow-sm border border-gray-200">
         <div className="flex items-center gap-4">
-          <button onClick={() => navigate('/invoices')} className="text-gray-500 hover:text-gray-700 p-2 rounded-full hover:bg-gray-100 transition-colors">
+          <button onClick={() => navigate('/invoices')} className="text-gray-500 hover:text-gray-700 p-2 rounded-full hover:bg-gray-100 transition-colors cursor-pointer">
             <span className="material-symbols-outlined">arrow_back</span>
           </button>
           <div>
@@ -135,7 +135,7 @@ export const InvoiceDetails = () => {
           {isDraft && (
             <Link 
               to={`/invoices/${id}/edit`}
-              className="inline-flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
+              className="inline-flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 cursor-pointer"
             >
               <span className="material-symbols-outlined text-[18px]">edit</span>
               Edit Draft
@@ -143,8 +143,8 @@ export const InvoiceDetails = () => {
           )}
 
           <button 
-            onClick={handlePrint}
-            className="inline-flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
+            onClick={() => handlePrint()}
+            className="inline-flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 cursor-pointer"
           >
             <span className="material-symbols-outlined text-[18px]">print</span>
             Print / PDF
@@ -153,7 +153,7 @@ export const InvoiceDetails = () => {
           {isDraft && (
             <button 
               onClick={() => statusMutation.mutate('sent')}
-              className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700"
+              className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 cursor-pointer"
             >
               <span className="material-symbols-outlined text-[18px]">send</span>
               Mark as Sent
@@ -163,7 +163,7 @@ export const InvoiceDetails = () => {
           {(invoice.status === 'sent' || invoice.status === 'overdue' || invoice.status === 'in_progress') && (
             <button 
               onClick={() => statusMutation.mutate('paid')}
-              className="inline-flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg text-sm font-medium hover:bg-green-700"
+              className="inline-flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg text-sm font-medium hover:bg-green-700 cursor-pointer"
             >
               <span className="material-symbols-outlined text-[18px]">check_circle</span>
               Mark as Paid
@@ -177,7 +177,7 @@ export const InvoiceDetails = () => {
                   deleteMutation.mutate();
                 }
               }}
-              className="inline-flex items-center p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors ml-2"
+              className="inline-flex items-center p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors ml-2 cursor-pointer"
               title="Delete Invoice"
             >
               <span className="material-symbols-outlined text-[20px]">delete</span>
