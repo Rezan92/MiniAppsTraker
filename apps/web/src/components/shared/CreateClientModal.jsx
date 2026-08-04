@@ -28,7 +28,10 @@ export const CreateClientModal = ({ open, onClose }) => {
         body: JSON.stringify(formData)
       });
       const json = await res.json();
-      if (!res.ok || !json.success) throw new Error(json.error || 'Failed to create client');
+      if (!res.ok || !json.success) {
+        const errorMsg = typeof json.error === 'object' ? (json.error.message || JSON.stringify(json.error)) : (json.error || 'Failed to create client');
+        throw new Error(errorMsg);
+      }
       
       showSuccess('Client created successfully');
       setFormData(initialForm);

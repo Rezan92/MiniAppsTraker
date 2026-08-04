@@ -49,6 +49,7 @@ export const CreateJobModal = ({ open, onClose }) => {
     
     // Clean up numeric fields
     const payload = { ...formData };
+    delete payload.description; // Ensure it's not sent if accidentally present
     if (payload.rate_type === 'hourly') {
       payload.hourly_rate = payload.hourly_rate ? parseFloat(payload.hourly_rate) : undefined;
       payload.flat_rate = undefined;
@@ -67,7 +68,10 @@ export const CreateJobModal = ({ open, onClose }) => {
         body: JSON.stringify(payload)
       });
       const json = await res.json();
-      if (!res.ok || !json.success) throw new Error(json.error || 'Failed to create job');
+      if (!res.ok || !json.success) {
+        const errorMsg = typeof json.error === 'object' ? (json.error.message || JSON.stringify(json.error)) : (json.error || 'Failed to create job');
+        throw new Error(errorMsg);
+      }
       
       showSuccess('Job created successfully');
       setFormData(initialForm);
