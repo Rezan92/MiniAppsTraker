@@ -26,3 +26,4 @@
 - [x] **US-3.7:** "As an Admin, I want to see a list of all invoices with filters by status, client, and date range."
 - [x] **US-3.8:** "As an Admin, I want my business tagline and payment instructions to appear on every invoice, configured once in my tenant settings."
 - [ ] **US-3.9: Quick Job Creation from Invoice Builder** — "As an Admin, I want a 'Create New Job' shortcut in the job selector dropdown when building an invoice, so I can create a job on the fly without leaving the invoice form."
+- [x] **US-3.10: Auto-named PDF Downloads** — "As an Admin, I want downloaded invoice PDFs to have a descriptive filename including the client name, property address, invoice number, and timestamp, so my files are organized and identifiable."

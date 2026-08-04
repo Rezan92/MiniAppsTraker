@@ -36,9 +36,30 @@ export const InvoiceDetails = () => {
     enabled: !!session
   });
 
+  const generateFilename = () => {
+    if (!invoice) return 'Invoice';
+    
+    const sanitize = (str) => str ? str.replace(/[^a-zA-Z0-9 ]/g, '').trim().replace(/\s+/g, '_') : '';
+    
+    const clientName = sanitize(invoice.clients?.name);
+    
+    let propertyStr = '';
+    if (invoice.property_address) {
+      const firstLine = invoice.property_address.split('\n')[0];
+      propertyStr = sanitize(firstLine);
+    }
+    
+    const parts = [clientName];
+    if (propertyStr) parts.push(propertyStr);
+    parts.push(invoice.invoice_number);
+    parts.push(Date.now());
+    
+    return parts.filter(Boolean).join('_');
+  };
+
   const handlePrint = useReactToPrint({
     content: () => componentRef.current,
-    documentTitle: invoice ? `Invoice_#${invoice.invoice_number}` : 'Invoice',
+    documentTitle: generateFilename(),
   });
 
   const statusMutation = useMutation({
