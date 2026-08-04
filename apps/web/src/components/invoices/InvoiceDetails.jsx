@@ -38,7 +38,7 @@ export const InvoiceDetails = () => {
 
   const handlePrint = useReactToPrint({
     content: () => componentRef.current,
-    documentTitle: invoice ? `Invoice_${invoice.invoice_number}` : 'Invoice',
+    documentTitle: invoice ? `Invoice_#${invoice.invoice_number}` : 'Invoice',
   });
 
   const statusMutation = useMutation({
@@ -103,7 +103,7 @@ export const InvoiceDetails = () => {
             <span className="material-symbols-outlined">arrow_back</span>
           </button>
           <div>
-            <h1 className="text-title-lg font-bold text-gray-900">Invoice {invoice.invoice_number}</h1>
+            <h1 className="text-title-lg font-bold text-gray-900">Invoice #{invoice.invoice_number}</h1>
             <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-label-sm font-medium capitalize mt-1 ${STATUS_COLORS[invoice.status] || 'bg-gray-100'}`}>
               {invoice.status.replace('_', ' ')}
             </span>

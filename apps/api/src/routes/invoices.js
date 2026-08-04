@@ -101,7 +101,7 @@ router.post('/', async (req, res, next) => {
       .single();
       
     if (tenantError) throw tenantError;
-    const invoiceNumber = `INV-${tenant.next_invoice_number}`;
+    const invoiceNumber = `${tenant.next_invoice_number}`;
 
     // 2. Insert invoice
     const { data: invoice, error: invoiceError } = await supabase

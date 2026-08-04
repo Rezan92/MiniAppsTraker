@@ -108,7 +108,7 @@ export const InvoiceList = () => {
                     className="hover:bg-gray-50 cursor-pointer transition-colors"
                   >
                     <td className="p-4">
-                      <div className="font-title-sm text-gray-900">{invoice.invoice_number}</div>
+                      <div className="font-title-sm text-gray-900">#{invoice.invoice_number}</div>
                     </td>
                     <td className="p-4">
                       <div className="font-title-sm text-gray-900">{invoice.clients?.name}</div>
