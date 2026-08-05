@@ -34,7 +34,7 @@ export const AddJobHoursModal = ({ open, onClose, onSubmit, hoursData, setHoursD
         onMouseDown={e => e.stopPropagation()}
       >
         <div className="px-6 py-4 border-b border-outline-variant flex justify-between items-center">
-          <h2 className="font-title-md text-title-md font-bold text-primary">Log Hours</h2>
+          <h2 className="font-title-md text-title-md font-bold text-primary">{hoursData.id ? 'Edit Hours' : 'Log Hours'}</h2>
           <button 
             type="button"
             onClick={onClose}
@@ -123,7 +123,7 @@ export const AddJobHoursModal = ({ open, onClose, onSubmit, hoursData, setHoursD
             disabled={!hoursData.date || !hoursData.hours} 
             className="px-4 py-2 bg-primary text-black font-body-md font-bold rounded cursor-pointer hover:bg-opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors focus:outline-none focus:ring-2 focus:ring-primary shadow-sm"
           >
-            Log Hours
+            {hoursData.id ? 'Save Changes' : 'Log Hours'}
           </button>
         </div>
       </div>

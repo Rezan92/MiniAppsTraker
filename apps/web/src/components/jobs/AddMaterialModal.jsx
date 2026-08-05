@@ -13,7 +13,7 @@ export const AddMaterialModal = ({ open, onClose, onSubmit, matData, setMatData 
         onMouseDown={e => e.stopPropagation()}
       >
         <div className="px-6 py-4 border-b border-outline-variant flex justify-between items-center">
-          <h2 className="font-title-md text-title-md font-bold text-primary">Add Material to Job</h2>
+          <h2 className="font-title-md text-title-md font-bold text-primary">{matData.id ? 'Edit Material' : 'Add Material to Job'}</h2>
           <button 
             type="button"
             onClick={onClose}
@@ -118,7 +118,7 @@ export const AddMaterialModal = ({ open, onClose, onSubmit, matData, setMatData 
             disabled={!matData.description || !matData.cost}
             className="px-4 py-2 bg-primary text-black font-body-md font-bold rounded cursor-pointer hover:bg-opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors focus:outline-none focus:ring-2 focus:ring-primary shadow-sm"
           >
-            Add Material
+            {matData.id ? 'Save Changes' : 'Add Material'}
           </button>
         </div>
       </div>

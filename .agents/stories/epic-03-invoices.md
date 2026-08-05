@@ -15,10 +15,13 @@
 - [x] **Task 3.4: PDF Invoice Rendering & Client Delivery**
   - Generate clean, printable PDF invoices with company header, line item breakdown, payment status badge, and total amount due.
 
-- [ ] **Task 3.5: Invoice Payment Tracking & Partial Balances**
+- [x] **Task 3.5: Invoice Payment Tracking & Partial Balances**
   - Create `invoice_payments` table to log multiple payments per invoice.
   - Track remaining balance based on partial payments.
   - Automatically update invoice status to `in_progress` or `paid` based on payment thresholds.
+
+- [x] **Task 3.6: Job Data Integrity for Invoices**
+  - "As a user, I need to edit or delete logged hours and materials on a job so that the data flowing into my auto-generated invoices is accurate."
 
 ## User Stories
 
@@ -30,10 +33,10 @@
 - [x] **US-3.6:** "As an Admin, I want to manage invoice status (draft → sent → paid) so I can track the payment lifecycle."
 - [x] **US-3.7:** "As an Admin, I want to see a list of all invoices with filters by status, client, and date range."
 - [x] **US-3.8:** "As an Admin, I want my business tagline and payment instructions to appear on every invoice, configured once in my tenant settings."
-- [ ] **US-3.9: Quick Job Creation from Invoice Builder** — "As an Admin, I want a 'Create New Job' shortcut in the job selector dropdown when building an invoice, so I can create a job on the fly without leaving the invoice form."
+- [x] **US-3.9: Quick Job Creation from Invoice Builder** — "As an Admin, I want a 'Create New Job' shortcut in the job selector dropdown when building an invoice, so I can create a job on the fly without leaving the invoice form."
 - [x] **US-3.10: Auto-named PDF Downloads** — "As an Admin, I want downloaded invoice PDFs to have a descriptive filename including the client name, property address, invoice number, and timestamp, so my files are organized and identifiable."
-- [ ] **US-3.11:** "As an Admin, when I record a payment on an invoice, I want a prompt asking how much was paid and the payment method used, so I can accurately log the transaction."
-- [ ] **US-3.12:** "As an Admin, I want to log partial payments against an invoice so the system can track the remaining balance due."
-- [ ] **US-3.13:** "As an Admin, I want the invoice status to automatically update to 'in_progress' if partially paid, and 'paid' when the balance reaches zero."
+- [x] **US-3.11:** "As an Admin, when I record a payment on an invoice, I want a prompt asking how much was paid and the payment method used, so I can accurately log the transaction."
+- [x] **US-3.12:** "As an Admin, I want to log partial payments against an invoice so the system can track the remaining balance due."
+- [x] **US-3.13:** "As an Admin, I want the invoice status to automatically update to 'in_progress' if partially paid, and 'paid' when the balance reaches zero."
 
 *Technical Note:* This will require a new `invoice_payments` table (`id`, `invoice_id`, `amount`, `payment_method`, `payment_date`, `notes`) to log multiple payments per invoice.

@@ -63,8 +63,13 @@ export const JobDetails = () => {
   const handleAddMaterial = async () => {
     try {
       const payload = { ...matData, cost: parseFloat(matData.cost) };
-      const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:4000'}/api/jobs/${id}/materials`, {
-        method: 'POST',
+      const method = matData.id ? 'PATCH' : 'POST';
+      const url = matData.id 
+        ? `${import.meta.env.VITE_API_URL || 'http://localhost:4000'}/api/jobs/${id}/materials/${matData.id}`
+        : `${import.meta.env.VITE_API_URL || 'http://localhost:4000'}/api/jobs/${id}/materials`;
+
+      const res = await fetch(url, {
+        method,
         headers: { 
           'Authorization': `Bearer ${session?.access_token}`,
           'Content-Type': 'application/json'
@@ -74,11 +79,11 @@ export const JobDetails = () => {
       if (res.ok) {
         setMatOpen(false);
         setMatData({ description: '', cost: '', is_from_stock: false, store: '', purchase_date: '', notes: '' });
-        showSuccess('Material added successfully!');
+        showSuccess(`Material ${matData.id ? 'updated' : 'added'} successfully!`);
         queryClient.invalidateQueries({ queryKey: ['materials', 'job', id] });
       } else {
         const errorData = await res.json();
-        showError(errorData.error?.message || 'Failed to add material');
+        showError(errorData.error?.message || `Failed to ${matData.id ? 'update' : 'add'} material`);
       }
     } catch (err) {
       console.error(err);
@@ -89,8 +94,13 @@ export const JobDetails = () => {
   const handleLogHours = async () => {
     try {
       const payload = { ...hoursData, hours: parseFloat(hoursData.hours) };
-      const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:4000'}/api/jobs/${id}/hours`, {
-        method: 'POST',
+      const method = hoursData.id ? 'PATCH' : 'POST';
+      const url = hoursData.id 
+        ? `${import.meta.env.VITE_API_URL || 'http://localhost:4000'}/api/jobs/${id}/hours/${hoursData.id}`
+        : `${import.meta.env.VITE_API_URL || 'http://localhost:4000'}/api/jobs/${id}/hours`;
+
+      const res = await fetch(url, {
+        method,
         headers: { 
           'Authorization': `Bearer ${session?.access_token}`,
           'Content-Type': 'application/json'
@@ -100,14 +110,52 @@ export const JobDetails = () => {
       if (res.ok) {
         setHoursOpen(false);
         setHoursData({ date: new Date().toISOString().split('T')[0], hours: '', description: '', start_time: '', end_time: '' });
-        showSuccess('Hours logged successfully!');
+        showSuccess(`Hours ${hoursData.id ? 'updated' : 'logged'} successfully!`);
         queryClient.invalidateQueries({ queryKey: ['hours', 'job', id] });
       } else {
         const errorData = await res.json();
-        showError(errorData.error?.message || 'Failed to log hours');
+        showError(errorData.error?.message || `Failed to ${hoursData.id ? 'update' : 'log'} hours`);
       }
     } catch (err) {
       console.error(err);
+      showError('An unexpected error occurred.');
+    }
+  };
+
+  const handleDeleteHour = async (hourId) => {
+    if (!window.confirm("Are you sure you want to delete this hour entry?")) return;
+    try {
+      const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:4000'}/api/jobs/${id}/hours/${hourId}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${session?.access_token}` }
+      });
+      if (res.ok) {
+        showSuccess('Hour entry deleted successfully!');
+        queryClient.invalidateQueries({ queryKey: ['hours', 'job', id] });
+      } else {
+        const errorData = await res.json();
+        showError(errorData.error?.message || 'Failed to delete hour entry');
+      }
+    } catch (err) {
+      showError('An unexpected error occurred.');
+    }
+  };
+
+  const handleDeleteMaterial = async (materialId) => {
+    if (!window.confirm("Are you sure you want to delete this material entry?")) return;
+    try {
+      const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:4000'}/api/jobs/${id}/materials/${materialId}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${session?.access_token}` }
+      });
+      if (res.ok) {
+        showSuccess('Material entry deleted successfully!');
+        queryClient.invalidateQueries({ queryKey: ['materials', 'job', id] });
+      } else {
+        const errorData = await res.json();
+        showError(errorData.error?.message || 'Failed to delete material entry');
+      }
+    } catch (err) {
       showError('An unexpected error occurred.');
     }
   };
@@ -228,7 +276,7 @@ export const JobDetails = () => {
               <span className="material-symbols-outlined text-[18px]">schedule</span>
               Labor & Time
             </h3>
-            <button onClick={() => setHoursOpen(true)} className="px-3 py-1.5 bg-primary text-black font-body-md font-bold rounded cursor-pointer hover:bg-opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-sm flex items-center gap-1">
+            <button onClick={() => { setHoursData({ date: new Date().toISOString().split('T')[0], hours: '', description: '', start_time: '', end_time: '' }); setHoursOpen(true); }} className="px-3 py-1.5 bg-primary text-black font-body-md font-bold rounded cursor-pointer hover:bg-opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-sm flex items-center gap-1">
               <span className="material-symbols-outlined text-[16px]">add</span>
               Add Time
             </button>
@@ -240,20 +288,21 @@ export const JobDetails = () => {
                   <th className="p-3 border-b border-gray-200">Date</th>
                   <th className="p-3 border-b border-gray-200">Time / Desc</th>
                   <th className="p-3 border-b border-gray-200 text-right">Hours</th>
+                  <th className="p-3 border-b border-gray-200 text-right w-20">Actions</th>
                 </tr>
               </thead>
               <tbody className="text-gray-700">
                 {loadingHours ? (
                   <tr>
-                    <td colSpan="3" className="p-4 text-center text-gray-500">Loading hours...</td>
+                    <td colSpan="4" className="p-4 text-center text-gray-500">Loading hours...</td>
                   </tr>
                 ) : hours.length === 0 ? (
                   <tr>
-                    <td colSpan="3" className="p-4 text-center text-gray-400 italic">No hours logged yet.</td>
+                    <td colSpan="4" className="p-4 text-center text-gray-400 italic">No hours logged yet.</td>
                   </tr>
                 ) : (
                   hours.map(h => (
-                    <tr key={h.id} className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
+                    <tr key={h.id} className="border-b border-gray-100 hover:bg-gray-50 transition-colors group">
                       <td className="p-3 font-medium">{new Date(h.date).toLocaleDateString()}</td>
                       <td className="p-3">
                         {h.start_time && h.end_time && (
@@ -262,6 +311,16 @@ export const JobDetails = () => {
                         <div>{h.description || '-'}</div>
                       </td>
                       <td className="p-3 text-right font-medium">{h.hours} hrs</td>
+                      <td className="p-3 text-right">
+                        <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <button onClick={() => { setHoursData(h); setHoursOpen(true); }} className="text-gray-400 hover:text-blue-600 cursor-pointer" title="Edit">
+                            <span className="material-symbols-outlined text-[18px]">edit</span>
+                          </button>
+                          <button onClick={() => handleDeleteHour(h.id)} className="text-gray-400 hover:text-red-600 cursor-pointer" title="Delete">
+                            <span className="material-symbols-outlined text-[18px]">delete</span>
+                          </button>
+                        </div>
+                      </td>
                     </tr>
                   ))
                 )}
@@ -281,7 +340,7 @@ export const JobDetails = () => {
               <span className="material-symbols-outlined text-[18px]">shopping_cart</span>
               Materials & Expenses
             </h3>
-            <button onClick={() => setMatOpen(true)} className="px-3 py-1.5 bg-primary text-black font-body-md font-bold rounded cursor-pointer hover:bg-opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-sm flex items-center gap-1">
+            <button onClick={() => { setMatData({ description: '', cost: '', is_from_stock: false, store: '', purchase_date: '', notes: '' }); setMatOpen(true); }} className="px-3 py-1.5 bg-primary text-black font-body-md font-bold rounded cursor-pointer hover:bg-opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-sm flex items-center gap-1">
               <span className="material-symbols-outlined text-[16px]">add</span>
               Add Material
             </button>
@@ -293,26 +352,37 @@ export const JobDetails = () => {
                   <th className="p-3 border-b border-gray-200">Item</th>
                   <th className="p-3 border-b border-gray-200">Source / Date</th>
                   <th className="p-3 border-b border-gray-200 text-right">Cost</th>
+                  <th className="p-3 border-b border-gray-200 text-right w-20">Actions</th>
                 </tr>
               </thead>
               <tbody className="text-gray-700">
                 {loadingMaterials ? (
                   <tr>
-                    <td colSpan="3" className="p-4 text-center text-gray-500">Loading materials...</td>
+                    <td colSpan="4" className="p-4 text-center text-gray-500">Loading materials...</td>
                   </tr>
                 ) : materials.length === 0 ? (
                   <tr>
-                    <td colSpan="3" className="p-4 text-center text-gray-400 italic">No materials added yet.</td>
+                    <td colSpan="4" className="p-4 text-center text-gray-400 italic">No materials added yet.</td>
                   </tr>
                 ) : (
                   materials.map(m => (
-                    <tr key={m.id} className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
+                    <tr key={m.id} className="border-b border-gray-100 hover:bg-gray-50 transition-colors group">
                       <td className="p-3 font-medium">{m.description}</td>
                       <td className="p-3">
                         <div className="text-xs text-gray-500">{m.is_from_stock ? 'Stock' : m.store}</div>
                         <div className="text-xs">{m.purchase_date ? new Date(m.purchase_date).toLocaleDateString() : '-'}</div>
                       </td>
                       <td className="p-3 text-right font-medium">${Number(m.cost).toFixed(2)}</td>
+                      <td className="p-3 text-right">
+                        <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <button onClick={() => { setMatData(m); setMatOpen(true); }} className="text-gray-400 hover:text-blue-600 cursor-pointer" title="Edit">
+                            <span className="material-symbols-outlined text-[18px]">edit</span>
+                          </button>
+                          <button onClick={() => handleDeleteMaterial(m.id)} className="text-gray-400 hover:text-red-600 cursor-pointer" title="Delete">
+                            <span className="material-symbols-outlined text-[18px]">delete</span>
+                          </button>
+                        </div>
+                      </td>
                     </tr>
                   ))
                 )}

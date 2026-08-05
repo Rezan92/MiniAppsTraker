@@ -178,6 +178,65 @@ router.get('/:id/materials', async (req, res, next) => {
   }
 });
 
+router.patch('/:id/materials/:materialId', async (req, res, next) => {
+  try {
+    const result = materialSchema.safeParse(req.body);
+    if (!result.success) {
+      return res.status(400).json({ success: false, error: result.error.errors[0].message });
+    }
+
+    const { data: job, error: jobError } = await supabase
+      .from('jobs')
+      .select('id')
+      .eq('id', req.params.id)
+      .eq('tenant_id', req.user.tenant_id)
+      .single();
+
+    if (jobError || !job) {
+      return res.status(404).json({ success: false, error: 'Job not found' });
+    }
+
+    const { data, error } = await supabase
+      .from('job_materials')
+      .update(result.data)
+      .eq('id', req.params.materialId)
+      .eq('job_id', job.id)
+      .select()
+      .single();
+
+    if (error) throw error;
+    res.json({ success: true, data });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.delete('/:id/materials/:materialId', async (req, res, next) => {
+  try {
+    const { data: job, error: jobError } = await supabase
+      .from('jobs')
+      .select('id')
+      .eq('id', req.params.id)
+      .eq('tenant_id', req.user.tenant_id)
+      .single();
+
+    if (jobError || !job) {
+      return res.status(404).json({ success: false, error: 'Job not found' });
+    }
+
+    const { error } = await supabase
+      .from('job_materials')
+      .delete()
+      .eq('id', req.params.materialId)
+      .eq('job_id', job.id);
+
+    if (error) throw error;
+    res.json({ success: true });
+  } catch (err) {
+    next(err);
+  }
+});
+
 // Job Hours sub-routes
 router.post('/:id/hours', async (req, res, next) => {
   try {
@@ -234,6 +293,68 @@ router.get('/:id/hours', async (req, res, next) => {
 
     if (error) throw error;
     res.json({ success: true, data });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.patch('/:id/hours/:hourId', async (req, res, next) => {
+  try {
+    const result = jobHoursSchema.safeParse(req.body);
+    if (!result.success) {
+      const err = new Error(result.error.errors[0].message);
+      err.status = 400;
+      err.code = 'VALIDATION_ERROR';
+      return next(err);
+    }
+
+    const { data: job, error: jobError } = await supabase
+      .from('jobs')
+      .select('id')
+      .eq('id', req.params.id)
+      .eq('tenant_id', req.user.tenant_id)
+      .single();
+
+    if (jobError || !job) {
+      return res.status(404).json({ success: false, error: 'Job not found' });
+    }
+
+    const { data, error } = await supabase
+      .from('job_hours')
+      .update(result.data)
+      .eq('id', req.params.hourId)
+      .eq('job_id', job.id)
+      .select()
+      .single();
+
+    if (error) throw error;
+    res.json({ success: true, data });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.delete('/:id/hours/:hourId', async (req, res, next) => {
+  try {
+    const { data: job, error: jobError } = await supabase
+      .from('jobs')
+      .select('id')
+      .eq('id', req.params.id)
+      .eq('tenant_id', req.user.tenant_id)
+      .single();
+
+    if (jobError || !job) {
+      return res.status(404).json({ success: false, error: 'Job not found' });
+    }
+
+    const { error } = await supabase
+      .from('job_hours')
+      .delete()
+      .eq('id', req.params.hourId)
+      .eq('job_id', job.id);
+
+    if (error) throw error;
+    res.json({ success: true });
   } catch (err) {
     next(err);
   }
