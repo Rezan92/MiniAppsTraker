@@ -41,13 +41,6 @@ export const SettingsLayout = () => {
               </NavLink>
             </>
           )}
-          <NavLink 
-            to="/settings/account"
-            className={({ isActive }) => `flex items-center gap-2 px-3 py-2 rounded-lg font-body-md text-sm transition-colors ${isActive ? 'bg-primary-container text-on-primary-container' : 'text-on-surface-variant hover:bg-surface-container-high'}`}
-          >
-            <span className="material-symbols-outlined" style={{ fontSize: '20px' }}>person</span>
-            My Account
-          </NavLink>
         </nav>
       </div>
 
