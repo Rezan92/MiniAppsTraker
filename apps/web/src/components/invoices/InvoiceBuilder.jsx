@@ -334,15 +334,33 @@ export const InvoiceBuilder = () => {
               </div>
             </div>
 
-            <div className="mb-4">
-              <label className="block text-label-md text-gray-700 mb-1">Labor Notes (Optional)</label>
-              <input 
-                type="text" 
-                value={formData.labor_notes}
-                onChange={(e) => setFormData({...formData, labor_notes: e.target.value})}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary italic text-sm"
-                placeholder="e.g. Minimum 1-hour service charge applied"
-              />
+            <div className="flex flex-col md:flex-row gap-4 mb-4">
+              <div className="flex-1">
+                <label className="block text-label-md text-gray-700 mb-1">Labor Notes (Optional)</label>
+                <input 
+                  type="text" 
+                  value={formData.labor_notes}
+                  onChange={(e) => setFormData({...formData, labor_notes: e.target.value})}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary italic text-sm"
+                  placeholder="e.g. Minimum 1-hour service charge applied"
+                />
+              </div>
+              <div className="flex items-center pt-6">
+                <label className="flex items-center gap-2 cursor-pointer text-gray-700 font-medium select-none">
+                  <input
+                    type="checkbox"
+                    className="w-4 h-4 text-primary focus:ring-primary rounded border-gray-300 cursor-pointer"
+                    onChange={(e) => {
+                      const amount = Number(formData.labor_amount || 0);
+                      setFormData(prev => ({
+                        ...prev,
+                        labor_amount: e.target.checked ? amount + 30 : amount - 30
+                      }));
+                    }}
+                  />
+                  <span>Add $30 Service Fee</span>
+                </label>
+              </div>
             </div>
 
             <div className="space-y-3">

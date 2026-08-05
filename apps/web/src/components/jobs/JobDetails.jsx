@@ -312,11 +312,11 @@ export const JobDetails = () => {
                       </td>
                       <td className="p-3 text-right font-medium">{h.hours} hrs</td>
                       <td className="p-3 text-right">
-                        <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                          <button onClick={() => { setHoursData(h); setHoursOpen(true); }} className="text-gray-400 hover:text-blue-600 cursor-pointer" title="Edit">
+                        <div className="flex justify-end gap-2">
+                          <button onClick={() => { setHoursData(h); setHoursOpen(true); }} className="text-black hover:text-primary cursor-pointer transition-colors" title="Edit">
                             <span className="material-symbols-outlined text-[18px]">edit</span>
                           </button>
-                          <button onClick={() => handleDeleteHour(h.id)} className="text-gray-400 hover:text-red-600 cursor-pointer" title="Delete">
+                          <button onClick={() => handleDeleteHour(h.id)} className="text-black hover:text-red-600 cursor-pointer transition-colors" title="Delete">
                             <span className="material-symbols-outlined text-[18px]">delete</span>
                           </button>
                         </div>
@@ -374,11 +374,11 @@ export const JobDetails = () => {
                       </td>
                       <td className="p-3 text-right font-medium">${Number(m.cost).toFixed(2)}</td>
                       <td className="p-3 text-right">
-                        <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                          <button onClick={() => { setMatData(m); setMatOpen(true); }} className="text-gray-400 hover:text-blue-600 cursor-pointer" title="Edit">
+                        <div className="flex justify-end gap-2">
+                          <button onClick={() => { setMatData(m); setMatOpen(true); }} className="text-black hover:text-primary cursor-pointer transition-colors" title="Edit">
                             <span className="material-symbols-outlined text-[18px]">edit</span>
                           </button>
-                          <button onClick={() => handleDeleteMaterial(m.id)} className="text-gray-400 hover:text-red-600 cursor-pointer" title="Delete">
+                          <button onClick={() => handleDeleteMaterial(m.id)} className="text-black hover:text-red-600 cursor-pointer transition-colors" title="Delete">
                             <span className="material-symbols-outlined text-[18px]">delete</span>
                           </button>
                         </div>
