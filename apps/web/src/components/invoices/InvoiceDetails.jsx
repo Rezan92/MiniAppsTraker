@@ -6,6 +6,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useToast } from '../../contexts/ToastContext';
 import { translateApiError } from '../../utils/errorTranslator';
 import { InvoicePreview } from './InvoicePreview';
+import { DeleteInvoiceModal } from './DeleteInvoiceModal';
 
 const STATUS_COLORS = {
   draft: 'bg-gray-100 text-gray-800',
@@ -25,6 +26,7 @@ export const InvoiceDetails = () => {
 
   const [isEditingNotes, setIsEditingNotes] = useState(false);
   const [draftNotes, setDraftNotes] = useState('');
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
 
   const { data: invoice, isLoading } = useQuery({
     queryKey: ['invoice', id],
@@ -204,11 +206,7 @@ export const InvoiceDetails = () => {
 
           {isDraft && (
             <button 
-              onClick={() => {
-                if(window.confirm('Are you sure you want to delete this draft invoice?')) {
-                  deleteMutation.mutate();
-                }
-              }}
+              onClick={() => setDeleteModalOpen(true)}
               className="inline-flex items-center p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors ml-2 cursor-pointer"
               title="Delete Invoice"
             >
@@ -273,6 +271,14 @@ export const InvoiceDetails = () => {
           <InvoicePreview ref={componentRef} invoice={invoice} tenant={invoice.tenants} />
         </div>
       </div>
+
+      <DeleteInvoiceModal
+        isOpen={deleteModalOpen}
+        onClose={() => setDeleteModalOpen(false)}
+        onConfirm={() => deleteMutation.mutate()}
+        invoiceNumber={invoice.invoice_number}
+        loading={deleteMutation.isPending}
+      />
     </div>
   );
 };
