@@ -91,16 +91,19 @@ export const Dashboard = () => {
 
   const {
     activeClients = 0,
-    openJobs = 0,
-    monthlyRevenue = 0,
-    monthlyMaterialCosts = 0,
-    activeJobs = [],
-    upcomingJobs = [],
-    recentActivity = []
+    revenueThisMonth = 0,
+    totalOutstanding = 0,
+    jobsThisWeek = 0,
+    jobsThisMonth = 0,
+    unpaidInvoices = [],
+    inProgressJobs = [],
+    completedJobs = [],
+    upcomingJobs = []
   } = summary || {};
 
   // Empty State logic
-  if (activeClients === 0 && openJobs === 0 && monthlyRevenue === 0 && activeJobs.length === 0) {
+  // If a workspace has 0 clients, they definitely have 0 jobs and 0 invoices.
+  if (activeClients === 0) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[70vh] text-center px-4">
         <div className="w-24 h-24 bg-primary/20 text-primary rounded-full flex items-center justify-center mb-6">

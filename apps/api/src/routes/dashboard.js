@@ -24,6 +24,14 @@ router.get('/summary', async (req, res, next) => {
     
     const todayStr = new Date().toISOString().split('T')[0];
 
+    // 0. Active Clients Count (for empty state)
+    const { count: activeClients, error: err0 } = await supabase
+      .from('clients')
+      .select('*', { count: 'exact', head: true })
+      .eq('tenant_id', tenantId)
+      .eq('status', 'active');
+    if (err0) throw err0;
+
     // 1. revenueThisMonth
     const { data: paidInvoices, error: err1 } = await supabase
       .from('invoices')
@@ -103,6 +111,7 @@ router.get('/summary', async (req, res, next) => {
     res.json({
       success: true,
       data: {
+        activeClients: activeClients || 0,
         revenueThisMonth,
         totalOutstanding,
         jobsThisWeek: jobsThisWeek || 0,
