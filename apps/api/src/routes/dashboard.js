@@ -10,148 +10,107 @@ router.get('/summary', async (req, res, next) => {
     const tenantId = req.user.tenant_id;
     const now = new Date();
     
-    // Dates for monthly revenue
+    // Dates for current month
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
     const nextMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1).toISOString();
     
-    // Dates for upcoming jobs
-    const today = now.toISOString().split('T')[0];
-    const nextWeek = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+    // Dates for current week (assuming Monday start)
+    const day = now.getDay();
+    const diff = now.getDate() - day + (day === 0 ? -6 : 1); // adjust when day is sunday
+    const startOfWeek = new Date(now.setDate(diff));
+    startOfWeek.setHours(0,0,0,0);
+    const startOfWeekStr = startOfWeek.toISOString();
+    const nextWeekStr = new Date(startOfWeek.getTime() + 7 * 24 * 60 * 60 * 1000).toISOString();
+    
+    const todayStr = new Date().toISOString().split('T')[0];
 
-    // 1. Active Clients Count
-    const { count: activeClients, error: err1 } = await supabase
-      .from('clients')
-      .select('*', { count: 'exact', head: true })
+    // 1. revenueThisMonth
+    const { data: paidInvoices, error: err1 } = await supabase
+      .from('invoices')
+      .select('total_amount')
       .eq('tenant_id', tenantId)
-      .eq('status', 'active');
+      .eq('status', 'paid')
+      .gte('paid_at', startOfMonth)
+      .lt('paid_at', nextMonth);
     if (err1) throw err1;
+    const revenueThisMonth = paidInvoices.reduce((sum, inv) => sum + Number(inv.total_amount || 0), 0);
 
-    // 2. Open Jobs Count
-    const { count: openJobs, error: err2 } = await supabase
+    // 2. totalOutstanding
+    const { data: outstandingInvoices, error: err2 } = await supabase
+      .from('invoices')
+      .select('total_amount')
+      .eq('tenant_id', tenantId)
+      .in('status', ['sent', 'overdue']);
+    if (err2) throw err2;
+    const totalOutstanding = outstandingInvoices.reduce((sum, inv) => sum + Number(inv.total_amount || 0), 0);
+
+    // 3. jobsThisWeek
+    const { count: jobsThisWeek, error: err3 } = await supabase
       .from('jobs')
       .select('*', { count: 'exact', head: true })
       .eq('tenant_id', tenantId)
-      .in('status', ['open', 'in_progress']);
-    if (err2) throw err2;
-
-    // 3. Monthly Revenue (Completed Jobs this month)
-    const { data: completedJobs, error: err3 } = await supabase
-      .from('jobs')
-      .select('id, rate_type, flat_rate, hourly_rate, job_hours(hours)')
-      .eq('tenant_id', tenantId)
-      .eq('status', 'completed')
-      .gte('end_date', startOfMonth)
-      .lt('end_date', nextMonth);
+      .gte('start_date', startOfWeekStr.split('T')[0])
+      .lt('start_date', nextWeekStr.split('T')[0]);
     if (err3) throw err3;
 
-    let monthlyRevenue = 0;
-    completedJobs.forEach(job => {
-      if (job.rate_type === 'flat') {
-        monthlyRevenue += Number(job.flat_rate || 0);
-      } else if (job.rate_type === 'hourly') {
-        const totalHours = (job.job_hours || []).reduce((sum, h) => sum + Number(h.hours), 0);
-        monthlyRevenue += Number(job.hourly_rate || 0) * totalHours;
-      }
-    });
-
-    // 4. Monthly Material Costs
-    // We get materials for the jobs that were completed this month
-    const completedJobIds = completedJobs.map(j => j.id);
-    let monthlyMaterialCosts = 0;
-    if (completedJobIds.length > 0) {
-      const { data: materials, error: err4 } = await supabase
-        .from('job_materials')
-        .select('cost')
-        .in('job_id', completedJobIds);
-      if (err4) throw err4;
-      monthlyMaterialCosts = materials.reduce((sum, m) => sum + Number(m.cost || 0), 0);
-    }
-
-    // 5. Active Jobs (Recent 10)
-    const { data: activeJobsList, error: err5 } = await supabase
+    // 4. jobsThisMonth
+    const { count: jobsThisMonth, error: err4 } = await supabase
       .from('jobs')
-      .select('id, title, status, start_date, clients(name)')
+      .select('*', { count: 'exact', head: true })
       .eq('tenant_id', tenantId)
-      .in('status', ['open', 'in_progress'])
-      .order('created_at', { ascending: false })
-      .limit(10);
+      .gte('start_date', startOfMonth.split('T')[0])
+      .lt('start_date', nextMonth.split('T')[0]);
+    if (err4) throw err4;
+
+    // 5. unpaidInvoices
+    const { data: unpaidInvoicesList, error: err5 } = await supabase
+      .from('invoices')
+      .select('id, invoice_number, status, due_date, total_amount, clients(name)')
+      .eq('tenant_id', tenantId)
+      .in('status', ['draft', 'sent', 'overdue'])
+      .order('created_at', { ascending: false });
     if (err5) throw err5;
 
-    // 6. Upcoming Jobs (Next 7 days)
-    const { data: upcomingJobsList, error: err6 } = await supabase
+    // 6. inProgressJobs
+    const { data: inProgressJobsList, error: err6 } = await supabase
       .from('jobs')
       .select('id, title, status, start_date, clients(name)')
       .eq('tenant_id', tenantId)
-      .gte('start_date', today)
-      .lte('start_date', nextWeek)
+      .eq('status', 'in_progress')
       .order('start_date', { ascending: true });
     if (err6) throw err6;
 
-    // 7. Recent Activity Feed
-    const { data: clientsData } = await supabase
-      .from('clients')
-      .select('id, name, created_at')
-      .eq('tenant_id', tenantId)
-      .order('created_at', { ascending: false })
-      .limit(10);
-    
-    const { data: jobsData } = await supabase
+    // 7. completedJobs
+    const { data: completedJobsList, error: err7 } = await supabase
       .from('jobs')
-      .select('id, title, created_at, clients(name)')
+      .select('id, title, status, end_date, clients(name)')
       .eq('tenant_id', tenantId)
-      .order('created_at', { ascending: false })
-      .limit(10);
-      
-    const { data: materialsData } = await supabase
-      .from('job_materials')
-      .select('id, description, created_at, jobs!inner(tenant_id, title)')
-      .eq('jobs.tenant_id', tenantId)
-      .order('created_at', { ascending: false })
-      .limit(10);
+      .eq('status', 'completed')
+      .order('end_date', { ascending: false })
+      .limit(50);
+    if (err7) throw err7;
 
-    let activity = [];
-    
-    (clientsData || []).forEach(c => {
-      activity.push({
-        id: `client-${c.id}`,
-        type: 'New Client Added',
-        description: `Added client: ${c.name}`,
-        created_at: c.created_at
-      });
-    });
-
-    (jobsData || []).forEach(j => {
-      activity.push({
-        id: `job-${j.id}`,
-        type: 'Job Created',
-        description: `Created job: ${j.title} for ${j.clients?.name || 'Unknown Client'}`,
-        created_at: j.created_at
-      });
-    });
-
-    (materialsData || []).forEach(m => {
-      activity.push({
-        id: `mat-${m.id}`,
-        type: 'Material Logged',
-        description: `Logged material: ${m.description} on job ${m.jobs?.title || 'Unknown Job'}`,
-        created_at: m.created_at
-      });
-    });
-
-    // Sort all activity descending by created_at and take top 10
-    activity.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
-    const recentActivity = activity.slice(0, 10);
+    // 8. upcomingJobs
+    const { data: upcomingJobsList, error: err8 } = await supabase
+      .from('jobs')
+      .select('id, title, status, start_date, clients(name)')
+      .eq('tenant_id', tenantId)
+      .eq('status', 'open')
+      .gte('start_date', todayStr)
+      .order('start_date', { ascending: true });
+    if (err8) throw err8;
 
     res.json({
       success: true,
       data: {
-        activeClients: activeClients || 0,
-        openJobs: openJobs || 0,
-        monthlyRevenue,
-        monthlyMaterialCosts,
-        activeJobs: activeJobsList || [],
-        upcomingJobs: upcomingJobsList || [],
-        recentActivity
+        revenueThisMonth,
+        totalOutstanding,
+        jobsThisWeek: jobsThisWeek || 0,
+        jobsThisMonth: jobsThisMonth || 0,
+        unpaidInvoices: unpaidInvoicesList || [],
+        inProgressJobs: inProgressJobsList || [],
+        completedJobs: completedJobsList || [],
+        upcomingJobs: upcomingJobsList || []
       }
     });
 

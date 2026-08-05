@@ -252,9 +252,16 @@ router.patch('/:id/status', async (req, res, next) => {
       return res.status(400).json({ success: false, error: result.error.issues[0].message });
     }
 
+    const updateData = { status: result.data.status };
+    if (result.data.status === 'paid') {
+      updateData.paid_at = new Date().toISOString();
+    } else {
+      updateData.paid_at = null;
+    }
+
     const { data, error } = await supabase
       .from('invoices')
-      .update({ status: result.data.status })
+      .update(updateData)
       .eq('id', req.params.id)
       .eq('tenant_id', req.user.tenant_id)
       .select()
