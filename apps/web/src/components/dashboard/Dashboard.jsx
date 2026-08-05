@@ -11,7 +11,8 @@ export const Dashboard = () => {
 
   const [clientModalOpen, setClientModalOpen] = useState(false);
   const [jobModalOpen, setJobModalOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState('unpaidInvoices');
+  const [activeTab, setActiveTab] = useState('unpaid');
+  const [jobTab, setJobTab] = useState('in_progress');
 
   const { data: summary, isLoading, error, refetch } = useQuery({
     queryKey: ['dashboardSummary', userData?.tenant_id],
@@ -92,14 +93,28 @@ export const Dashboard = () => {
   const {
     activeClients = 0,
     revenueThisMonth = 0,
-    totalOutstanding = 0,
-    jobsThisWeek = 0,
+    laborRevenueThisMonth = 0,
+    materialCostThisMonth = 0,
     jobsThisMonth = 0,
-    unpaidInvoices = [],
-    inProgressJobs = [],
-    completedJobs = [],
-    upcomingJobs = []
+    invoices = [],
+    jobs = []
   } = summary || {};
+
+  // Filters
+  const filteredInvoices = invoices.filter(inv => {
+    if (activeTab === 'unpaid') return ['draft', 'sent', 'overdue'].includes(inv.status);
+    if (activeTab === 'paid') return inv.status === 'paid';
+    return true; // 'all'
+  });
+  const invoiceTotal = filteredInvoices.reduce((sum, inv) => sum + Number(inv.total_amount || 0), 0);
+
+  const todayStr = new Date().toISOString().split('T')[0];
+  const filteredJobs = jobs.filter(job => {
+    if (jobTab === 'in_progress') return job.status === 'in_progress';
+    if (jobTab === 'completed') return job.status === 'completed';
+    if (jobTab === 'upcoming') return job.status === 'open' && job.start_date >= todayStr;
+    return true; // 'all'
+  });
 
   // Empty State logic
   // If a workspace has 0 clients, they definitely have 0 jobs and 0 invoices.
@@ -165,178 +180,156 @@ export const Dashboard = () => {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
         <div className="bg-white border border-gray-200 rounded-xl p-5 shadow-sm flex flex-col justify-between">
           <div className="flex justify-between items-start mb-4">
-            <h3 className="font-title-sm text-gray-500">Revenue (This Month)</h3>
+            <h3 className="font-title-sm text-gray-500">Total Revenue (This Month)</h3>
             <span className="material-symbols-outlined text-green-500 bg-green-50 p-2 rounded-lg">payments</span>
           </div>
-          <div className="font-headline-lg font-bold text-gray-900">{formatCurrency(summary?.revenueThisMonth)}</div>
+          <div className="font-headline-lg font-bold text-gray-900">{formatCurrency(revenueThisMonth)}</div>
         </div>
 
         <div className="bg-white border border-gray-200 rounded-xl p-5 shadow-sm flex flex-col justify-between">
           <div className="flex justify-between items-start mb-4">
-            <h3 className="font-title-sm text-gray-500">Outstanding Balance</h3>
-            <span className="material-symbols-outlined text-red-500 bg-red-50 p-2 rounded-lg">account_balance_wallet</span>
+            <h3 className="font-title-sm text-gray-500">Labor Revenue</h3>
+            <span className="material-symbols-outlined text-blue-500 bg-blue-50 p-2 rounded-lg">engineering</span>
           </div>
-          <div className="font-headline-lg font-bold text-gray-900">{formatCurrency(summary?.totalOutstanding)}</div>
+          <div className="font-headline-lg font-bold text-gray-900">{formatCurrency(laborRevenueThisMonth)}</div>
         </div>
 
         <div className="bg-white border border-gray-200 rounded-xl p-5 shadow-sm flex flex-col justify-between">
           <div className="flex justify-between items-start mb-4">
-            <h3 className="font-title-sm text-gray-500">Jobs (This Week)</h3>
-            <span className="material-symbols-outlined text-blue-500 bg-blue-50 p-2 rounded-lg">calendar_today</span>
+            <h3 className="font-title-sm text-gray-500">Material Costs</h3>
+            <span className="material-symbols-outlined text-red-500 bg-red-50 p-2 rounded-lg">inventory</span>
           </div>
-          <div className="font-headline-lg font-bold text-gray-900">{summary?.jobsThisWeek || 0}</div>
+          <div className="font-headline-lg font-bold text-gray-900">{formatCurrency(materialCostThisMonth)}</div>
         </div>
 
         <div className="bg-white border border-gray-200 rounded-xl p-5 shadow-sm flex flex-col justify-between">
           <div className="flex justify-between items-start mb-4">
-            <h3 className="font-title-sm text-gray-500">Jobs (This Month)</h3>
-            <span className="material-symbols-outlined text-amber-500 bg-amber-50 p-2 rounded-lg">date_range</span>
+            <h3 className="font-title-sm text-gray-500">Total Jobs (This Month)</h3>
+            <span className="material-symbols-outlined text-amber-500 bg-amber-50 p-2 rounded-lg">work</span>
           </div>
-          <div className="font-headline-lg font-bold text-gray-900">{summary?.jobsThisMonth || 0}</div>
+          <div className="font-headline-lg font-bold text-gray-900">{jobsThisMonth || 0}</div>
         </div>
       </div>
 
-      {/* Filterable Action Feed */}
-      <div className="bg-white border border-gray-200 rounded-xl shadow-sm mt-6">
+      {/* Invoices Board */}
+      <div className="bg-white border border-gray-200 rounded-xl shadow-sm mt-6 flex flex-col">
         <div className="border-b border-gray-100 px-5 pt-4">
+          <h2 className="font-title-md font-bold text-gray-900 mb-4">Financial Tracking (Invoices)</h2>
           <div className="flex gap-6 overflow-x-auto no-scrollbar">
             <button 
-              onClick={() => setActiveTab('unpaidInvoices')}
-              className={`pb-4 font-title-sm border-b-2 transition-colors whitespace-nowrap ${activeTab === 'unpaidInvoices' ? 'border-primary text-gray-900' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
+              onClick={() => setActiveTab('all')}
+              className={`pb-4 font-title-sm border-b-2 transition-colors whitespace-nowrap ${activeTab === 'all' ? 'border-primary text-gray-900' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
             >
-              🔴 Unpaid Invoices
+              All Invoices
             </button>
             <button 
-              onClick={() => setActiveTab('inProgressJobs')}
-              className={`pb-4 font-title-sm border-b-2 transition-colors whitespace-nowrap ${activeTab === 'inProgressJobs' ? 'border-primary text-gray-900' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
+              onClick={() => setActiveTab('unpaid')}
+              className={`pb-4 font-title-sm border-b-2 transition-colors whitespace-nowrap ${activeTab === 'unpaid' ? 'border-primary text-gray-900' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
             >
-              🟡 In-Progress Jobs
+              🔴 Unpaid
             </button>
             <button 
-              onClick={() => setActiveTab('upcomingJobs')}
-              className={`pb-4 font-title-sm border-b-2 transition-colors whitespace-nowrap ${activeTab === 'upcomingJobs' ? 'border-primary text-gray-900' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
+              onClick={() => setActiveTab('paid')}
+              className={`pb-4 font-title-sm border-b-2 transition-colors whitespace-nowrap ${activeTab === 'paid' ? 'border-primary text-gray-900' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
             >
-              🔵 Upcoming Jobs
-            </button>
-            <button 
-              onClick={() => setActiveTab('completedJobs')}
-              className={`pb-4 font-title-sm border-b-2 transition-colors whitespace-nowrap ${activeTab === 'completedJobs' ? 'border-primary text-gray-900' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
-            >
-              🟢 Completed Jobs
+              🟢 Paid
             </button>
           </div>
         </div>
 
-        <div className="overflow-x-auto">
-          {activeTab === 'unpaidInvoices' && (
-            <table className="w-full text-left border-collapse min-w-[600px]">
-              <thead>
-                <tr className="bg-gray-50/50 border-b border-gray-100">
-                  <th className="font-label-md font-semibold text-gray-500 px-5 py-3">Invoice #</th>
-                  <th className="font-label-md font-semibold text-gray-500 px-5 py-3">Client</th>
-                  <th className="font-label-md font-semibold text-gray-500 px-5 py-3">Amount</th>
-                  <th className="font-label-md font-semibold text-gray-500 px-5 py-3">Due Date</th>
-                  <th className="font-label-md font-semibold text-gray-500 px-5 py-3 text-right">Status</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100">
-                {(summary?.unpaidInvoices || []).length === 0 ? (
-                  <tr><td colSpan="5" className="px-5 py-8 text-center text-gray-500">No unpaid invoices.</td></tr>
-                ) : (
-                  summary.unpaidInvoices.map(inv => (
-                    <tr key={inv.id} onClick={() => navigate(`/invoices/${inv.id}`)} className="hover:bg-gray-50 cursor-pointer transition-colors group">
-                      <td className="px-5 py-4 font-body-sm font-medium text-gray-900 group-hover:text-primary transition-colors">{inv.invoice_number}</td>
-                      <td className="px-5 py-4 font-body-sm text-gray-600">{inv.clients?.name}</td>
-                      <td className="px-5 py-4 font-body-sm text-gray-900 font-medium">{formatCurrency(inv.total_amount)}</td>
-                      <td className="px-5 py-4 font-body-sm text-gray-500">{formatDate(inv.due_date)}</td>
-                      <td className="px-5 py-4 text-right">{getStatusBadge(inv.status)}</td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          )}
+        <div className="overflow-x-auto max-h-[400px]">
+          <table className="w-full text-left border-collapse min-w-[600px] relative">
+            <thead className="sticky top-0 bg-gray-50/95 backdrop-blur z-10 border-b border-gray-100">
+              <tr>
+                <th className="font-label-md font-semibold text-gray-500 px-5 py-3">Invoice #</th>
+                <th className="font-label-md font-semibold text-gray-500 px-5 py-3">Client</th>
+                <th className="font-label-md font-semibold text-gray-500 px-5 py-3">Due Date</th>
+                <th className="font-label-md font-semibold text-gray-500 px-5 py-3 text-right">Status</th>
+                <th className="font-label-md font-semibold text-gray-500 px-5 py-3 text-right">Amount</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-100">
+              {filteredInvoices.length === 0 ? (
+                <tr><td colSpan="5" className="px-5 py-8 text-center text-gray-500">No invoices found for this filter.</td></tr>
+              ) : (
+                filteredInvoices.map(inv => (
+                  <tr key={inv.id} onClick={() => navigate(`/invoices/${inv.id}`)} className="hover:bg-gray-50 cursor-pointer transition-colors group">
+                    <td className="px-5 py-4 font-body-sm font-medium text-gray-900 group-hover:text-primary transition-colors">{inv.invoice_number}</td>
+                    <td className="px-5 py-4 font-body-sm text-gray-600">{inv.clients?.name}</td>
+                    <td className="px-5 py-4 font-body-sm text-gray-500">{formatDate(inv.due_date)}</td>
+                    <td className="px-5 py-4 text-right">{getStatusBadge(inv.status)}</td>
+                    <td className="px-5 py-4 text-right font-body-sm text-gray-900 font-medium">{formatCurrency(inv.total_amount)}</td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+            <tfoot className="sticky bottom-0 bg-white border-t-2 border-gray-200 z-10">
+              <tr>
+                <td colSpan="4" className="px-5 py-3 text-right font-title-sm text-gray-700">Total ({activeTab === 'all' ? 'All' : activeTab === 'unpaid' ? 'Unpaid' : 'Paid'})</td>
+                <td className="px-5 py-3 text-right font-title-md font-bold text-gray-900">{formatCurrency(invoiceTotal)}</td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      </div>
 
-          {activeTab === 'inProgressJobs' && (
-            <table className="w-full text-left border-collapse min-w-[600px]">
-              <thead>
-                <tr className="bg-gray-50/50 border-b border-gray-100">
-                  <th className="font-label-md font-semibold text-gray-500 px-5 py-3">Job Title</th>
-                  <th className="font-label-md font-semibold text-gray-500 px-5 py-3">Client</th>
-                  <th className="font-label-md font-semibold text-gray-500 px-5 py-3">Start Date</th>
-                  <th className="font-label-md font-semibold text-gray-500 px-5 py-3 text-right">Status</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100">
-                {(summary?.inProgressJobs || []).length === 0 ? (
-                  <tr><td colSpan="4" className="px-5 py-8 text-center text-gray-500">No in-progress jobs.</td></tr>
-                ) : (
-                  summary.inProgressJobs.map(job => (
-                    <tr key={job.id} onClick={() => navigate(`/jobs/${job.id}`)} className="hover:bg-gray-50 cursor-pointer transition-colors group">
-                      <td className="px-5 py-4 font-body-sm font-medium text-gray-900 group-hover:text-primary transition-colors">{job.title}</td>
-                      <td className="px-5 py-4 font-body-sm text-gray-600">{job.clients?.name}</td>
-                      <td className="px-5 py-4 font-body-sm text-gray-500">{formatDate(job.start_date)}</td>
-                      <td className="px-5 py-4 text-right">{getStatusBadge(job.status)}</td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          )}
+      {/* Jobs Board */}
+      <div className="bg-white border border-gray-200 rounded-xl shadow-sm mt-6 flex flex-col">
+        <div className="border-b border-gray-100 px-5 pt-4">
+          <h2 className="font-title-md font-bold text-gray-900 mb-4">Operational Tracking (Jobs)</h2>
+          <div className="flex gap-6 overflow-x-auto no-scrollbar">
+            <button 
+              onClick={() => setJobTab('all')}
+              className={`pb-4 font-title-sm border-b-2 transition-colors whitespace-nowrap ${jobTab === 'all' ? 'border-primary text-gray-900' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
+            >
+              All Jobs
+            </button>
+            <button 
+              onClick={() => setJobTab('in_progress')}
+              className={`pb-4 font-title-sm border-b-2 transition-colors whitespace-nowrap ${jobTab === 'in_progress' ? 'border-primary text-gray-900' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
+            >
+              🟡 In-Progress
+            </button>
+            <button 
+              onClick={() => setJobTab('upcoming')}
+              className={`pb-4 font-title-sm border-b-2 transition-colors whitespace-nowrap ${jobTab === 'upcoming' ? 'border-primary text-gray-900' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
+            >
+              🔵 Upcoming
+            </button>
+            <button 
+              onClick={() => setJobTab('completed')}
+              className={`pb-4 font-title-sm border-b-2 transition-colors whitespace-nowrap ${jobTab === 'completed' ? 'border-primary text-gray-900' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
+            >
+              🟢 Completed
+            </button>
+          </div>
+        </div>
 
-          {activeTab === 'upcomingJobs' && (
-            <table className="w-full text-left border-collapse min-w-[600px]">
-              <thead>
-                <tr className="bg-gray-50/50 border-b border-gray-100">
-                  <th className="font-label-md font-semibold text-gray-500 px-5 py-3">Job Title</th>
-                  <th className="font-label-md font-semibold text-gray-500 px-5 py-3">Client</th>
-                  <th className="font-label-md font-semibold text-gray-500 px-5 py-3">Start Date</th>
-                  <th className="font-label-md font-semibold text-gray-500 px-5 py-3 text-right">Status</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100">
-                {(summary?.upcomingJobs || []).length === 0 ? (
-                  <tr><td colSpan="4" className="px-5 py-8 text-center text-gray-500">No upcoming jobs.</td></tr>
-                ) : (
-                  summary.upcomingJobs.map(job => (
-                    <tr key={job.id} onClick={() => navigate(`/jobs/${job.id}`)} className="hover:bg-gray-50 cursor-pointer transition-colors group">
-                      <td className="px-5 py-4 font-body-sm font-medium text-gray-900 group-hover:text-primary transition-colors">{job.title}</td>
-                      <td className="px-5 py-4 font-body-sm text-gray-600">{job.clients?.name}</td>
-                      <td className="px-5 py-4 font-body-sm text-gray-500">{formatDate(job.start_date)}</td>
-                      <td className="px-5 py-4 text-right">{getStatusBadge(job.status)}</td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          )}
-
-          {activeTab === 'completedJobs' && (
-            <table className="w-full text-left border-collapse min-w-[600px]">
-              <thead>
-                <tr className="bg-gray-50/50 border-b border-gray-100">
-                  <th className="font-label-md font-semibold text-gray-500 px-5 py-3">Job Title</th>
-                  <th className="font-label-md font-semibold text-gray-500 px-5 py-3">Client</th>
-                  <th className="font-label-md font-semibold text-gray-500 px-5 py-3">End Date</th>
-                  <th className="font-label-md font-semibold text-gray-500 px-5 py-3 text-right">Status</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100">
-                {(summary?.completedJobs || []).length === 0 ? (
-                  <tr><td colSpan="4" className="px-5 py-8 text-center text-gray-500">No completed jobs yet.</td></tr>
-                ) : (
-                  summary.completedJobs.map(job => (
-                    <tr key={job.id} onClick={() => navigate(`/jobs/${job.id}`)} className="hover:bg-gray-50 cursor-pointer transition-colors group">
-                      <td className="px-5 py-4 font-body-sm font-medium text-gray-900 group-hover:text-primary transition-colors">{job.title}</td>
-                      <td className="px-5 py-4 font-body-sm text-gray-600">{job.clients?.name}</td>
-                      <td className="px-5 py-4 font-body-sm text-gray-500">{formatDate(job.end_date)}</td>
-                      <td className="px-5 py-4 text-right">{getStatusBadge(job.status)}</td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          )}
+        <div className="overflow-x-auto max-h-[400px]">
+          <table className="w-full text-left border-collapse min-w-[600px] relative">
+            <thead className="sticky top-0 bg-gray-50/95 backdrop-blur z-10 border-b border-gray-100">
+              <tr>
+                <th className="font-label-md font-semibold text-gray-500 px-5 py-3">Job Title</th>
+                <th className="font-label-md font-semibold text-gray-500 px-5 py-3">Client</th>
+                <th className="font-label-md font-semibold text-gray-500 px-5 py-3">Start Date</th>
+                <th className="font-label-md font-semibold text-gray-500 px-5 py-3 text-right">Status</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-100">
+              {filteredJobs.length === 0 ? (
+                <tr><td colSpan="4" className="px-5 py-8 text-center text-gray-500">No jobs found for this filter.</td></tr>
+              ) : (
+                filteredJobs.map(job => (
+                  <tr key={job.id} onClick={() => navigate(`/jobs/${job.id}`)} className="hover:bg-gray-50 cursor-pointer transition-colors group">
+                    <td className="px-5 py-4 font-body-sm font-medium text-gray-900 group-hover:text-primary transition-colors">{job.title}</td>
+                    <td className="px-5 py-4 font-body-sm text-gray-600">{job.clients?.name}</td>
+                    <td className="px-5 py-4 font-body-sm text-gray-500">{formatDate(job.start_date)}</td>
+                    <td className="px-5 py-4 text-right">{getStatusBadge(job.status)}</td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
         </div>
       </div>
 
