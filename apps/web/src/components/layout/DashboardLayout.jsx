@@ -158,10 +158,10 @@ export const DashboardLayout = ({ children }) => {
         
         <ul className="mt-auto pt-4 border-t border-gray-700 space-y-2 mb-4">
           <li>
-            <a href="#" className="flex items-center gap-3 px-3 py-2.5 text-gray-300 hover:bg-gray-800 hover:text-white transition-colors duration-200 rounded-lg group">
+            <NavLink to="/settings" className={({ isActive }) => `flex items-center gap-3 px-3 py-2.5 transition-colors duration-200 rounded-lg group ${isActive ? 'bg-gray-800 text-white' : 'text-gray-300 hover:bg-gray-800 hover:text-white'}`}>
               <span className="material-symbols-outlined text-gray-400 group-hover:text-white transition-colors">settings</span>
               <span className="font-body-md font-medium">Settings</span>
-            </a>
+            </NavLink>
           </li>
           <li>
             <a href="#" className="flex items-center gap-3 px-3 py-2.5 text-gray-300 hover:bg-gray-800 hover:text-white transition-colors duration-200 rounded-lg group">
@@ -234,9 +234,6 @@ export const DashboardLayout = ({ children }) => {
             <button className="p-2 text-gray-500 hover:text-gray-900 transition-colors">
               <span className="material-symbols-outlined">notifications</span>
             </button>
-            <button className="p-2 text-gray-500 hover:text-gray-900 transition-colors">
-              <span className="material-symbols-outlined">settings</span>
-            </button>
             
             {/* Profile Dropdown */}
             <div className="relative" ref={profileRef}>
@@ -261,13 +258,6 @@ export const DashboardLayout = ({ children }) => {
                   >
                     <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>person</span>
                     My Profile
-                  </button>
-                  <button 
-                    onClick={() => { setProfileOpen(false); navigate('/settings'); }}
-                    className="w-full text-left px-4 py-2 hover:bg-gray-50 text-gray-700 transition-colors text-sm flex items-center gap-2"
-                  >
-                    <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>settings</span>
-                    Settings
                   </button>
                   {/* Real Sign Out Button */}
                   <div className="border-t border-gray-100 mt-2"></div>

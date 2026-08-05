@@ -97,6 +97,31 @@ export const CompanyProfile = () => {
         <h3 className="font-title-md text-title-md text-on-surface mb-6 border-b border-outline-variant pb-4">Basic Information</h3>
         
         <div className="space-y-6">
+          {/* Tenant ID Display */}
+          <div>
+            <label className="block font-label-md text-label-md text-on-surface mb-2">Workspace ID</label>
+            <div className="flex items-center gap-2">
+              <input 
+                type="text" 
+                readOnly
+                value={userData?.tenant_id || ''}
+                className="w-full md:w-1/2 px-4 py-3 border border-outline-variant rounded-DEFAULT bg-surface-container-high font-body-sm text-on-surface-variant font-mono cursor-not-allowed"
+              />
+              <button
+                type="button"
+                onClick={() => {
+                  navigator.clipboard.writeText(userData?.tenant_id || '');
+                  showSuccess('Workspace ID copied to clipboard');
+                }}
+                className="p-3 border border-outline-variant rounded-DEFAULT hover:bg-surface-container-high transition-colors text-on-surface-variant cursor-pointer flex items-center justify-center"
+                title="Copy to clipboard"
+              >
+                <span className="material-symbols-outlined" style={{ fontSize: '20px' }}>content_copy</span>
+              </button>
+            </div>
+            <p className="text-xs text-on-surface-variant mt-1">Provide this ID to support if you need assistance.</p>
+          </div>
+
           {/* Logo Placeholder */}
           <div>
             <label className="block font-label-md text-label-md text-on-surface mb-2">Business Logo</label>
