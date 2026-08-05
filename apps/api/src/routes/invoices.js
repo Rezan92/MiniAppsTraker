@@ -267,6 +267,26 @@ router.patch('/:id/status', async (req, res, next) => {
   }
 });
 
+// PATCH internal notes
+router.patch('/:id/internal-notes', async (req, res, next) => {
+  try {
+    const { internal_notes } = req.body;
+    
+    const { data, error } = await supabase
+      .from('invoices')
+      .update({ internal_notes })
+      .eq('id', req.params.id)
+      .eq('tenant_id', req.user.tenant_id)
+      .select()
+      .single();
+
+    if (error) throw error;
+    res.json({ success: true, data });
+  } catch (err) {
+    next(err);
+  }
+});
+
 // DELETE draft invoice
 router.delete('/:id', async (req, res, next) => {
   try {

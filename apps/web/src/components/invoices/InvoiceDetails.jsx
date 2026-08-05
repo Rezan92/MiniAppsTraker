@@ -1,4 +1,4 @@
-import React, { useRef } from 'react';
+import React, { useRef, useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useReactToPrint } from 'react-to-print';
@@ -22,6 +22,9 @@ export const InvoiceDetails = () => {
   const { showSuccess, showError } = useToast();
   const queryClient = useQueryClient();
   const componentRef = useRef();
+
+  const [isEditingNotes, setIsEditingNotes] = useState(false);
+  const [draftNotes, setDraftNotes] = useState('');
 
   const { data: invoice, isLoading } = useQuery({
     queryKey: ['invoice', id],
@@ -105,6 +108,35 @@ export const InvoiceDetails = () => {
     }
   });
 
+  const notesMutation = useMutation({
+    mutationFn: async (notes) => {
+      const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:4000'}/api/invoices/${id}/internal-notes`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`
+        },
+        body: JSON.stringify({ internal_notes: notes })
+      });
+      const json = await res.json();
+      if (!res.ok || !json.success) throw new Error(json.error);
+      return json.data;
+    },
+    onSuccess: () => {
+      showSuccess("Internal notes updated");
+      setIsEditingNotes(false);
+      queryClient.invalidateQueries(['invoice', id]);
+    },
+    onError: (err) => {
+      showError(translateApiError(err));
+    }
+  });
+
+  const handleEditNotes = () => {
+    setDraftNotes(invoice?.internal_notes || '');
+    setIsEditingNotes(true);
+  };
+
   if (isLoading) {
     return <div className="p-8 text-center text-gray-500">Loading invoice details...</div>;
   }
@@ -184,6 +216,55 @@ export const InvoiceDetails = () => {
             </button>
           )}
         </div>
+      </div>
+
+      {/* Internal Notes Section */}
+      <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-6 mb-8 shadow-sm">
+        <div className="flex justify-between items-start mb-4">
+          <h3 className="text-title-sm font-bold text-yellow-800 flex items-center gap-2">
+            <span className="material-symbols-outlined text-yellow-600">note_alt</span>
+            Internal Notes (Admin Only)
+          </h3>
+          {!isEditingNotes && (
+            <button 
+              onClick={handleEditNotes}
+              className="text-sm font-medium text-yellow-700 hover:text-yellow-900 cursor-pointer"
+            >
+              Edit Notes
+            </button>
+          )}
+        </div>
+        
+        {isEditingNotes ? (
+          <div className="space-y-4">
+            <textarea
+              className="w-full p-3 border border-yellow-300 rounded-lg bg-white focus:ring-2 focus:ring-yellow-500 focus:border-yellow-500 font-body-sm"
+              rows={4}
+              value={draftNotes}
+              onChange={(e) => setDraftNotes(e.target.value)}
+              placeholder="Add private notes here..."
+            />
+            <div className="flex justify-end gap-3">
+              <button 
+                onClick={() => setIsEditingNotes(false)}
+                className="px-4 py-2 text-sm font-medium text-gray-700 hover:bg-yellow-100 rounded-lg cursor-pointer transition-colors"
+              >
+                Cancel
+              </button>
+              <button 
+                onClick={() => notesMutation.mutate(draftNotes)}
+                disabled={notesMutation.isPending}
+                className="px-4 py-2 text-sm font-medium text-white bg-yellow-600 hover:bg-yellow-700 rounded-lg cursor-pointer transition-colors shadow-sm"
+              >
+                {notesMutation.isPending ? 'Saving...' : 'Save Notes'}
+              </button>
+            </div>
+          </div>
+        ) : (
+          <p className="text-yellow-800 whitespace-pre-wrap font-body-sm">
+            {invoice.internal_notes || <span className="italic text-yellow-600">No internal notes added yet.</span>}
+          </p>
+        )}
       </div>
 
       {/* PDF Preview Container */}
