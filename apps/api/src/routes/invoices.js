@@ -61,7 +61,7 @@ router.get('/:id', async (req, res, next) => {
       .select(`
         *,
         clients(name, email, phone, address),
-        tenants(name, business_tagline, payment_method, payment_details),
+        tenants(name, business_tagline, payment_method, payment_details, phone),
         invoice_items(*)
       `)
       .eq('id', req.params.id)
