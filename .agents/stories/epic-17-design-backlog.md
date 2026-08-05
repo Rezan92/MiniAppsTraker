@@ -148,3 +148,9 @@ This epic tracks all pending HTML/Tailwind screen designs required from the UI/U
 - [ ] **Task 17.19: Invoice Details Balance UI**
   - **Description:** Update the Invoice Details screen to show payment tracking.
   - **Content:** A "Payments Received" ledger and a "Balance Due" calculation alongside the Grand Total.
+
+- [ ] **Task 17.20: Communications Hub Screen**
+  - **Description:** A split-pane layout. Left sidebar lists active client conversations with unread badges. Main pane shows an iMessage/WhatsApp style chronological feed of mixed SMS and Email bubbles. Bottom input area has tabs to switch between sending a 'Text' or an 'Email'.
+
+- [ ] **Task 17.21: Communications Settings**
+  - **Description:** A new tab in the Company Profile settings to view the assigned Business Phone Number and configure Call Forwarding.
