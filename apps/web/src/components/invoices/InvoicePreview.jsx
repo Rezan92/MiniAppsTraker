@@ -125,7 +125,7 @@ export const InvoicePreview = forwardRef(({ invoice, tenant }, ref) => {
           <table className="summary-table">
             <tbody>
               <tr>
-                <td style={{ width: '65%' }}>
+                <td style={{ width: '50%', paddingRight: '30px', verticalAlign: 'top' }}>
                   <div className="payment-box">
                     <h4>Payment Instructions</h4>
                     <p>Thank you for your business!</p>
@@ -136,7 +136,7 @@ export const InvoicePreview = forwardRef(({ invoice, tenant }, ref) => {
                     )}
                   </div>
                 </td>
-                <td style={{ width: '35%', verticalAlign: 'top' }}>
+                <td style={{ width: '50%', verticalAlign: 'top' }}>
                   <table className="totals-table">
                     <tbody>
                       <tr>
