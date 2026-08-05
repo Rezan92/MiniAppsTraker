@@ -129,9 +129,9 @@ export const InvoicePreview = forwardRef(({ invoice, tenant }, ref) => {
                   <div className="payment-box">
                     <h4>Payment Instructions</h4>
                     <p>Thank you for your business!</p>
-                    {tenant.payment_method && tenant.payment_details && (
+                    {tenant.phone && (
                       <p style={{ marginTop: '4px' }}>
-                        Please send payment via <strong>{tenant.payment_method}: {tenant.payment_details}</strong>
+                        Please send payment via <strong>Zelle</strong>: {tenant.phone}
                       </p>
                     )}
                   </div>
