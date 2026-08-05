@@ -253,7 +253,7 @@ export const DashboardLayout = ({ children }) => {
                     <p className="text-xs text-gray-500 truncate" title={user?.email}>{user?.email}</p>
                   </div>
                   <button 
-                    onClick={() => { setProfileOpen(false); navigate('/settings/account'); }}
+                    onClick={() => { setProfileOpen(false); navigate('/profile'); }}
                     className="w-full text-left px-4 py-2 hover:bg-gray-50 text-gray-700 transition-colors text-sm flex items-center gap-2"
                   >
                     <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>person</span>

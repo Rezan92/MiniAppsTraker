@@ -49,8 +49,8 @@ const MainApp = () => {
           <Route path="company" element={<AdminRoute><CompanyProfile /></AdminRoute>} />
           <Route path="team" element={<AdminRoute><div className="p-8">Team Management UI Pending (Task 15.2)</div></AdminRoute>} />
           <Route path="services" element={<AdminRoute><div className="p-8">Service Configuration UI Pending (Task 15.3)</div></AdminRoute>} />
-          <Route path="account" element={<div className="p-8">My Account UI Pending (Task 15.4)</div>} />
         </Route>
+        <Route path="profile" element={<div className="p-8">My Account UI Pending (Task 15.4)</div>} />
       </Route>
       
       <Route path="/unauthorized" element={<Unauthorized />} />
