@@ -87,9 +87,14 @@ export const InvoicePreview = forwardRef(({ invoice, tenant }, ref) => {
                   )}
                   {laborItems.length > 0 && (
                     <ul className="bullet-list">
-                      {laborItems.sort((a,b)=>a.sort_order - b.sort_order).map(item => (
-                        <li key={item.id}>{item.description}</li>
-                      ))}
+                      {laborItems.sort((a,b)=>a.sort_order - b.sort_order).map(item => {
+                        const sentences = item.description 
+                          ? item.description.split('.').map(s => s.trim()).filter(s => s.length > 0).map(s => s + '.')
+                          : [];
+                        return sentences.map((sentence, idx) => (
+                          <li key={`${item.id}-${idx}`}>{sentence}</li>
+                        ));
+                      })}
                     </ul>
                   )}
                 </td>
