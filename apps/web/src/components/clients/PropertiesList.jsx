@@ -2,11 +2,13 @@ import React, { useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../../contexts/AuthContext';
 import { useToast } from '../../contexts/ToastContext';
+import { useNavigate } from 'react-router-dom';
 
 export const PropertiesList = ({ clientId }) => {
   const { session } = useAuth();
   const { showError, showSuccess } = useToast();
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingId, setEditingId] = useState(null);
@@ -123,7 +125,11 @@ export const PropertiesList = ({ clientId }) => {
               </tr>
             ) : (
               properties.map((prop) => (
-                <tr key={prop.id} className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
+                <tr 
+                  key={prop.id} 
+                  onClick={() => navigate(`/properties/${prop.id}`)}
+                  className="border-b border-gray-100 hover:bg-gray-50 transition-colors cursor-pointer"
+                >
                   <td className="p-4 font-medium">{prop.name || '-'}</td>
                   <td className="p-4">{prop.address}</td>
                   <td className="p-4">
@@ -132,10 +138,18 @@ export const PropertiesList = ({ clientId }) => {
                   </td>
                   <td className="p-4 max-w-xs truncate">{prop.notes || '-'}</td>
                   <td className="p-4 text-right">
-                    <button onClick={() => handleOpenEdit(prop)} className="text-black hover:opacity-80 transition-opacity p-1 cursor-pointer" title="Edit">
+                    <button 
+                      onClick={(e) => { e.stopPropagation(); handleOpenEdit(prop); }} 
+                      className="text-black hover:opacity-80 transition-opacity p-1 cursor-pointer" 
+                      title="Edit"
+                    >
                       <span className="material-symbols-outlined text-[18px]">edit</span>
                     </button>
-                    <button onClick={() => handleDelete(prop.id)} className="text-black hover:opacity-80 transition-opacity p-1 ml-2 cursor-pointer" title="Delete">
+                    <button 
+                      onClick={(e) => { e.stopPropagation(); handleDelete(prop.id); }} 
+                      className="text-black hover:opacity-80 transition-opacity p-1 ml-2 cursor-pointer" 
+                      title="Delete"
+                    >
                       <span className="material-symbols-outlined text-[18px]">delete</span>
                     </button>
                   </td>

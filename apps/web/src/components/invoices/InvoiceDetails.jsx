@@ -216,6 +216,31 @@ export const InvoiceDetails = () => {
         </div>
       </div>
 
+      {/* Payment Summary */}
+      {invoice.status === 'paid' && (
+        <div className="bg-green-50 border border-green-200 rounded-xl p-6 mb-8 shadow-sm flex flex-col md:flex-row justify-between gap-4">
+          <div>
+            <h3 className="text-title-sm font-bold text-green-800 flex items-center gap-2 mb-2">
+              <span className="material-symbols-outlined text-green-600">task_alt</span>
+              Invoice Paid
+            </h3>
+            <p className="text-green-700 text-sm">
+              <span className="font-medium">Billed To:</span> {invoice.billed_to_name || invoice.clients?.name || 'Unknown'}
+            </p>
+          </div>
+          <div className="flex gap-8 text-sm">
+            <div>
+              <p className="text-green-600 font-medium">Created On</p>
+              <p className="text-green-800 font-bold">{formatDate(invoice.created_at)}</p>
+            </div>
+            <div>
+              <p className="text-green-600 font-medium">Paid On</p>
+              <p className="text-green-800 font-bold">{invoice.paid_at ? formatDate(invoice.paid_at) : 'N/A'}</p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Internal Notes Section */}
       <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-6 mb-8 shadow-sm">
         <div className="flex justify-between items-start mb-4">

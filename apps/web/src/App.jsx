@@ -8,6 +8,7 @@ import { Dashboard } from './components/dashboard/Dashboard';
 import { ClientList } from './components/clients/ClientList';
 import { JobList } from './components/jobs/JobList';
 import { ClientDetails } from './components/clients/ClientDetails';
+import { PropertyDetails } from './components/properties/PropertyDetails';
 import { JobDetails } from './components/jobs/JobDetails';
 import { InvoiceList } from './components/invoices/InvoiceList';
 import { InvoiceBuilder } from './components/invoices/InvoiceBuilder';
@@ -38,6 +39,7 @@ const MainApp = () => {
         <Route index element={<Dashboard />} />
         <Route path="clients" element={<ClientList />} />
         <Route path="clients/:id" element={<ClientDetails />} />
+        <Route path="properties/:id" element={<PropertyDetails />} />
         <Route path="jobs" element={<JobList />} />
         <Route path="jobs/:id" element={<JobDetails />} />
         <Route path="invoices" element={<InvoiceList />} />

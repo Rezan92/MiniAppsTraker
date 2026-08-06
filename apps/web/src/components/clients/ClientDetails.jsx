@@ -6,6 +6,7 @@ import { AddJobModal } from '../jobs/AddJobModal';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { NotFound } from '../errors/NotFound';
 import { PropertiesList } from './PropertiesList';
+import { InvoicesWidget } from '../common/InvoicesWidget';
 
 export const ClientDetails = () => {
   const { id } = useParams();
@@ -168,26 +169,13 @@ export const ClientDetails = () => {
           </div>
         </div>
 
-        {/* Financial Summary Card (Mock data for now as per plan) */}
-        <div className="xl:col-span-4 bg-white border border-gray-200 rounded-lg p-6 shadow-sm flex flex-col">
-          <div className="flex items-center justify-between mb-4 pb-2 border-b border-gray-100">
-            <h3 className="font-headline-sm text-headline-sm font-semibold text-gray-900">Financial Overview</h3>
-            <span className="material-symbols-outlined text-gray-400">account_balance_wallet</span>
-          </div>
-          <div className="grid grid-cols-1 gap-4 h-full items-center flex-1">
-            <div className="p-4 bg-gray-50 rounded border border-gray-200">
-              <p className="font-label-caps text-xs tracking-wider text-gray-500 mb-1">Total Lifetime Revenue</p>
-              <p className="font-headline-lg text-2xl font-bold text-gray-900">$0.00</p>
-            </div>
-            <div className="p-4 bg-red-50 rounded border border-red-100">
-              <p className="font-label-caps text-xs tracking-wider text-red-700 mb-1">Outstanding Balance</p>
-              <p className="font-headline-lg text-2xl font-bold text-red-700">$0.00</p>
-            </div>
-          </div>
+        {/* Financial Stats Card */}
+        <div className="xl:col-span-4 h-full">
+          <InvoicesWidget clientId={client.id} variant="stats" />
         </div>
 
-        {/* Related Jobs Table */}
-        <div className="xl:col-span-12 bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden flex flex-col">
+        {/* Side-by-Side Tables Row */}
+        <div className="xl:col-span-6 bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden flex flex-col h-full">
           <div className="p-4 border-b border-gray-200 flex items-center justify-between bg-gray-50">
             <h3 className="font-headline-sm text-lg font-semibold text-gray-900">Recent Jobs</h3>
           </div>
@@ -230,6 +218,9 @@ export const ClientDetails = () => {
           </div>
         </div>
 
+        <div className="xl:col-span-6 h-full">
+          <InvoicesWidget clientId={client.id} variant="table" />
+        </div>
       </div>
 
       {client.client_type === 'property_manager' && (

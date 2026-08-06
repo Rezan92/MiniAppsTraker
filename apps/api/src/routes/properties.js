@@ -41,6 +41,33 @@ router.get('/', async (req, res, next) => {
   }
 });
 
+// GET single property by ID
+router.get('/:id', async (req, res, next) => {
+  try {
+    if (!req.user || !req.user.tenant_id) {
+      return res.status(400).json({ success: false, error: 'Tenant context missing' });
+    }
+
+    const { data, error } = await supabase
+      .from('rental_properties')
+      .select('*, clients(id, name, company_name, phone)')
+      .eq('id', req.params.id)
+      .eq('tenant_id', req.user.tenant_id)
+      .single();
+
+    if (error) {
+      if (error.code === 'PGRST116') {
+        return res.status(404).json({ success: false, error: 'Property not found' });
+      }
+      return next(error);
+    }
+
+    res.json({ success: true, data });
+  } catch (err) {
+    next(err);
+  }
+});
+
 router.post('/', async (req, res, next) => {
   try {
     if (!req.user || !req.user.tenant_id) {

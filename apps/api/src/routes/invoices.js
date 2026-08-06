@@ -34,7 +34,7 @@ const statusSchema = z.object({
 // GET all invoices
 router.get('/', async (req, res, next) => {
   try {
-    const { status, client_id, from_date, to_date } = req.query;
+    const { status, client_id, property_id, from_date, to_date } = req.query;
     
     let query = supabase
       .from('invoices')
@@ -44,6 +44,7 @@ router.get('/', async (req, res, next) => {
 
     if (status) query = query.eq('status', status);
     if (client_id) query = query.eq('client_id', client_id);
+    if (property_id) query = query.eq('property_id', property_id);
     if (from_date) query = query.gte('invoice_date', from_date);
     if (to_date) query = query.lte('invoice_date', to_date);
 
