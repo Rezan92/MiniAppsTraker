@@ -43,7 +43,7 @@ export const InvoicePreview = forwardRef(({ invoice, tenant }, ref) => {
                 <td>
                   <div className="section-title">Bill To</div>
                   <div className="meta-box">
-                    <p><strong>{invoice.clients?.name}</strong></p>
+                    <p><strong>{invoice.billed_to_name || invoice.clients?.name}</strong></p>
                     {invoice.clients?.phone && (
                       <p>Phone: {invoice.clients?.phone}</p>
                     )}

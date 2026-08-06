@@ -97,12 +97,27 @@ export const AddClientModal = ({ open, onClose, onSubmit, formData, setFormData,
                   placeholder="e.g. John Doe" 
                   name="name"
                   type="text" 
-                  value={formData.name}
+                  value={formData.name || ''}
                   onChange={handleInputChange}
                   required
                 />
                 {errors.name && <p className="text-red-500 text-xs mt-1">{errors.name}</p>}
             </div>
+
+            {/* Company Name */}
+            {(formData.client_type === 'commercial' || formData.client_type === 'property_manager') && (
+              <div>
+                <label className="block font-label-md text-label-md text-on-surface-variant mb-1">Company Name / LLC</label>
+                <input 
+                  className="w-full px-3 py-2 border rounded-md bg-surface text-on-surface border-outline-variant focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-shadow placeholder:text-on-surface-variant/50"
+                  placeholder="e.g. Acme Property Management LLC" 
+                  name="company_name"
+                  type="text" 
+                  value={formData.company_name || ''}
+                  onChange={handleInputChange}
+                />
+              </div>
+            )}
             
             {/* Contact Info Grid */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">

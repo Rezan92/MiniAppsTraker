@@ -5,6 +5,7 @@ import { useToast } from '../../contexts/ToastContext';
 import { AddJobModal } from '../jobs/AddJobModal';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { NotFound } from '../errors/NotFound';
+import { PropertiesList } from './PropertiesList';
 
 export const ClientDetails = () => {
   const { id } = useParams();
@@ -97,7 +98,9 @@ export const ClientDetails = () => {
               {client.status}
             </span>
           </div>
-          <p className="font-body-md text-gray-500 mt-1 capitalize">{client.client_type} Client</p>
+          <p className="font-body-md text-gray-500 mt-1 capitalize">
+            {client.client_type} Client {client.company_name ? ` • ${client.company_name}` : ''}
+          </p>
         </div>
         <div className="flex items-center gap-3">
           <button className="px-4 py-2 bg-white border border-gray-300 text-gray-700 font-body-md font-bold rounded hover:bg-gray-50 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-sm">
@@ -228,6 +231,8 @@ export const ClientDetails = () => {
         </div>
 
       </div>
+
+      <PropertiesList clientId={client.id} />
 
       <AddJobModal 
         open={jobModalOpen}

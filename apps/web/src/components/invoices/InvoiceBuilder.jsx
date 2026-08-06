@@ -24,7 +24,10 @@ export const InvoiceBuilder = () => {
     labor_notes: '',
     labor_amount: 0,
     labor_details: [{ id: Date.now(), description: '' }],
-    materials: []
+    materials: [],
+    bill_to_type: 'client_name',
+    billed_to_name: '',
+    property_id: ''
   });
 
   // Fetch clients
@@ -46,6 +49,20 @@ export const InvoiceBuilder = () => {
     queryKey: ['jobs', 'completed', formData.client_id],
     queryFn: async () => {
       const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:4000'}/api/jobs?client_id=${formData.client_id}&status=completed`, {
+        headers: { 'Authorization': `Bearer ${session.access_token}` }
+      });
+      const json = await res.json();
+      if (!res.ok || !json.success) throw new Error(json.error);
+      return json.data;
+    },
+    enabled: !!session && !!formData.client_id
+  });
+
+  // Fetch properties for selected client
+  const { data: properties = [] } = useQuery({
+    queryKey: ['properties', formData.client_id],
+    queryFn: async () => {
+      const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:4000'}/api/properties?client_id=${formData.client_id}`, {
         headers: { 'Authorization': `Bearer ${session.access_token}` }
       });
       const json = await res.json();
@@ -82,6 +99,9 @@ export const InvoiceBuilder = () => {
         invoice_date: existingInvoice.invoice_date,
         due_date: existingInvoice.due_date || '',
         property_address: existingInvoice.property_address || '',
+        bill_to_type: existingInvoice.bill_to_type || 'client_name',
+        billed_to_name: existingInvoice.billed_to_name || '',
+        property_id: existingInvoice.property_id || '',
         labor_title: existingInvoice.labor_title || '',
         labor_notes: existingInvoice.labor_notes || '',
         labor_amount: existingInvoice.labor_amount || 0,
@@ -249,16 +269,62 @@ export const InvoiceBuilder = () => {
                 </select>
               </div>
 
-              <div>
-                <label className="block text-label-md text-gray-700 mb-1">Property Address (Optional)</label>
-                <textarea 
-                  value={formData.property_address}
-                  onChange={(e) => setFormData({...formData, property_address: e.target.value})}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary"
-                  rows="2"
-                  placeholder="e.g. 123 Main St, Apt 4B"
-                />
-              </div>
+              {formData.client_id && (
+                <div>
+                  <label className="block text-label-md text-gray-700 mb-1">Bill To</label>
+                  <select 
+                    value={formData.bill_to_type}
+                    onChange={(e) => {
+                      const type = e.target.value;
+                      const client = clients.find(c => c.id === formData.client_id);
+                      let billedToName = client?.name || '';
+                      if (type === 'company_name' && client?.company_name) billedToName = client.company_name;
+                      setFormData({...formData, bill_to_type: type, billed_to_name: billedToName, property_id: '', property_address: ''});
+                    }}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary bg-white mb-3"
+                  >
+                    <option value="client_name">Client Name ({clients.find(c => c.id === formData.client_id)?.name})</option>
+                    {clients.find(c => c.id === formData.client_id)?.company_name && (
+                      <option value="company_name">Company Name ({clients.find(c => c.id === formData.client_id)?.company_name})</option>
+                    )}
+                    <option value="property_address">Rental Property Address</option>
+                  </select>
+
+                  {formData.bill_to_type === 'property_address' && (
+                    <div>
+                      <select
+                        value={formData.property_id}
+                        onChange={(e) => {
+                          const propId = e.target.value;
+                          const prop = properties.find(p => p.id === propId);
+                          setFormData({...formData, property_id: propId, property_address: prop?.address || '', billed_to_name: prop?.address || ''});
+                        }}
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary bg-white"
+                        required
+                      >
+                        <option value="">Select a property...</option>
+                        {properties.map(p => (
+                          <option key={p.id} value={p.id}>{p.name ? `${p.name} - ` : ''}{p.address}</option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
+              {formData.bill_to_type !== 'property_address' && (
+                <div>
+                  <label className="block text-label-md text-gray-700 mb-1">Property Address (Optional)</label>
+                  <textarea 
+                    value={formData.property_address}
+                    onChange={(e) => setFormData({...formData, property_address: e.target.value})}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary"
+                    rows="2"
+                    placeholder="e.g. 123 Main St, Apt 4B"
+                  />
+                </div>
+              )}
             </div>
 
             <div className="space-y-4">

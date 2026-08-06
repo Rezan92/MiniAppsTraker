@@ -19,7 +19,7 @@ export const ClientList = () => {
   const [editingId, setEditingId] = useState(null);
   const [search, setSearch] = useState('');
   const debouncedSearch = useDebounce(search, 500);
-  const [formData, setFormData] = useState({ client_type: 'residential', name: '', email: '', phone: '', address: '', notes: '', status: 'active' });
+  const [formData, setFormData] = useState({ client_type: 'residential', company_name: '', name: '', email: '', phone: '', address: '', notes: '', status: 'active' });
   const [openMenuId, setOpenMenuId] = useState(null);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [clientToDelete, setClientToDelete] = useState(null);
@@ -146,7 +146,7 @@ export const ClientList = () => {
   const openAddClient = () => {
     setEditMode(false);
     setEditingId(null);
-    setFormData({ client_type: 'residential', name: '', email: '', phone: '', address: '', notes: '' });
+    setFormData({ client_type: 'residential', company_name: '', name: '', email: '', phone: '', address: '', notes: '' });
     setOpen(true);
   };
 
@@ -155,6 +155,7 @@ export const ClientList = () => {
     setEditingId(client.id);
     setFormData({ 
       client_type: client.client_type || 'residential', 
+      company_name: client.company_name || '',
       name: client.name || '', 
       email: client.email || '', 
       phone: client.phone || '', 

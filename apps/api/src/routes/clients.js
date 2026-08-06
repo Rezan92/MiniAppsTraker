@@ -9,8 +9,9 @@ router.use(authenticate);
 const clientSchema = z.object({
   name: z.string().min(1, "Name is required").regex(/^[a-zA-Z\s\-\']+$/, "Full name cannot contain numbers"),
   client_type: z.enum(['residential', 'commercial', 'property_manager']).default('residential'),
+  company_name: z.string().optional().nullable(),
   email: z.string().email().optional().or(z.literal('')),
-  phone: z.string().regex(/^\+?[\d\s\-\(\)]+$/, "Phone number must contain only numbers and formatting characters"),
+  phone: z.string().regex(/^\+?[\d\s\-\(\)]+$/, "Phone number must contain only numbers and formatting characters").optional().nullable(),
   address: z.string().optional(),
   notes: z.string().optional(),
   status: z.enum(['active', 'inactive']).default('active')
@@ -81,13 +82,13 @@ router.post('/', async (req, res, next) => {
       return next(err);
     }
 
-    const { name, client_type, email, phone, address, notes, status } = result.data;
+    const { name, client_type, company_name, email, phone, address, notes, status } = result.data;
     const cleanEmail = email?.trim() ? email.trim() : null;
-    const cleanPhone = phone?.trim() ? phone.trim() : null;
+    const cleanPhone = phone ? phone.replace(/\D/g, '') : null;
 
     const { data, error } = await supabase
       .from('clients')
-      .insert([{ name, client_type, email: cleanEmail, phone: cleanPhone, address, notes, status, tenant_id: req.user.tenant_id }])
+      .insert([{ name, client_type, company_name, email: cleanEmail, phone: cleanPhone, address, notes, status, tenant_id: req.user.tenant_id }])
       .select();
 
     if (error) return next(error);
@@ -115,13 +116,13 @@ router.put('/:id', async (req, res, next) => {
       return next(err);
     }
 
-    const { name, client_type, email, phone, address, notes, status } = result.data;
+    const { name, client_type, company_name, email, phone, address, notes, status } = result.data;
     const cleanEmail = email?.trim() ? email.trim() : null;
-    const cleanPhone = phone?.trim() ? phone.trim() : null;
+    const cleanPhone = phone ? phone.replace(/\D/g, '') : null;
 
     const { data, error } = await supabase
       .from('clients')
-      .update({ name, client_type, email: cleanEmail, phone: cleanPhone, address, notes, status })
+      .update({ name, client_type, company_name, email: cleanEmail, phone: cleanPhone, address, notes, status })
       .eq('id', req.params.id)
       .eq('tenant_id', req.user.tenant_id)
       .select();
