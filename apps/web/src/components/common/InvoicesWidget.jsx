@@ -134,6 +134,7 @@ export const InvoicesWidget = ({ clientId, propertyId, variant = 'all', classNam
           </table>
         </div>
       </div>
+      )}
     </div>
   );
 };
