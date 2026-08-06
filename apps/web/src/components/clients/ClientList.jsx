@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { useToast } from '../../contexts/ToastContext';
 import { useNavigate } from 'react-router-dom';
@@ -22,6 +23,29 @@ export const ClientList = () => {
   const [openMenuId, setOpenMenuId] = useState(null);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [clientToDelete, setClientToDelete] = useState(null);
+
+  const [menuCoords, setMenuCoords] = useState({ top: 0, left: 0 });
+
+  useEffect(() => {
+    if (openMenuId) {
+      const handler = (e) => {
+        if (e.target.closest('.status-dropdown-menu')) return;
+        setOpenMenuId(null);
+      };
+      document.addEventListener('mousedown', handler, true);
+      return () => document.removeEventListener('mousedown', handler, true);
+    }
+  }, [openMenuId]);
+
+  const handleStatusClick = (e, id) => {
+    e.stopPropagation();
+    const rect = e.currentTarget.getBoundingClientRect();
+    setMenuCoords({
+      top: rect.bottom + window.scrollY + 4,
+      left: rect.left + window.scrollX
+    });
+    setOpenMenuId(openMenuId === id ? null : id);
+  };
 
   const { data: clients = [], isLoading: loading } = useQuery({
     queryKey: ['clients', debouncedSearch],
@@ -219,7 +243,7 @@ export const ClientList = () => {
                         </td>
                         <td className="py-3 px-4 relative">
                           <button 
-                            onClick={(e) => { e.stopPropagation(); setOpenMenuId(openMenuId === c.id ? null : c.id); }}
+                            onClick={(e) => handleStatusClick(e, c.id)}
                             className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium transition-colors ${
                               c.status === 'inactive' ? 'bg-gray-100 text-gray-800 border border-gray-200 hover:bg-gray-200' : 'bg-emerald-100 text-emerald-800 border border-emerald-200 hover:bg-emerald-200'
                             }`}
@@ -227,23 +251,6 @@ export const ClientList = () => {
                             <span>{c.status === 'inactive' ? 'Inactive' : 'Active'}</span>
                             <span className="material-symbols-outlined" style={{ fontSize: '14px' }}>expand_more</span>
                           </button>
-                          
-                          {/* Status Dropdown */}
-                          {openMenuId === c.id && (
-                            <>
-                              <div className="fixed inset-0 z-40" onClick={(e) => { e.stopPropagation(); setOpenMenuId(null); }}></div>
-                              <div className="absolute left-0 mt-1 w-32 bg-white border border-gray-200 rounded shadow-lg z-50 py-1" onClick={e => e.stopPropagation()}>
-                                <button onClick={(e) => { e.stopPropagation(); handleUpdateStatus(c, 'active'); }} className="w-full text-left px-3 py-1.5 text-xs font-medium text-emerald-800 hover:bg-emerald-50 flex items-center gap-2">
-                                  <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
-                                  Active
-                                </button>
-                                <button onClick={(e) => { e.stopPropagation(); handleUpdateStatus(c, 'inactive'); }} className="w-full text-left px-3 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-50 flex items-center gap-2">
-                                  <span className="w-2 h-2 rounded-full bg-gray-400"></span>
-                                  Inactive
-                                </button>
-                              </div>
-                            </>
-                          )}
                         </td>
                         <td className="py-3 px-4 text-center">
                           <div className="flex justify-center gap-2">
@@ -283,10 +290,30 @@ export const ClientList = () => {
       />
       <DeleteConfirmationModal
         open={deleteModalOpen}
-        onClose={() => setDeleteModalOpen(false)}
+        onClose={() => { setDeleteModalOpen(false); setClientToDelete(null); }}
         onConfirm={executeDelete}
-        clientName={clientToDelete?.name}
+        clientName={clientToDelete?.name || 'this client'}
+        warningMessage="This action cannot be undone. All jobs and invoices associated with this client will also be deleted."
       />
+      
+      {/* Status Dropdown Portal */}
+      {openMenuId && createPortal(
+        <div 
+          className="status-dropdown-menu absolute bg-white border border-gray-200 rounded shadow-lg z-[9999] py-1 w-32"
+          style={{ top: menuCoords.top, left: menuCoords.left }}
+          onClick={e => e.stopPropagation()}
+        >
+          <button onClick={(e) => { e.stopPropagation(); handleUpdateStatus({ id: openMenuId }, 'active'); setOpenMenuId(null); }} className="w-full text-left px-3 py-1.5 text-xs font-medium text-emerald-800 hover:bg-emerald-50 flex items-center gap-2 cursor-pointer">
+            <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+            Active
+          </button>
+          <button onClick={(e) => { e.stopPropagation(); handleUpdateStatus({ id: openMenuId }, 'inactive'); setOpenMenuId(null); }} className="w-full text-left px-3 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-50 flex items-center gap-2 cursor-pointer">
+            <span className="w-2 h-2 rounded-full bg-gray-400"></span>
+            Inactive
+          </button>
+        </div>,
+        document.body
+      )}
     </>
   );
 };

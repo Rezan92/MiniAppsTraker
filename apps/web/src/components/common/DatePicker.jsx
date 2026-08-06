@@ -39,8 +39,16 @@ export const DatePicker = ({ value, onChange, placeholder = 'Select date', class
   const updateCoords = () => {
     if (buttonRef.current) {
       const rect = buttonRef.current.getBoundingClientRect();
+      const dropdownHeight = dropdownRef.current ? dropdownRef.current.offsetHeight : 340;
+      const spaceBelow = window.innerHeight - rect.bottom;
+      
+      let top = rect.bottom + window.scrollY + 8;
+      if (spaceBelow < dropdownHeight && rect.top > dropdownHeight) {
+        top = rect.top + window.scrollY - dropdownHeight - 8;
+      }
+
       setCoords({
-        top: rect.bottom + window.scrollY + 8,
+        top,
         left: rect.left + window.scrollX,
         width: rect.width
       });

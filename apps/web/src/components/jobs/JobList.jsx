@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { useToast } from '../../contexts/ToastContext';
 import { useNavigate, useSearchParams } from 'react-router-dom';
@@ -30,6 +31,28 @@ export const JobList = () => {
   const [hoursData, setHoursData] = useState({ date: new Date().toISOString().split('T')[0], hours: '' });
 
   const [openMenuId, setOpenMenuId] = useState(null);
+  const [menuCoords, setMenuCoords] = useState({ top: 0, left: 0 });
+
+  useEffect(() => {
+    if (openMenuId) {
+      const handler = (e) => {
+        if (e.target.closest('.status-dropdown-menu')) return;
+        setOpenMenuId(null);
+      };
+      document.addEventListener('mousedown', handler, true);
+      return () => document.removeEventListener('mousedown', handler, true);
+    }
+  }, [openMenuId]);
+
+  const handleStatusClick = (e, id) => {
+    e.stopPropagation();
+    const rect = e.currentTarget.getBoundingClientRect();
+    setMenuCoords({
+      top: rect.bottom + window.scrollY + 4,
+      left: rect.left + window.scrollX
+    });
+    setOpenMenuId(openMenuId === id ? null : id);
+  };
 
   useEffect(() => {
     if (searchParams.get('add') === 'true') {
@@ -231,7 +254,7 @@ export const JobList = () => {
                     <td className="py-4 px-4 align-top">
                       <div className="relative w-max cursor-pointer">
                         <button 
-                          onClick={(e) => { e.stopPropagation(); setOpenMenuId(openMenuId === j.id ? null : j.id); }}
+                          onClick={(e) => handleStatusClick(e, j.id)}
                           className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium transition-colors ${
                             j.status === 'open' ? 'bg-amber-100 text-amber-800 border border-amber-200 hover:bg-amber-200' :
                             j.status === 'in_progress' ? 'bg-sky-100 text-sky-800 border border-sky-200 hover:bg-sky-200' :
@@ -242,31 +265,6 @@ export const JobList = () => {
                           <span className="capitalize">{j.status.replace('_', ' ')}</span>
                           <span className="material-symbols-outlined" style={{ fontSize: '14px' }}>expand_more</span>
                         </button>
-                        
-                        {/* Status Dropdown */}
-                        {openMenuId === j.id && (
-                          <>
-                            <div className="fixed inset-0 z-40" onClick={(e) => { e.stopPropagation(); setOpenMenuId(null); }}></div>
-                            <div className="absolute left-0 mt-1 w-36 bg-white border border-gray-200 rounded shadow-lg z-50 py-1" onClick={e => e.stopPropagation()}>
-                              <button onClick={(e) => { e.stopPropagation(); handleUpdateStatus(j.id, 'open'); }} className="w-full text-left px-3 py-1.5 text-xs font-medium text-amber-800 hover:bg-amber-50 flex items-center gap-2">
-                                <span className="w-2 h-2 rounded-full bg-amber-500"></span>
-                                Open
-                              </button>
-                              <button onClick={(e) => { e.stopPropagation(); handleUpdateStatus(j.id, 'in_progress'); }} className="w-full text-left px-3 py-1.5 text-xs font-medium text-sky-800 hover:bg-sky-50 flex items-center gap-2">
-                                <span className="w-2 h-2 rounded-full bg-sky-500"></span>
-                                In Progress
-                              </button>
-                              <button onClick={(e) => { e.stopPropagation(); handleUpdateStatus(j.id, 'completed'); }} className="w-full text-left px-3 py-1.5 text-xs font-medium text-emerald-800 hover:bg-emerald-50 flex items-center gap-2">
-                                <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
-                                Completed
-                              </button>
-                              <button onClick={(e) => { e.stopPropagation(); handleUpdateStatus(j.id, 'cancelled'); }} className="w-full text-left px-3 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-50 flex items-center gap-2">
-                                <span className="w-2 h-2 rounded-full bg-gray-400"></span>
-                                Cancelled
-                              </button>
-                            </div>
-                          </>
-                        )}
                       </div>
                     </td>
                   <td className="py-4 px-4 align-top">
@@ -344,6 +342,32 @@ export const JobList = () => {
           hoursData={hoursData} 
           setHoursData={setHoursData} 
         />
+      {/* Status Dropdown Portal */}
+      {openMenuId && createPortal(
+        <div 
+          className="status-dropdown-menu absolute bg-white border border-gray-200 rounded shadow-lg z-[9999] py-1 w-36"
+          style={{ top: menuCoords.top, left: menuCoords.left }}
+          onClick={e => e.stopPropagation()}
+        >
+          <button onClick={(e) => { e.stopPropagation(); handleUpdateStatus(openMenuId, 'open'); setOpenMenuId(null); }} className="w-full text-left px-3 py-1.5 text-xs font-medium text-amber-800 hover:bg-amber-50 flex items-center gap-2 cursor-pointer">
+            <span className="w-2 h-2 rounded-full bg-amber-500"></span>
+            Open
+          </button>
+          <button onClick={(e) => { e.stopPropagation(); handleUpdateStatus(openMenuId, 'in_progress'); setOpenMenuId(null); }} className="w-full text-left px-3 py-1.5 text-xs font-medium text-sky-800 hover:bg-sky-50 flex items-center gap-2 cursor-pointer">
+            <span className="w-2 h-2 rounded-full bg-sky-500"></span>
+            In Progress
+          </button>
+          <button onClick={(e) => { e.stopPropagation(); handleUpdateStatus(openMenuId, 'completed'); setOpenMenuId(null); }} className="w-full text-left px-3 py-1.5 text-xs font-medium text-emerald-800 hover:bg-emerald-50 flex items-center gap-2 cursor-pointer">
+            <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+            Completed
+          </button>
+          <button onClick={(e) => { e.stopPropagation(); handleUpdateStatus(openMenuId, 'cancelled'); setOpenMenuId(null); }} className="w-full text-left px-3 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-50 flex items-center gap-2 cursor-pointer">
+            <span className="w-2 h-2 rounded-full bg-gray-400"></span>
+            Cancelled
+          </button>
+        </div>,
+        document.body
+      )}
     </div>
   );
 };
