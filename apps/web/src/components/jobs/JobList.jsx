@@ -7,6 +7,7 @@ import { AddMaterialModal } from './AddMaterialModal';
 import { AddJobHoursModal } from './AddJobHoursModal';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { translateApiError } from '../../utils/errorTranslator';
+import { PageHeader } from '../common/PageHeader';
 
 export const JobList = () => {
   const { session } = useAuth();
@@ -177,65 +178,24 @@ export const JobList = () => {
 
   return (
     <div className="flex flex-col gap-8">
-      {/* Page Header & Actions */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-        <div>
-          <h1 className="font-headline-lg text-headline-lg font-bold text-on-surface">Job Tracking Engine</h1>
-          <p className="font-body-md text-gray-500 mt-1">Manage, filter, and track all active and historical jobs.</p>
-        </div>
-        <button 
-          onClick={() => setOpen(true)}
-          className="flex items-center justify-center gap-2 bg-primary text-black px-4 py-2 rounded font-body-md font-bold cursor-pointer hover:bg-opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-[0_0_10px_rgba(245,158,11,0.15)] h-11"
-        >
-          <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>add</span>
-          Add Job
-        </button>
-      </div>
-
-      {/* Filters & Search */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        {/* Tabs */}
-        <div className="flex space-x-1 p-1 bg-gray-100 rounded-xl border border-gray-200 inline-flex overflow-x-auto scrollbar-hide w-full md:w-auto">
-          <button 
-            onClick={() => setStatusFilter('all')}
-            className={`px-4 py-1.5 text-sm font-medium rounded-md whitespace-nowrap transition-colors ${statusFilter === 'all' ? 'bg-white text-gray-900 shadow-sm border border-gray-200' : 'text-gray-600 hover:text-gray-900 hover:bg-white/50 border border-transparent'}`}
-          >
-            All Jobs
-          </button>
-          <button 
-            onClick={() => setStatusFilter('open')}
-            className={`px-4 py-1.5 text-sm font-medium rounded-md whitespace-nowrap transition-colors ${statusFilter === 'open' ? 'bg-white text-gray-900 shadow-sm border border-gray-200' : 'text-gray-600 hover:text-gray-900 hover:bg-white/50 border border-transparent'}`}
-          >
-            Open
-          </button>
-          <button 
-            onClick={() => setStatusFilter('in_progress')}
-            className={`px-4 py-1.5 text-sm font-medium rounded-md whitespace-nowrap transition-colors ${statusFilter === 'in_progress' ? 'bg-white text-gray-900 shadow-sm border border-gray-200' : 'text-gray-600 hover:text-gray-900 hover:bg-white/50 border border-transparent'}`}
-          >
-            In Progress
-          </button>
-          <button 
-            onClick={() => setStatusFilter('completed')}
-            className={`px-4 py-1.5 text-sm font-medium rounded-md whitespace-nowrap transition-colors ${statusFilter === 'completed' ? 'bg-white text-gray-900 shadow-sm border border-gray-200' : 'text-gray-600 hover:text-gray-900 hover:bg-white/50 border border-transparent'}`}
-          >
-            Completed
-          </button>
-        </div>
-        
-        {/* Table Search */}
-        <div className="relative w-full md:w-80 shrink-0">
-          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-            <span className="material-symbols-outlined text-gray-400 text-xl">search</span>
-          </div>
-          <input 
-            className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-xl leading-5 bg-white placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary sm:text-sm transition-shadow shadow-sm" 
-            placeholder="Search jobs, clients..." 
-            type="text" 
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-          />
-        </div>
-      </div>
+      <PageHeader
+        title="Job Tracking Engine"
+        subtitle="Manage, filter, and track all active and historical jobs."
+        actionButtonText="Add Job"
+        actionButtonIcon="add"
+        onActionClick={() => setOpen(true)}
+        tabs={[
+          { value: 'all', label: 'All Jobs' },
+          { value: 'open', label: 'Open' },
+          { value: 'in_progress', label: 'In Progress' },
+          { value: 'completed', label: 'Completed' }
+        ]}
+        activeTab={statusFilter}
+        onTabChange={setStatusFilter}
+        searchPlaceholder="Search jobs, clients..."
+        search={search}
+        onSearchChange={setSearch}
+      />
 
       {/* Data Table Container */}
       <div className="bg-white border border-surface-container-high rounded-lg shadow-sm overflow-hidden flex flex-col">

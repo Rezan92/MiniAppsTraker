@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { formatCurrency, formatDate } from '../../utils/formatters';
+import { PageHeader } from '../common/PageHeader';
 
 const STATUS_COLORS = {
   draft: 'bg-gray-100 text-gray-800',
@@ -16,6 +17,9 @@ export const InvoiceList = () => {
   const { session } = useAuth();
   const navigate = useNavigate();
   const [filter, setFilter] = useState('all');
+  const [search, setSearch] = useState('');
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
 
   const { data: invoices = [], isLoading } = useQuery({
     queryKey: ['invoices'],
@@ -30,43 +34,77 @@ export const InvoiceList = () => {
     enabled: !!session
   });
 
-  const filteredInvoices = filter === 'all' 
-    ? invoices 
-    : invoices.filter(inv => inv.status === filter);
+  const filteredInvoices = invoices.filter(inv => {
+    // 1. Status Filter
+    if (filter !== 'all' && inv.status !== filter) return false;
+    
+    // 2. Search Filter
+    if (search) {
+      const s = search.toLowerCase();
+      const matchesInvoiceNum = inv.invoice_number?.toLowerCase().includes(s);
+      const matchesClientName = inv.clients?.name?.toLowerCase().includes(s);
+      if (!matchesInvoiceNum && !matchesClientName) return false;
+    }
+
+    // 3. Date Range Filter
+    if (startDate || endDate) {
+      // Use paid_at for paid invoices, otherwise created_at
+      const dateToCompare = (inv.status === 'paid' && inv.paid_at) ? inv.paid_at : inv.created_at;
+      if (dateToCompare) {
+        const d = new Date(dateToCompare).toISOString().split('T')[0];
+        if (startDate && d < startDate) return false;
+        if (endDate && d > endDate) return false;
+      }
+    }
+    
+    return true;
+  });
+
+  const laborTotal = filteredInvoices.reduce((sum, inv) => sum + Number(inv.labor_amount || 0), 0);
+  const materialTotal = filteredInvoices.reduce((sum, inv) => sum + Number(inv.materials_amount || 0), 0);
+  const invoiceTotal = filteredInvoices.reduce((sum, inv) => sum + Number(inv.total_amount || 0), 0);
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 gap-4">
-        <div>
-          <h1 className="text-headline-md font-bold text-gray-900">Invoices</h1>
-          <p className="text-body-md text-gray-600 mt-1">Manage your billing and payments</p>
+    <div className="flex flex-col gap-8">
+      <PageHeader
+        title="Invoices"
+        subtitle="Manage your billing, payments, and financial records."
+        actionButtonText="Create Invoice"
+        actionButtonIcon="add"
+        actionLinkTo="/invoices/new"
+        tabs={[
+          { value: 'all', label: 'All Invoices' },
+          { value: 'draft', label: 'Draft' },
+          { value: 'sent', label: 'Sent' },
+          { value: 'paid', label: 'Paid' },
+          { value: 'overdue', label: 'Overdue' }
+        ]}
+        activeTab={filter}
+        onTabChange={setFilter}
+        searchPlaceholder="Search invoices, clients..."
+        search={search}
+        onSearchChange={setSearch}
+      >
+        <div className="flex items-center gap-2">
+          <input 
+            type="date" 
+            value={startDate}
+            onChange={(e) => setStartDate(e.target.value)}
+            className="px-3 py-1.5 border border-gray-300 rounded-md text-sm text-gray-700 bg-white shadow-sm focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary"
+            title="Start Date"
+          />
+          <span className="text-gray-500 text-sm">to</span>
+          <input 
+            type="date" 
+            value={endDate}
+            onChange={(e) => setEndDate(e.target.value)}
+            className="px-3 py-1.5 border border-gray-300 rounded-md text-sm text-gray-700 bg-white shadow-sm focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary"
+            title="End Date"
+          />
         </div>
-        <Link 
-          to="/invoices/new"
-          className="inline-flex items-center gap-2 bg-primary text-black px-6 py-2.5 rounded-lg font-title-sm hover:opacity-90 transition-opacity whitespace-nowrap"
-        >
-          <span className="material-symbols-outlined text-[20px]">add</span>
-          Create Invoice
-        </Link>
-      </div>
+      </PageHeader>
 
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-        <div className="p-4 border-b border-gray-200 bg-gray-50 flex gap-2 overflow-x-auto">
-          {['all', 'draft', 'sent', 'paid', 'overdue'].map(f => (
-            <button
-              key={f}
-              onClick={() => setFilter(f)}
-              className={`px-4 py-2 rounded-lg font-title-sm capitalize whitespace-nowrap transition-colors ${
-                filter === f 
-                  ? 'bg-primary text-black' 
-                  : 'text-gray-600 hover:bg-gray-200'
-              }`}
-            >
-              {f}
-            </button>
-          ))}
-        </div>
-
+      <div className="bg-white border border-surface-container-high rounded-lg shadow-sm overflow-hidden flex flex-col">
         {isLoading ? (
           <div className="p-8 text-center text-gray-500">Loading invoices...</div>
         ) : filteredInvoices.length === 0 ? (
@@ -89,15 +127,18 @@ export const InvoiceList = () => {
             )}
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
-              <thead>
-                <tr className="bg-[#1F2937] text-white border-b border-surface-container-high">
+          <div className="overflow-x-auto min-h-[300px]">
+            <table className="w-full text-left min-w-[1000px] border-collapse relative">
+              <thead className="sticky top-0 bg-[#1F2937] text-white z-10 border-b border-surface-container-high">
+                <tr>
                   <th className="py-3 px-4 font-label-caps text-label-caps whitespace-nowrap">Invoice</th>
                   <th className="py-3 px-4 font-label-caps text-label-caps whitespace-nowrap">Client</th>
-                  <th className="py-3 px-4 font-label-caps text-label-caps whitespace-nowrap">Date</th>
-                  <th className="py-3 px-4 font-label-caps text-label-caps whitespace-nowrap">Amount</th>
-                  <th className="py-3 px-4 font-label-caps text-label-caps whitespace-nowrap">Status</th>
+                  <th className="py-3 px-4 font-label-caps text-label-caps whitespace-nowrap">Created</th>
+                  <th className="py-3 px-4 font-label-caps text-label-caps whitespace-nowrap">Paid</th>
+                  <th className="py-3 px-4 font-label-caps text-label-caps whitespace-nowrap text-right">Labor</th>
+                  <th className="py-3 px-4 font-label-caps text-label-caps whitespace-nowrap text-right">Materials</th>
+                  <th className="py-3 px-4 font-label-caps text-label-caps whitespace-nowrap text-right">Total Amount</th>
+                  <th className="py-3 px-4 font-label-caps text-label-caps whitespace-nowrap text-right">Status</th>
                 </tr>
               </thead>
               <tbody className="font-body-md divide-y divide-surface-container-high">
@@ -114,12 +155,21 @@ export const InvoiceList = () => {
                       <div className="font-title-sm text-gray-900">{invoice.clients?.name}</div>
                     </td>
                     <td className="px-4 py-4 text-body-md text-gray-600">
-                      {formatDate(invoice.invoice_date)}
+                      {invoice.created_at ? formatDate(invoice.created_at) : 'N/A'}
                     </td>
-                    <td className="px-4 py-4 font-title-sm text-gray-900">
+                    <td className="px-4 py-4 text-body-md text-gray-600">
+                      {invoice.paid_at ? formatDate(invoice.paid_at) : '-'}
+                    </td>
+                    <td className="px-4 py-4 text-right font-title-sm text-gray-900">
+                      {formatCurrency(invoice.labor_amount)}
+                    </td>
+                    <td className="px-4 py-4 text-right font-title-sm text-gray-900">
+                      {formatCurrency(invoice.materials_amount)}
+                    </td>
+                    <td className="px-4 py-4 text-right font-title-sm text-gray-900 font-bold">
                       {formatCurrency(invoice.total_amount)}
                     </td>
-                    <td className="px-4 py-4">
+                    <td className="px-4 py-4 text-right">
                       <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-label-sm font-medium capitalize ${STATUS_COLORS[invoice.status] || 'bg-gray-100 text-gray-800'}`}>
                         {invoice.status.replace('_', ' ')}
                       </span>
@@ -127,6 +177,15 @@ export const InvoiceList = () => {
                   </tr>
                 ))}
               </tbody>
+              <tfoot className="sticky bottom-0 bg-white border-t-2 border-gray-200 z-10">
+                <tr>
+                  <td colSpan="4" className="px-4 py-3 text-right font-title-sm text-gray-700">Totals ({filter === 'all' ? 'All Invoices' : filter})</td>
+                  <td className="px-4 py-3 text-right font-title-sm text-gray-900">{formatCurrency(laborTotal)}</td>
+                  <td className="px-4 py-3 text-right font-title-sm text-gray-900">{formatCurrency(materialTotal)}</td>
+                  <td className="px-4 py-3 text-right font-title-md font-bold text-gray-900">{formatCurrency(invoiceTotal)}</td>
+                  <td></td>
+                </tr>
+              </tfoot>
             </table>
           </div>
         )}
