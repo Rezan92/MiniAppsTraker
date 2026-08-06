@@ -7,6 +7,7 @@ import { useToast } from '../../contexts/ToastContext';
 import { translateApiError } from '../../utils/errorTranslator';
 import { InvoicePreview } from './InvoicePreview';
 import { DeleteInvoiceModal } from './DeleteInvoiceModal';
+import { formatDate } from '../../utils/formatters';
 
 const STATUS_COLORS = {
   draft: 'bg-gray-100 text-gray-800',

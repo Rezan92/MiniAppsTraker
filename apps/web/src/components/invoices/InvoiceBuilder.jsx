@@ -185,8 +185,25 @@ export const InvoiceBuilder = () => {
 
   const saveMutation = useMutation({
     mutationFn: async () => {
+      let finalBilledToName = formData.billed_to_name;
+      if (!finalBilledToName && formData.client_id) {
+        const client = clients?.find(c => c.id === formData.client_id);
+        if (formData.bill_to_type === 'company_name' && client?.company_name) {
+          finalBilledToName = client.company_name;
+        } else if (formData.bill_to_type === 'client_name' && client?.name) {
+          finalBilledToName = client.name;
+        } else if (formData.bill_to_type === 'renter_name' && formData.property_id) {
+          const prop = properties?.find(p => p.id === formData.property_id);
+          finalBilledToName = prop?.renter_name || 'Unknown Tenant';
+        } else if (formData.bill_to_type === 'property_address' && formData.property_id) {
+          const prop = properties?.find(p => p.id === formData.property_id);
+          finalBilledToName = prop?.address || 'Unknown Address';
+        }
+      }
+
       const payload = {
         ...formData,
+        billed_to_name: finalBilledToName,
         labor_amount: Number(formData.labor_amount) || 0,
         labor_details: formData.labor_details.filter(d => d.description.trim()),
         materials: formData.materials.filter(m => m.description.trim()).map(m => ({ ...m, cost: Number(m.cost) || 0 }))
@@ -258,7 +275,17 @@ export const InvoiceBuilder = () => {
                 <label className="block text-label-md text-gray-700 mb-1">Select Client *</label>
                 <select 
                   value={formData.client_id}
-                  onChange={(e) => setFormData({...formData, client_id: e.target.value, job_id: ''})}
+                  onChange={(e) => {
+                    const cid = e.target.value;
+                    const client = clients?.find(c => c.id === cid);
+                    setFormData({
+                      ...formData, 
+                      client_id: cid, 
+                      job_id: '',
+                      bill_to_type: 'client_name',
+                      billed_to_name: client?.name || ''
+                    });
+                  }}
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary bg-white"
                   required
                 >
