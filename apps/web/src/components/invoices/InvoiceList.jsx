@@ -4,6 +4,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { formatCurrency, formatDate } from '../../utils/formatters';
 import { PageHeader } from '../common/PageHeader';
+import { DateRangeFilter } from '../common/DateRangeFilter';
 
 const STATUS_COLORS = {
   draft: 'bg-gray-100 text-gray-800',
@@ -18,8 +19,10 @@ export const InvoiceList = () => {
   const navigate = useNavigate();
   const [filter, setFilter] = useState('all');
   const [search, setSearch] = useState('');
-  const [startDate, setStartDate] = useState('');
-  const [endDate, setEndDate] = useState('');
+  const [dateRange, setDateRange] = useState({
+    startDate: null,
+    endDate: null
+  });
 
   const { data: invoices = [], isLoading } = useQuery({
     queryKey: ['invoices'],
@@ -47,13 +50,15 @@ export const InvoiceList = () => {
     }
 
     // 3. Date Range Filter
-    if (startDate || endDate) {
+    if (dateRange?.startDate || dateRange?.endDate) {
       // Use paid_at for paid invoices, otherwise created_at
       const dateToCompare = (inv.status === 'paid' && inv.paid_at) ? inv.paid_at : inv.created_at;
       if (dateToCompare) {
         const d = new Date(dateToCompare).toISOString().split('T')[0];
-        if (startDate && d < startDate) return false;
-        if (endDate && d > endDate) return false;
+        if (dateRange.startDate && d < dateRange.startDate) return false;
+        if (dateRange.endDate && d > dateRange.endDate) return false;
+      } else {
+        return false; // If there's a filter but no date to compare, exclude it
       }
     }
     
@@ -85,23 +90,10 @@ export const InvoiceList = () => {
         search={search}
         onSearchChange={setSearch}
       >
-        <div className="flex items-center gap-2">
-          <input 
-            type="date" 
-            value={startDate}
-            onChange={(e) => setStartDate(e.target.value)}
-            className="px-3 py-1.5 border border-gray-300 rounded-md text-sm text-gray-700 bg-white shadow-sm focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary"
-            title="Start Date"
-          />
-          <span className="text-gray-500 text-sm">to</span>
-          <input 
-            type="date" 
-            value={endDate}
-            onChange={(e) => setEndDate(e.target.value)}
-            className="px-3 py-1.5 border border-gray-300 rounded-md text-sm text-gray-700 bg-white shadow-sm focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary"
-            title="End Date"
-          />
-        </div>
+        <DateRangeFilter 
+          value={dateRange}
+          onChange={setDateRange}
+        />
       </PageHeader>
 
       <div className="bg-white border border-surface-container-high rounded-lg shadow-sm overflow-hidden flex flex-col">
@@ -177,13 +169,15 @@ export const InvoiceList = () => {
                   </tr>
                 ))}
               </tbody>
-              <tfoot className="sticky bottom-0 bg-white border-t-2 border-gray-200 z-10">
-                <tr>
-                  <td colSpan="4" className="px-4 py-3 text-right font-title-sm text-gray-700">Totals ({filter === 'all' ? 'All Invoices' : filter})</td>
-                  <td className="px-4 py-3 text-right font-title-sm text-gray-900">{formatCurrency(laborTotal)}</td>
-                  <td className="px-4 py-3 text-right font-title-sm text-gray-900">{formatCurrency(materialTotal)}</td>
-                  <td className="px-4 py-3 text-right font-title-md font-bold text-gray-900">{formatCurrency(invoiceTotal)}</td>
-                  <td></td>
+              <tfoot className="sticky bottom-0 z-10">
+                <tr className="bg-[#1F2937]">
+                  <td colSpan="4" className="px-4 py-3.5 text-right font-label-caps text-label-caps text-gray-300 tracking-wider">
+                    Totals · {filter === 'all' ? 'All Invoices' : filter.charAt(0).toUpperCase() + filter.slice(1)}
+                  </td>
+                  <td className="px-4 py-3.5 text-right font-title-sm text-amber-400">{formatCurrency(laborTotal)}</td>
+                  <td className="px-4 py-3.5 text-right font-title-sm text-amber-400">{formatCurrency(materialTotal)}</td>
+                  <td className="px-4 py-3.5 text-right font-title-md font-bold text-white">{formatCurrency(invoiceTotal)}</td>
+                  <td className="bg-[#1F2937]"></td>
                 </tr>
               </tfoot>
             </table>
