@@ -92,34 +92,34 @@ export const InvoiceList = () => {
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse">
               <thead>
-                <tr className="border-b border-gray-200 bg-gray-50 text-label-lg text-gray-500 uppercase tracking-wider">
-                  <th className="p-4 font-medium">Invoice</th>
-                  <th className="p-4 font-medium">Client</th>
-                  <th className="p-4 font-medium">Date</th>
-                  <th className="p-4 font-medium">Amount</th>
-                  <th className="p-4 font-medium">Status</th>
+                <tr className="bg-[#1F2937] text-white border-b border-surface-container-high">
+                  <th className="py-3 px-4 font-label-caps text-label-caps whitespace-nowrap">Invoice</th>
+                  <th className="py-3 px-4 font-label-caps text-label-caps whitespace-nowrap">Client</th>
+                  <th className="py-3 px-4 font-label-caps text-label-caps whitespace-nowrap">Date</th>
+                  <th className="py-3 px-4 font-label-caps text-label-caps whitespace-nowrap">Amount</th>
+                  <th className="py-3 px-4 font-label-caps text-label-caps whitespace-nowrap">Status</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-100">
-                {filteredInvoices.map((invoice) => (
+              <tbody className="font-body-md divide-y divide-surface-container-high">
+                {filteredInvoices.map((invoice, idx) => (
                   <tr 
                     key={invoice.id} 
                     onClick={() => navigate(`/invoices/${invoice.id}`)}
-                    className="hover:bg-gray-50 cursor-pointer transition-colors"
+                    className={`hover:bg-gray-100 cursor-pointer transition-colors group ${idx % 2 !== 0 ? 'bg-[#F9FAFB]' : 'bg-white'}`}
                   >
-                    <td className="p-4">
-                      <div className="font-title-sm text-gray-900">#{invoice.invoice_number}</div>
+                    <td className="px-4 py-4">
+                      <div className="font-title-sm text-gray-900 group-hover:text-primary transition-colors">#{invoice.invoice_number}</div>
                     </td>
-                    <td className="p-4">
+                    <td className="px-4 py-4">
                       <div className="font-title-sm text-gray-900">{invoice.clients?.name}</div>
                     </td>
-                    <td className="p-4 text-body-md text-gray-600">
+                    <td className="px-4 py-4 text-body-md text-gray-600">
                       {formatDate(invoice.invoice_date)}
                     </td>
-                    <td className="p-4 font-title-sm text-gray-900">
+                    <td className="px-4 py-4 font-title-sm text-gray-900">
                       {formatCurrency(invoice.total_amount)}
                     </td>
-                    <td className="p-4">
+                    <td className="px-4 py-4">
                       <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-label-sm font-medium capitalize ${STATUS_COLORS[invoice.status] || 'bg-gray-100 text-gray-800'}`}>
                         {invoice.status.replace('_', ' ')}
                       </span>

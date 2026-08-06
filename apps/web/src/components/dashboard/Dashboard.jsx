@@ -245,30 +245,30 @@ export const Dashboard = () => {
 
         <div className="overflow-x-auto max-h-[400px]">
           <table className="w-full text-left border-collapse min-w-[600px] relative">
-            <thead className="sticky top-0 bg-gray-50/95 backdrop-blur z-10 border-b border-gray-100">
+            <thead className="sticky top-0 bg-[#1F2937] text-white z-10 border-b border-surface-container-high">
               <tr>
-                <th className="font-label-md font-semibold text-gray-500 px-5 py-3">Invoice #</th>
-                <th className="font-label-md font-semibold text-gray-500 px-5 py-3">Client</th>
-                <th className="font-label-md font-semibold text-gray-500 px-5 py-3">Due Date</th>
-                <th className="font-label-md font-semibold text-gray-500 px-5 py-3 text-right">Status</th>
-                <th className="font-label-md font-semibold text-gray-500 px-5 py-3 text-right">Labor Amount</th>
-                <th className="font-label-md font-semibold text-gray-500 px-5 py-3 text-right">Materials Amount</th>
-                <th className="font-label-md font-semibold text-gray-500 px-5 py-3 text-right">Total Amount</th>
+                <th className="py-3 px-4 font-label-caps text-label-caps whitespace-nowrap">Invoice #</th>
+                <th className="py-3 px-4 font-label-caps text-label-caps whitespace-nowrap">Client</th>
+                <th className="py-3 px-4 font-label-caps text-label-caps whitespace-nowrap">Due Date</th>
+                <th className="py-3 px-4 font-label-caps text-label-caps whitespace-nowrap text-right">Status</th>
+                <th className="py-3 px-4 font-label-caps text-label-caps whitespace-nowrap text-right">Labor Amount</th>
+                <th className="py-3 px-4 font-label-caps text-label-caps whitespace-nowrap text-right">Materials Amount</th>
+                <th className="py-3 px-4 font-label-caps text-label-caps whitespace-nowrap text-right">Total Amount</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-100">
+            <tbody className="font-body-md divide-y divide-surface-container-high">
               {filteredInvoices.length === 0 ? (
                 <tr><td colSpan="7" className="px-5 py-8 text-center text-gray-500">No invoices found for this filter.</td></tr>
               ) : (
-                filteredInvoices.map(inv => (
-                  <tr key={inv.id} onClick={() => navigate(`/invoices/${inv.id}`)} className="hover:bg-gray-50 cursor-pointer transition-colors group">
-                    <td className="px-5 py-4 font-body-sm font-medium text-gray-900 group-hover:text-primary transition-colors">{inv.invoice_number}</td>
-                    <td className="px-5 py-4 font-body-sm text-gray-600">{inv.clients?.name}</td>
-                    <td className="px-5 py-4 font-body-sm text-gray-500">{formatDate(inv.due_date)}</td>
-                    <td className="px-5 py-4 text-right">{getStatusBadge(inv.status)}</td>
-                    <td className="px-5 py-4 text-right font-body-sm text-gray-900 font-medium">{formatCurrency(inv.labor_amount)}</td>
-                    <td className="px-5 py-4 text-right font-body-sm text-gray-900 font-medium">{formatCurrency(inv.materials_amount)}</td>
-                    <td className="px-5 py-4 text-right font-body-sm text-gray-900 font-medium">{formatCurrency(inv.total_amount)}</td>
+                filteredInvoices.map((inv, idx) => (
+                  <tr key={inv.id} onClick={() => navigate(`/invoices/${inv.id}`)} className={`hover:bg-gray-100 cursor-pointer transition-colors group ${idx % 2 !== 0 ? 'bg-[#F9FAFB]' : 'bg-white'}`}>
+                    <td className="px-4 py-4 font-body-sm font-medium text-gray-900 group-hover:text-primary transition-colors">{inv.invoice_number}</td>
+                    <td className="px-4 py-4 font-body-sm text-gray-600">{inv.clients?.name}</td>
+                    <td className="px-4 py-4 font-body-sm text-gray-500">{formatDate(inv.due_date)}</td>
+                    <td className="px-4 py-4 text-right">{getStatusBadge(inv.status)}</td>
+                    <td className="px-4 py-4 text-right font-body-sm text-gray-900 font-medium">{formatCurrency(inv.labor_amount)}</td>
+                    <td className="px-4 py-4 text-right font-body-sm text-gray-900 font-medium">{formatCurrency(inv.materials_amount)}</td>
+                    <td className="px-4 py-4 text-right font-body-sm text-gray-900 font-medium">{formatCurrency(inv.total_amount)}</td>
                   </tr>
                 ))
               )}
@@ -319,24 +319,24 @@ export const Dashboard = () => {
 
         <div className="overflow-x-auto max-h-[400px]">
           <table className="w-full text-left border-collapse min-w-[600px] relative">
-            <thead className="sticky top-0 bg-gray-50/95 backdrop-blur z-10 border-b border-gray-100">
+            <thead className="sticky top-0 bg-[#1F2937] text-white z-10 border-b border-surface-container-high">
               <tr>
-                <th className="font-label-md font-semibold text-gray-500 px-5 py-3">Job Title</th>
-                <th className="font-label-md font-semibold text-gray-500 px-5 py-3">Client</th>
-                <th className="font-label-md font-semibold text-gray-500 px-5 py-3">Start Date</th>
-                <th className="font-label-md font-semibold text-gray-500 px-5 py-3 text-right">Status</th>
+                <th className="py-3 px-4 font-label-caps text-label-caps whitespace-nowrap">Job Title</th>
+                <th className="py-3 px-4 font-label-caps text-label-caps whitespace-nowrap">Client</th>
+                <th className="py-3 px-4 font-label-caps text-label-caps whitespace-nowrap">Start Date</th>
+                <th className="py-3 px-4 font-label-caps text-label-caps whitespace-nowrap text-right">Status</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-100">
+            <tbody className="font-body-md divide-y divide-surface-container-high">
               {filteredJobs.length === 0 ? (
                 <tr><td colSpan="4" className="px-5 py-8 text-center text-gray-500">No jobs found for this filter.</td></tr>
               ) : (
-                filteredJobs.map(job => (
-                  <tr key={job.id} onClick={() => navigate(`/jobs/${job.id}`)} className="hover:bg-gray-50 cursor-pointer transition-colors group">
-                    <td className="px-5 py-4 font-body-sm font-medium text-gray-900 group-hover:text-primary transition-colors">{job.title}</td>
-                    <td className="px-5 py-4 font-body-sm text-gray-600">{job.clients?.name}</td>
-                    <td className="px-5 py-4 font-body-sm text-gray-500">{formatDate(job.start_date)}</td>
-                    <td className="px-5 py-4 text-right">{getStatusBadge(job.status)}</td>
+                filteredJobs.map((job, idx) => (
+                  <tr key={job.id} onClick={() => navigate(`/jobs/${job.id}`)} className={`hover:bg-gray-100 cursor-pointer transition-colors group ${idx % 2 !== 0 ? 'bg-[#F9FAFB]' : 'bg-white'}`}>
+                    <td className="px-4 py-4 font-body-sm font-medium text-gray-900 group-hover:text-primary transition-colors">{job.title}</td>
+                    <td className="px-4 py-4 font-body-sm text-gray-600">{job.clients?.name}</td>
+                    <td className="px-4 py-4 font-body-sm text-gray-500">{formatDate(job.start_date)}</td>
+                    <td className="px-4 py-4 text-right">{getStatusBadge(job.status)}</td>
                   </tr>
                 ))
               )}
