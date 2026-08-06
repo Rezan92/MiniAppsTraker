@@ -232,7 +232,9 @@ export const ClientDetails = () => {
 
       </div>
 
-      <PropertiesList clientId={client.id} />
+      {client.client_type === 'property_manager' && (
+        <PropertiesList clientId={client.id} />
+      )}
 
       <AddJobModal 
         open={jobModalOpen}

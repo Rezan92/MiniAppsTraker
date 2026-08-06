@@ -10,6 +10,8 @@ const propertySchema = z.object({
   client_id: z.string().uuid("Invalid client ID"),
   name: z.string().optional().nullable(),
   address: z.string().min(1, "Address is required"),
+  renter_name: z.string().optional().nullable(),
+  renter_phone: z.string().optional().nullable(),
   notes: z.string().optional().nullable()
 });
 
@@ -53,7 +55,7 @@ router.post('/', async (req, res, next) => {
       return next(err);
     }
 
-    const { client_id, name, address, notes } = result.data;
+    const { client_id, name, address, renter_name, renter_phone, notes } = result.data;
 
     // Verify client belongs to tenant
     const { data: clientData, error: clientError } = await supabase
@@ -69,7 +71,7 @@ router.post('/', async (req, res, next) => {
 
     const { data, error } = await supabase
       .from('rental_properties')
-      .insert([{ tenant_id: req.user.tenant_id, client_id, name, address, notes }])
+      .insert([{ tenant_id: req.user.tenant_id, client_id, name, address, renter_name, renter_phone, notes }])
       .select();
 
     if (error) return next(error);
@@ -94,11 +96,11 @@ router.put('/:id', async (req, res, next) => {
       return next(err);
     }
 
-    const { name, address, notes } = result.data;
+    const { name, address, renter_name, renter_phone, notes } = result.data;
 
     const { data, error } = await supabase
       .from('rental_properties')
-      .update({ name, address, notes })
+      .update({ name, address, renter_name, renter_phone, notes })
       .eq('id', req.params.id)
       .eq('tenant_id', req.user.tenant_id)
       .select();

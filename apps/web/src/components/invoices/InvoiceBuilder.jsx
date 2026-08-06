@@ -288,31 +288,35 @@ export const InvoiceBuilder = () => {
                       <option value="company_name">Company Name ({clients.find(c => c.id === formData.client_id)?.company_name})</option>
                     )}
                     <option value="property_address">Rental Property Address</option>
+                    <option value="renter_name">Tenant (Renter)</option>
                   </select>
 
-                  {formData.bill_to_type === 'property_address' && (
+                  {(formData.bill_to_type === 'property_address' || formData.bill_to_type === 'renter_name') && (
                     <div>
                       <select
                         value={formData.property_id}
                         onChange={(e) => {
                           const propId = e.target.value;
                           const prop = properties.find(p => p.id === propId);
-                          setFormData({...formData, property_id: propId, property_address: prop?.address || '', billed_to_name: prop?.address || ''});
+                          const billedToName = formData.bill_to_type === 'renter_name' 
+                            ? (prop?.renter_name || 'Unknown Tenant') 
+                            : (prop?.address || '');
+                          setFormData({...formData, property_id: propId, property_address: prop?.address || '', billed_to_name: billedToName});
                         }}
                         className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary bg-white"
                         required
                       >
                         <option value="">Select a property...</option>
                         {properties.map(p => (
-                          <option key={p.id} value={p.id}>{p.name ? `${p.name} - ` : ''}{p.address}</option>
+                          <option key={p.id} value={p.id}>
+                            {p.name ? `${p.name} - ` : ''}{p.address} {formData.bill_to_type === 'renter_name' && p.renter_name ? `(${p.renter_name})` : ''}
+                          </option>
                         ))}
                       </select>
                     </div>
                   )}
                 </div>
               )}
-            </div>
-
               {formData.bill_to_type !== 'property_address' && (
                 <div>
                   <label className="block text-label-md text-gray-700 mb-1">Property Address (Optional)</label>

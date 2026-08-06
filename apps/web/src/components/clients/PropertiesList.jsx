@@ -10,7 +10,7 @@ export const PropertiesList = ({ clientId }) => {
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingId, setEditingId] = useState(null);
-  const [formData, setFormData] = useState({ name: '', address: '', notes: '' });
+  const [formData, setFormData] = useState({ name: '', address: '', renter_name: '', renter_phone: '', notes: '' });
 
   const { data: properties = [], isLoading } = useQuery({
     queryKey: ['properties', clientId],
@@ -27,13 +27,13 @@ export const PropertiesList = ({ clientId }) => {
 
   const handleOpenAdd = () => {
     setEditingId(null);
-    setFormData({ name: '', address: '', notes: '' });
+    setFormData({ name: '', address: '', renter_name: '', renter_phone: '', notes: '' });
     setIsModalOpen(true);
   };
 
   const handleOpenEdit = (prop) => {
     setEditingId(prop.id);
-    setFormData({ name: prop.name || '', address: prop.address || '', notes: prop.notes || '' });
+    setFormData({ name: prop.name || '', address: prop.address || '', renter_name: prop.renter_name || '', renter_phone: prop.renter_phone || '', notes: prop.notes || '' });
     setIsModalOpen(true);
   };
 
@@ -96,7 +96,7 @@ export const PropertiesList = ({ clientId }) => {
         </h3>
         <button 
           onClick={handleOpenAdd}
-          className="text-sm font-medium text-primary hover:text-primary/80 transition-colors flex items-center gap-1"
+          className="text-sm font-medium text-primary hover:text-primary/80 transition-colors flex items-center gap-1 cursor-pointer"
         >
           <span className="material-symbols-outlined text-[16px]">add</span>
           Add Property
@@ -109,6 +109,7 @@ export const PropertiesList = ({ clientId }) => {
             <tr className="bg-[#1F2937] text-white border-b border-surface-container-high font-label-caps text-label-caps whitespace-nowrap">
               <th className="p-4 font-semibold">Name / Alias</th>
               <th className="p-4 font-semibold">Address</th>
+              <th className="p-4 font-semibold">Tenant Info</th>
               <th className="p-4 font-semibold">Notes</th>
               <th className="p-4 font-semibold text-right">Actions</th>
             </tr>
@@ -118,19 +119,23 @@ export const PropertiesList = ({ clientId }) => {
               <tr><td colSpan="4" className="p-6 text-center">Loading properties...</td></tr>
             ) : properties.length === 0 ? (
               <tr>
-                <td colSpan="4" className="p-6 text-center text-gray-500 italic">No rental properties added yet.</td>
+                <td colSpan="5" className="p-6 text-center text-gray-500 italic">No rental properties added yet.</td>
               </tr>
             ) : (
               properties.map((prop) => (
                 <tr key={prop.id} className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
                   <td className="p-4 font-medium">{prop.name || '-'}</td>
                   <td className="p-4">{prop.address}</td>
+                  <td className="p-4">
+                    {prop.renter_name ? <div className="font-medium">{prop.renter_name}</div> : <div className="text-gray-400 italic">No tenant</div>}
+                    {prop.renter_phone && <div className="text-sm text-gray-500">{prop.renter_phone}</div>}
+                  </td>
                   <td className="p-4 max-w-xs truncate">{prop.notes || '-'}</td>
                   <td className="p-4 text-right">
-                    <button onClick={() => handleOpenEdit(prop)} className="text-gray-400 hover:text-primary transition-colors p-1" title="Edit">
+                    <button onClick={() => handleOpenEdit(prop)} className="text-black hover:opacity-80 transition-opacity p-1 cursor-pointer" title="Edit">
                       <span className="material-symbols-outlined text-[18px]">edit</span>
                     </button>
-                    <button onClick={() => handleDelete(prop.id)} className="text-gray-400 hover:text-red-500 transition-colors p-1 ml-2" title="Delete">
+                    <button onClick={() => handleDelete(prop.id)} className="text-black hover:opacity-80 transition-opacity p-1 ml-2 cursor-pointer" title="Delete">
                       <span className="material-symbols-outlined text-[18px]">delete</span>
                     </button>
                   </td>
@@ -146,7 +151,7 @@ export const PropertiesList = ({ clientId }) => {
           <div className="bg-surface-container-lowest rounded-xl shadow-lg w-full max-w-[32rem] overflow-hidden flex flex-col">
             <div className="px-6 py-4 border-b border-outline-variant flex justify-between items-center">
               <h2 className="font-title-md text-title-md font-bold text-primary">{editingId ? 'Edit Property' : 'Add Property'}</h2>
-              <button type="button" onClick={() => setIsModalOpen(false)} className="text-on-surface-variant hover:text-primary transition-colors">
+              <button type="button" onClick={() => setIsModalOpen(false)} className="text-on-surface-variant hover:text-primary transition-colors cursor-pointer">
                 <span className="material-symbols-outlined">close</span>
               </button>
             </div>
@@ -171,6 +176,26 @@ export const PropertiesList = ({ clientId }) => {
                     required
                   />
                 </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block font-label-md text-label-md text-on-surface-variant mb-1">Tenant Name</label>
+                    <input 
+                      className="w-full px-3 py-2 border rounded-md bg-surface text-on-surface border-outline-variant focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+                      placeholder="e.g. Jane Smith" 
+                      value={formData.renter_name}
+                      onChange={(e) => setFormData({...formData, renter_name: e.target.value})}
+                    />
+                  </div>
+                  <div>
+                    <label className="block font-label-md text-label-md text-on-surface-variant mb-1">Tenant Phone</label>
+                    <input 
+                      className="w-full px-3 py-2 border rounded-md bg-surface text-on-surface border-outline-variant focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+                      placeholder="e.g. (555) 123-4567" 
+                      value={formData.renter_phone}
+                      onChange={(e) => setFormData({...formData, renter_phone: e.target.value})}
+                    />
+                  </div>
+                </div>
                 <div>
                   <label className="block font-label-md text-label-md text-on-surface-variant mb-1">Access Notes / Details</label>
                   <textarea 
@@ -181,10 +206,10 @@ export const PropertiesList = ({ clientId }) => {
                   />
                 </div>
                 <div className="flex justify-end gap-3 mt-6 pt-4 border-t border-outline-variant">
-                  <button type="button" onClick={() => setIsModalOpen(false)} className="px-4 py-2 text-on-surface-variant font-medium rounded hover:bg-surface-variant transition-colors">
+                  <button type="button" onClick={() => setIsModalOpen(false)} className="px-4 py-2 text-on-surface-variant font-medium rounded hover:bg-surface-variant transition-colors cursor-pointer">
                     Cancel
                   </button>
-                  <button type="submit" className="px-6 py-2 bg-primary text-black font-medium rounded hover:bg-opacity-90 transition-colors shadow-sm">
+                  <button type="submit" className="px-6 py-2 bg-primary text-black font-medium rounded hover:bg-opacity-90 transition-colors shadow-sm cursor-pointer">
                     {editingId ? 'Save Changes' : 'Add Property'}
                   </button>
                 </div>

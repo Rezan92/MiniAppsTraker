@@ -17,7 +17,7 @@ const invoiceSchema = z.object({
   property_address: z.string().optional().nullable(),
   property_id: z.string().uuid().optional().nullable(),
   billed_to_name: z.string().optional().nullable(),
-  bill_to_type: z.enum(['client_name', 'company_name', 'property_address']).optional().default('client_name'),
+  bill_to_type: z.enum(['client_name', 'company_name', 'property_address', 'renter_name']).optional().default('client_name'),
   materials: z.array(z.object({
     description: z.string(),
     cost: z.number()
