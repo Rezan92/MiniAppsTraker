@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 
 const DAYS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
@@ -16,34 +17,69 @@ const isSameDay = (a, b) => a && b && toDateStr(a) === toDateStr(b);
 
 const formatForDisplay = (dateStr) => {
   if (!dateStr) return '';
-  const d = new Date(dateStr + 'T00:00:00');
-  return `${d.getMonth() + 1}/${d.getDate()}/${d.getFullYear()}`;
+  const [y, m, d] = dateStr.split('-');
+  return `${parseInt(m)}/${parseInt(d)}/${y}`;
 };
 
 export const DatePicker = ({ value, onChange, placeholder = 'Select date', className = '' }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [viewDate, setViewDate] = useState(() => {
-    if (value) return new Date(value + 'T00:00:00');
+    if (value) {
+      const [y, m, d] = value.split('-');
+      return new Date(y, m - 1, d);
+    }
     return new Date();
   });
   const [showMonthYearPicker, setShowMonthYearPicker] = useState(false);
-  const ref = useRef(null);
+  const [coords, setCoords] = useState({ top: 0, left: 0, width: 0 });
+  
+  const buttonRef = useRef(null);
+  const dropdownRef = useRef(null);
+
+  const updateCoords = () => {
+    if (buttonRef.current) {
+      const rect = buttonRef.current.getBoundingClientRect();
+      setCoords({
+        top: rect.bottom + window.scrollY + 8,
+        left: rect.left + window.scrollX,
+        width: rect.width
+      });
+    }
+  };
 
   // Sync viewDate when value changes
   useEffect(() => {
-    if (value) setViewDate(new Date(value + 'T00:00:00'));
+    if (value) {
+      const [y, m, d] = value.split('-');
+      setViewDate(new Date(y, m - 1, d));
+    }
   }, [value]);
+
+  useEffect(() => {
+    if (isOpen) {
+      updateCoords();
+      window.addEventListener('resize', updateCoords);
+      window.addEventListener('scroll', updateCoords, true);
+      return () => {
+        window.removeEventListener('resize', updateCoords);
+        window.removeEventListener('scroll', updateCoords, true);
+      };
+    }
+  }, [isOpen]);
 
   // Close on outside click
   useEffect(() => {
     const handler = (e) => {
-      if (ref.current && !ref.current.contains(e.target)) {
+      const isOutsideButton = buttonRef.current && !buttonRef.current.contains(e.target);
+      const isOutsideDropdown = dropdownRef.current && !dropdownRef.current.contains(e.target);
+      
+      if (isOutsideButton && isOutsideDropdown) {
         setIsOpen(false);
         setShowMonthYearPicker(false);
       }
     };
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
+    document.addEventListener('mousedown', handler, true); // Use capture phase
+    return () => document.removeEventListener('mousedown', handler, true);
   }, []);
 
   const year = viewDate.getFullYear();
@@ -80,7 +116,10 @@ export const DatePicker = ({ value, onChange, placeholder = 'Select date', class
     setViewDate(new Date(newYear, month, 1));
   };
 
-  const selectedDate = value ? new Date(value + 'T00:00:00') : null;
+  const selectedDate = value ? (() => {
+    const [y, m, d] = value.split('-');
+    return new Date(y, m - 1, d);
+  })() : null;
 
   const cells = [];
   for (let i = 0; i < firstDay; i++) {
@@ -116,9 +155,10 @@ export const DatePicker = ({ value, onChange, placeholder = 'Select date', class
   }
 
   return (
-    <div className={`relative z-20 ${className}`} ref={ref}>
+    <div className={`relative w-full z-20 ${className}`}>
       {/* Input Trigger */}
       <button
+        ref={buttonRef}
         type="button"
         onClick={() => { setIsOpen(!isOpen); setShowMonthYearPicker(false); }}
         className="w-full flex items-center justify-between px-3 py-2 border border-outline-variant rounded-md bg-surface text-sm text-on-surface shadow-sm focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary transition-shadow cursor-pointer"
@@ -130,8 +170,12 @@ export const DatePicker = ({ value, onChange, placeholder = 'Select date', class
       </button>
 
       {/* Calendar Dropdown */}
-      {isOpen && (
-        <div className="absolute top-full left-0 mt-2 w-[300px] bg-white border border-gray-200 rounded-xl shadow-lg p-4 z-50">
+      {isOpen && createPortal(
+        <div 
+          ref={dropdownRef}
+          style={{ top: coords.top, left: coords.left, position: 'absolute' }}
+          className="w-[300px] bg-white border border-gray-200 rounded-xl shadow-lg p-4 z-[9999]"
+        >
           {/* Month/Year Nav */}
           <div className="flex items-center justify-between mb-4">
             <button
@@ -217,7 +261,7 @@ export const DatePicker = ({ value, onChange, placeholder = 'Select date', class
             </button>
           </div>
         </div>
-      )}
+      , document.body)}
     </div>
   );
 };
