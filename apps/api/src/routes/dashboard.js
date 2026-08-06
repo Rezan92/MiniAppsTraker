@@ -10,9 +10,9 @@ router.get('/summary', async (req, res, next) => {
     const tenantId = req.user.tenant_id;
     const now = new Date();
     
-    // Dates for current month
-    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
-    const nextMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1).toISOString();
+    // Dates for current month (UTC to prevent timezone boundary bugs)
+    const startOfMonth = new Date(Date.UTC(now.getFullYear(), now.getMonth(), 1)).toISOString();
+    const nextMonth = new Date(Date.UTC(now.getFullYear(), now.getMonth() + 1, 1)).toISOString();
     
     // Dates for current week (assuming Monday start)
     const day = now.getDay();
@@ -57,7 +57,7 @@ router.get('/summary', async (req, res, next) => {
     // 3. All Invoices
     const { data: allInvoices, error: err5 } = await supabase
       .from('invoices')
-      .select('id, invoice_number, status, due_date, total_amount, clients(name)')
+      .select('id, invoice_number, status, due_date, total_amount, labor_amount, materials_amount, clients(name)')
       .eq('tenant_id', tenantId)
       .order('created_at', { ascending: false });
     if (err5) throw err5;

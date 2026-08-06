@@ -41,7 +41,11 @@ export const Dashboard = () => {
       open: 'bg-gray-100 text-gray-800',
       in_progress: 'bg-blue-100 text-blue-800',
       completed: 'bg-green-100 text-green-800',
-      cancelled: 'bg-red-100 text-red-800'
+      cancelled: 'bg-red-100 text-red-800',
+      draft: 'bg-gray-100 text-gray-800',
+      sent: 'bg-blue-100 text-blue-800',
+      paid: 'bg-green-100 text-green-800',
+      overdue: 'bg-red-100 text-red-800'
     };
     const label = status?.replace('_', ' ') || 'unknown';
     return (
@@ -107,6 +111,8 @@ export const Dashboard = () => {
     return true; // 'all'
   });
   const invoiceTotal = filteredInvoices.reduce((sum, inv) => sum + Number(inv.total_amount || 0), 0);
+  const laborTotal = filteredInvoices.reduce((sum, inv) => sum + Number(inv.labor_amount || 0), 0);
+  const materialTotal = filteredInvoices.reduce((sum, inv) => sum + Number(inv.materials_amount || 0), 0);
 
   const todayStr = new Date().toISOString().split('T')[0];
   const filteredJobs = jobs.filter(job => {
@@ -245,12 +251,14 @@ export const Dashboard = () => {
                 <th className="font-label-md font-semibold text-gray-500 px-5 py-3">Client</th>
                 <th className="font-label-md font-semibold text-gray-500 px-5 py-3">Due Date</th>
                 <th className="font-label-md font-semibold text-gray-500 px-5 py-3 text-right">Status</th>
-                <th className="font-label-md font-semibold text-gray-500 px-5 py-3 text-right">Amount</th>
+                <th className="font-label-md font-semibold text-gray-500 px-5 py-3 text-right">Labor Amount</th>
+                <th className="font-label-md font-semibold text-gray-500 px-5 py-3 text-right">Materials Amount</th>
+                <th className="font-label-md font-semibold text-gray-500 px-5 py-3 text-right">Total Amount</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
               {filteredInvoices.length === 0 ? (
-                <tr><td colSpan="5" className="px-5 py-8 text-center text-gray-500">No invoices found for this filter.</td></tr>
+                <tr><td colSpan="7" className="px-5 py-8 text-center text-gray-500">No invoices found for this filter.</td></tr>
               ) : (
                 filteredInvoices.map(inv => (
                   <tr key={inv.id} onClick={() => navigate(`/invoices/${inv.id}`)} className="hover:bg-gray-50 cursor-pointer transition-colors group">
@@ -258,6 +266,8 @@ export const Dashboard = () => {
                     <td className="px-5 py-4 font-body-sm text-gray-600">{inv.clients?.name}</td>
                     <td className="px-5 py-4 font-body-sm text-gray-500">{formatDate(inv.due_date)}</td>
                     <td className="px-5 py-4 text-right">{getStatusBadge(inv.status)}</td>
+                    <td className="px-5 py-4 text-right font-body-sm text-gray-900 font-medium">{formatCurrency(inv.labor_amount)}</td>
+                    <td className="px-5 py-4 text-right font-body-sm text-gray-900 font-medium">{formatCurrency(inv.materials_amount)}</td>
                     <td className="px-5 py-4 text-right font-body-sm text-gray-900 font-medium">{formatCurrency(inv.total_amount)}</td>
                   </tr>
                 ))
@@ -266,6 +276,8 @@ export const Dashboard = () => {
             <tfoot className="sticky bottom-0 bg-white border-t-2 border-gray-200 z-10">
               <tr>
                 <td colSpan="4" className="px-5 py-3 text-right font-title-sm text-gray-700">Total ({activeTab === 'all' ? 'All' : activeTab === 'unpaid' ? 'Unpaid' : 'Paid'})</td>
+                <td className="px-5 py-3 text-right font-title-sm text-gray-900">{formatCurrency(laborTotal)}</td>
+                <td className="px-5 py-3 text-right font-title-sm text-gray-900">{formatCurrency(materialTotal)}</td>
                 <td className="px-5 py-3 text-right font-title-md font-bold text-gray-900">{formatCurrency(invoiceTotal)}</td>
               </tr>
             </tfoot>
