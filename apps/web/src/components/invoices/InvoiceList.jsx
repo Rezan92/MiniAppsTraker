@@ -49,16 +49,14 @@ export const InvoiceList = () => {
       if (!matchesInvoiceNum && !matchesClientName) return false;
     }
 
-    // 3. Date Range Filter
+    // 3. Date Range Filter — always uses created_at
     if (dateRange?.startDate || dateRange?.endDate) {
-      // Use paid_at for paid invoices, otherwise created_at
-      const dateToCompare = (inv.status === 'paid' && inv.paid_at) ? inv.paid_at : inv.created_at;
-      if (dateToCompare) {
-        const d = new Date(dateToCompare).toISOString().split('T')[0];
+      if (inv.created_at) {
+        const d = new Date(inv.created_at).toISOString().split('T')[0];
         if (dateRange.startDate && d < dateRange.startDate) return false;
         if (dateRange.endDate && d > dateRange.endDate) return false;
       } else {
-        return false; // If there's a filter but no date to compare, exclude it
+        return false;
       }
     }
     
@@ -106,9 +104,12 @@ export const InvoiceList = () => {
             </div>
             <h3 className="text-title-md font-bold text-gray-900 mb-2">No invoices found</h3>
             <p className="text-body-md text-gray-500 mb-6">
-              {filter === 'all' ? "You haven't created any invoices yet." : `No invoices matching status: ${filter}`}
+              {(search || filter !== 'all' || dateRange?.startDate || dateRange?.endDate)
+                ? 'No invoices match your current filters. Try adjusting your search, status, or date range.'
+                : "You haven't created any invoices yet."
+              }
             </p>
-            {filter === 'all' && (
+            {!search && filter === 'all' && !dateRange?.startDate && !dateRange?.endDate && (
               <Link 
                 to="/invoices/new"
                 className="inline-flex items-center gap-2 text-primary hover:underline font-title-sm"

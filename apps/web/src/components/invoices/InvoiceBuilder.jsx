@@ -4,6 +4,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../../contexts/AuthContext';
 import { useToast } from '../../contexts/ToastContext';
 import { translateApiError } from '../../utils/errorTranslator';
+import { DatePicker } from '../common/DatePicker';
 
 export const InvoiceBuilder = () => {
   const { id } = useParams();
@@ -285,21 +286,18 @@ export const InvoiceBuilder = () => {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-label-md text-gray-700 mb-1">Invoice Date *</label>
-                  <input 
-                    type="date" 
+                  <DatePicker
                     value={formData.invoice_date}
-                    onChange={(e) => setFormData({...formData, invoice_date: e.target.value})}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary"
-                    required
+                    onChange={(val) => setFormData({...formData, invoice_date: val})}
+                    placeholder="Select date"
                   />
                 </div>
                 <div>
                   <label className="block text-label-md text-gray-700 mb-1">Due Date</label>
-                  <input 
-                    type="date" 
+                  <DatePicker
                     value={formData.due_date}
-                    onChange={(e) => setFormData({...formData, due_date: e.target.value})}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary"
+                    onChange={(val) => setFormData({...formData, due_date: val})}
+                    placeholder="Upon Receipt"
                   />
                   <p className="text-xs text-gray-500 mt-1">Leave blank for "Upon Receipt"</p>
                 </div>

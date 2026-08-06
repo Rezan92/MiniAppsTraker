@@ -1,4 +1,5 @@
 import React from 'react';
+import { DatePicker } from '../common/DatePicker';
 
 export const AddJobHoursModal = ({ open, onClose, onSubmit, hoursData, setHoursData }) => {
   if (!open) return null;
@@ -49,12 +50,10 @@ export const AddJobHoursModal = ({ open, onClose, onSubmit, hoursData, setHoursD
             {/* Date */}
             <div>
               <label className="block font-label-md text-label-md text-on-surface-variant mb-1">Date *</label>
-              <input 
-                className="w-full px-3 py-2 border border-outline-variant rounded-md bg-surface text-on-surface focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-shadow" 
-                type="date" 
+              <DatePicker
                 value={hoursData.date}
-                onChange={e => setHoursData({...hoursData, date: e.target.value})}
-                required
+                onChange={(val) => setHoursData({...hoursData, date: val})}
+                placeholder="Select date"
               />
             </div>
 

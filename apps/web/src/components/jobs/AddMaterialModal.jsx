@@ -1,4 +1,5 @@
 import React from 'react';
+import { DatePicker } from '../common/DatePicker';
 
 export const AddMaterialModal = ({ open, onClose, onSubmit, matData, setMatData }) => {
   if (!open) return null;
@@ -55,11 +56,10 @@ export const AddMaterialModal = ({ open, onClose, onSubmit, matData, setMatData 
               </div>
               <div>
                 <label className="block font-label-md text-label-md text-on-surface-variant mb-1">Purchase Date</label>
-                <input 
-                  className="w-full px-3 py-2 border border-outline-variant rounded-md bg-surface text-on-surface focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-shadow" 
-                  type="date" 
+                <DatePicker
                   value={matData.purchase_date || ''}
-                  onChange={e => setMatData({...matData, purchase_date: e.target.value})}
+                  onChange={(val) => setMatData({...matData, purchase_date: val})}
+                  placeholder="Select date"
                 />
               </div>
             </div>

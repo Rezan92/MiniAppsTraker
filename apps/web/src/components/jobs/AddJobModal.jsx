@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { DatePicker } from '../common/DatePicker';
 
 export const AddJobModal = ({ open, onClose, onSubmit, formData, setFormData, clients }) => {
   const [errors, setErrors] = useState({});
@@ -136,21 +137,21 @@ export const AddJobModal = ({ open, onClose, onSubmit, formData, setFormData, cl
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
               <div>
                 <label className="block font-label-md text-label-md text-on-surface-variant mb-1">Start Date</label>
-                <input 
-                  className="w-full px-3 py-2 border border-outline-variant rounded-md bg-surface text-on-surface focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-shadow" 
-                  type="date" 
+                <DatePicker
                   value={formData.start_date || ''}
-                  onChange={e => setFormData({...formData, start_date: e.target.value})}
+                  onChange={(val) => setFormData({...formData, start_date: val})}
+                  placeholder="Select start date"
                 />
               </div>
               <div>
                 <label className="block font-label-md text-label-md text-on-surface-variant mb-1">End Date</label>
-                <input 
-                  className={`w-full px-3 py-2 border rounded-md bg-surface text-on-surface focus:outline-none focus:ring-1 transition-shadow ${errors.end_date ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : 'border-outline-variant focus:border-primary focus:ring-primary'}`} 
-                  name="end_date"
-                  type="date" 
+                <DatePicker
                   value={formData.end_date || ''}
-                  onChange={handleInputChange}
+                  onChange={(val) => {
+                    setFormData({...formData, end_date: val});
+                    validateField('end_date', val);
+                  }}
+                  placeholder="Select end date"
                 />
                 {errors.end_date && <p className="text-red-500 text-xs mt-1">{errors.end_date}</p>}
               </div>
