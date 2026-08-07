@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../../contexts/AuthContext';
 import { useToast } from '../../contexts/ToastContext';
@@ -13,9 +13,12 @@ export const InvoiceBuilder = () => {
   const { session } = useAuth();
   const { showSuccess, showError } = useToast();
   const queryClient = useQueryClient();
+  const [searchParams] = useSearchParams();
+  const presetClientId = searchParams.get('client_id');
+  const presetPropertyId = searchParams.get('property_id');
 
   const [formData, setFormData] = useState({
-    client_id: '',
+    client_id: presetClientId || '',
     job_id: '',
     invoice_date: new Date().toISOString().split('T')[0],
     due_date: '',
@@ -27,7 +30,7 @@ export const InvoiceBuilder = () => {
     materials: [],
     bill_to_type: 'client_name',
     billed_to_name: '',
-    property_id: ''
+    property_id: presetPropertyId || ''
   });
 
   // Fetch clients
@@ -116,6 +119,27 @@ export const InvoiceBuilder = () => {
       });
     }
   }, [existingInvoice, id, navigate, showError]);
+
+  // Auto-populate from URL params when data loads
+  useEffect(() => {
+    if (presetClientId && presetPropertyId && clients.length > 0 && properties.length > 0 && !isEditing) {
+      const client = clients.find(c => c.id === presetClientId);
+      const prop = properties.find(p => p.id === presetPropertyId);
+      
+      // Only auto-populate if it hasn't been set yet (initial load)
+      if (client && prop && !formData.billed_to_name) {
+        const type = client.company_name ? 'company_name' : 'client_name';
+        const billedToName = client.company_name || client.name;
+        
+        setFormData(prev => ({
+          ...prev,
+          bill_to_type: type,
+          billed_to_name: billedToName,
+          property_address: prop.address
+        }));
+      }
+    }
+  }, [presetClientId, presetPropertyId, clients, properties, isEditing, formData.billed_to_name]);
 
   const handleJobSelect = async (e) => {
     const jobId = e.target.value;

@@ -1,14 +1,22 @@
 import React from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../../contexts/AuthContext';
+import { useToast } from '../../contexts/ToastContext';
 import { InvoicesWidget } from '../common/InvoicesWidget';
+import { AddJobModal } from '../jobs/AddJobModal';
 import { NotFound } from '../errors/NotFound';
+import { translateApiError } from '../../utils/errorTranslator';
 
 export const PropertyDetails = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const { session } = useAuth();
+  const { showSuccess, showError } = useToast();
+  const queryClient = useQueryClient();
+
+  const [jobModalOpen, setJobModalOpen] = useState(false);
+  const [jobFormData, setJobFormData] = useState({ client_id: '', property_id: '', title: '', rate_type: 'flat', hourly_rate: '', flat_rate: '', start_date: '', end_date: '', notes: '' });
 
   const { data: property, isLoading, error } = useQuery({
     queryKey: ['property', id],
@@ -35,6 +43,41 @@ export const PropertyDetails = () => {
     },
     enabled: !!session?.access_token && !!id
   });
+
+
+
+  const handleSaveJob = async () => {
+    try {
+      const payload = {
+        ...jobFormData,
+        property_id: jobFormData.property_id || null,
+        hourly_rate: jobFormData.rate_type === 'hourly' ? parseFloat(jobFormData.hourly_rate) : undefined,
+        flat_rate: jobFormData.rate_type === 'flat' ? parseFloat(jobFormData.flat_rate) : undefined
+      };
+      
+      const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:4000'}/api/jobs`, {
+        method: 'POST',
+        headers: { 
+          'Authorization': `Bearer ${session?.access_token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(payload)
+      });
+      if (res.ok) {
+        queryClient.invalidateQueries({ queryKey: ['jobs', 'property', id] });
+        queryClient.invalidateQueries({ queryKey: ['jobs'] });
+        setJobModalOpen(false);
+        setJobFormData({ client_id: '', property_id: '', title: '', rate_type: 'flat', hourly_rate: '', flat_rate: '', start_date: '', end_date: '', notes: '' });
+        showSuccess('Job successfully created!');
+      } else {
+        const errorData = await res.json();
+        showError(translateApiError(errorData.error?.message || errorData.message || 'Failed to save job'));
+      }
+    } catch (err) {
+      console.error(err);
+      showError(translateApiError(err));
+    }
+  };
 
   if (isLoading) {
     return (
@@ -72,7 +115,17 @@ export const PropertyDetails = () => {
           </div>
           <div className="flex items-center gap-3">
             <button 
-              onClick={() => navigate('/invoices/new')}
+              onClick={() => {
+                setJobFormData({ ...jobFormData, client_id: property.client_id, property_id: property.id });
+                setJobModalOpen(true);
+              }}
+              className="px-4 py-2 bg-white border border-gray-300 text-gray-700 font-body-md font-bold rounded hover:bg-gray-50 cursor-pointer transition-colors shadow-sm flex items-center gap-2"
+            >
+              <span className="material-symbols-outlined text-[18px]">engineering</span>
+              Add Job
+            </button>
+            <button 
+              onClick={() => navigate(`/invoices/new?client_id=${property.client_id}&property_id=${property.id}`)}
               className="px-4 py-2 bg-primary text-black font-body-md font-bold rounded hover:bg-opacity-90 cursor-pointer transition-colors shadow-sm flex items-center gap-2"
             >
               <span className="material-symbols-outlined text-[18px]">add</span>
@@ -180,6 +233,15 @@ export const PropertyDetails = () => {
         </div>
 
       </div>
+
+      <AddJobModal 
+        open={jobModalOpen}
+        onClose={() => setJobModalOpen(false)}
+        onSubmit={handleSaveJob}
+        formData={jobFormData}
+        setFormData={setJobFormData}
+        clients={[{ id: property?.client_id, name: property?.clients?.name, client_type: 'property_manager' }]}
+      />
     </div>
   );
 };
