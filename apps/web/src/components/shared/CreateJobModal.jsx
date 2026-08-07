@@ -11,6 +11,7 @@ export const CreateJobModal = ({ open, onClose }) => {
 
   const initialForm = {
     client_id: '',
+    property_id: '',
     title: '',
     rate_type: 'flat',
     hourly_rate: '',
@@ -56,6 +57,10 @@ export const CreateJobModal = ({ open, onClose }) => {
     } else {
       payload.flat_rate = payload.flat_rate ? parseFloat(payload.flat_rate) : undefined;
       payload.hourly_rate = undefined;
+    }
+    
+    if (!payload.property_id) {
+      payload.property_id = null;
     }
     
     try {

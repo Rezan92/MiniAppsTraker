@@ -1,8 +1,26 @@
 import React, { useState } from 'react';
 import { DatePicker } from '../common/DatePicker';
+import { useQuery } from '@tanstack/react-query';
+import { useAuth } from '../../contexts/AuthContext';
 
 export const AddJobModal = ({ open, onClose, onSubmit, formData, setFormData, clients }) => {
   const [errors, setErrors] = useState({});
+  const { session } = useAuth();
+
+  const selectedClient = clients.find(c => c.id === formData.client_id);
+  
+  const { data: properties = [] } = useQuery({
+    queryKey: ['properties', 'client', formData.client_id],
+    queryFn: async () => {
+      const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:4000'}/api/properties?client_id=${formData.client_id}`, {
+        headers: { 'Authorization': `Bearer ${session.access_token}` }
+      });
+      const json = await res.json();
+      if (!res.ok || !json.success) throw new Error(json.error);
+      return json.data;
+    },
+    enabled: !!session && !!formData.client_id && selectedClient?.client_type === 'property_manager'
+  });
 
   if (!open) return null;
 
@@ -64,6 +82,26 @@ export const AddJobModal = ({ open, onClose, onSubmit, formData, setFormData, cl
                 <span className="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-on-surface-variant pointer-events-none">expand_more</span>
               </div>
             </div>
+
+            {/* Select Property */}
+            {selectedClient?.client_type === 'property_manager' && (
+              <div>
+                <label className="block font-label-md text-label-md text-on-surface-variant mb-1">Select Property (Optional)</label>
+                <div className="relative">
+                  <select 
+                    className="w-full px-3 py-2 border border-outline-variant rounded-md bg-surface text-on-surface focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-shadow appearance-none cursor-pointer" 
+                    value={formData.property_id || ''} 
+                    onChange={e => setFormData({...formData, property_id: e.target.value})}
+                  >
+                    <option value="">None (Link to Client Only)</option>
+                    {properties.map(p => (
+                      <option key={p.id} value={p.id}>{p.name ? `${p.name} - ` : ''}{p.address}</option>
+                    ))}
+                  </select>
+                  <span className="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-on-surface-variant pointer-events-none">expand_more</span>
+                </div>
+              </div>
+            )}
             
             {/* Job Title */}
             <div>

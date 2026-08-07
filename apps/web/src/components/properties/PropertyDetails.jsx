@@ -23,6 +23,19 @@ export const PropertyDetails = () => {
     enabled: !!session && !!id
   });
 
+  const { data: jobs = [], isLoading: loadingJobs } = useQuery({
+    queryKey: ['jobs', 'property', id],
+    queryFn: async () => {
+      const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:4000'}/api/jobs?property_id=${id}`, {
+        headers: { 'Authorization': `Bearer ${session?.access_token}` }
+      });
+      if (!res.ok) throw new Error('Failed to fetch jobs');
+      const data = await res.json();
+      return data.data || [];
+    },
+    enabled: !!session?.access_token && !!id
+  });
+
   if (isLoading) {
     return (
       <div className="flex justify-center items-center h-64">
@@ -110,7 +123,61 @@ export const PropertyDetails = () => {
           </div>
         </div>
 
-        <InvoicesWidget propertyId={property.id} />
+        <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 items-stretch">
+          {/* Related Jobs */}
+          <div className="xl:col-span-6 h-full flex flex-col">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-headline-sm text-headline-sm font-semibold text-gray-900">Related Jobs</h3>
+            </div>
+            <div className="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden flex flex-col flex-1">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="bg-gray-50 border-b border-gray-200 text-label-sm font-label-sm text-gray-500 uppercase tracking-wider">
+                    <th className="p-4 font-medium">Job ID</th>
+                    <th className="p-4 font-medium">Title</th>
+                    <th className="p-4 font-medium">Status</th>
+                  </tr>
+                </thead>
+                <tbody className="text-body-md text-gray-700 divide-y divide-gray-100 bg-white">
+                  {loadingJobs ? (
+                    <tr>
+                      <td colSpan="3" className="p-6 text-center text-gray-500">Loading jobs...</td>
+                    </tr>
+                  ) : jobs.length === 0 ? (
+                    <tr>
+                      <td colSpan="3" className="p-6 text-center text-gray-500 italic">No related jobs found.</td>
+                    </tr>
+                  ) : (
+                    jobs.map((job) => (
+                      <tr 
+                        key={job.id}
+                        onClick={() => navigate(`/jobs/${job.id}`)}
+                        className="border-b border-gray-100 hover:bg-gray-50 transition-colors cursor-pointer"
+                      >
+                        <td className="p-4 font-label-caps text-primary">#JOB-{job.id.split('-')[0].toUpperCase()}</td>
+                        <td className="p-4 font-medium">{job.title}</td>
+                        <td className="p-4">
+                          <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium ${
+                            job.status === 'open' ? 'bg-amber-100 text-amber-800 border border-amber-200' :
+                            job.status === 'in_progress' ? 'bg-sky-100 text-sky-800 border border-sky-200' :
+                            job.status === 'completed' ? 'bg-emerald-100 text-emerald-800 border border-emerald-200' :
+                            'bg-gray-100 text-gray-800 border border-gray-200'
+                          }`}>
+                            <span className="capitalize">{job.status.replace('_', ' ')}</span>
+                          </span>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <div className="xl:col-span-6 h-full">
+            <InvoicesWidget propertyId={property.id} variant="table" />
+          </div>
+        </div>
 
       </div>
     </div>

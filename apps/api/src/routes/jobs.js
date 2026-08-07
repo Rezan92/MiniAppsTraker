@@ -8,6 +8,7 @@ router.use(authenticate);
 
 const jobSchema = z.object({
   client_id: z.string().uuid(),
+  property_id: z.string().uuid().optional().nullable(),
   title: z.string().min(1, "Title is required"),
   rate_type: z.enum(['flat', 'hourly']),
   hourly_rate: z.number().optional(),
@@ -41,13 +42,14 @@ const jobHoursSchema = z.object({
 
 router.get('/', async (req, res, next) => {
   try {
-    const { client_id, status } = req.query;
+    const { client_id, property_id, status } = req.query;
     let query = supabase
       .from('jobs')
-      .select('*, clients(name)')
+      .select('*, clients(name), rental_properties(name, address)')
       .eq('tenant_id', req.user.tenant_id);
 
     if (client_id) query = query.eq('client_id', client_id);
+    if (property_id) query = query.eq('property_id', property_id);
     if (status) query = query.eq('status', status);
 
     const { data, error } = await query;

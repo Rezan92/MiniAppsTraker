@@ -16,7 +16,7 @@ export const ClientDetails = () => {
   const queryClient = useQueryClient();
 
   const [jobModalOpen, setJobModalOpen] = useState(false);
-  const [jobFormData, setJobFormData] = useState({ client_id: '', title: '', rate_type: 'flat', hourly_rate: '', flat_rate: '', start_date: '', end_date: '', notes: '' });
+  const [jobFormData, setJobFormData] = useState({ client_id: '', property_id: '', title: '', rate_type: 'flat', hourly_rate: '', flat_rate: '', start_date: '', end_date: '', notes: '' });
 
   const { data: client, isLoading: loadingClient, isError: errorClient } = useQuery({
     queryKey: ['clients', id],
@@ -48,6 +48,7 @@ export const ClientDetails = () => {
     try {
       const payload = {
         ...jobFormData,
+        property_id: jobFormData.property_id || null,
         hourly_rate: jobFormData.rate_type === 'hourly' ? parseFloat(jobFormData.hourly_rate) : undefined,
         flat_rate: jobFormData.rate_type === 'flat' ? parseFloat(jobFormData.flat_rate) : undefined
       };
@@ -62,7 +63,7 @@ export const ClientDetails = () => {
       if (res.ok) {
         queryClient.invalidateQueries({ queryKey: ['jobs'] });
         setJobModalOpen(false);
-        setJobFormData({ client_id: '', title: '', rate_type: 'flat', hourly_rate: '', flat_rate: '', start_date: '', end_date: '', notes: '' });
+        setJobFormData({ client_id: '', property_id: '', title: '', rate_type: 'flat', hourly_rate: '', flat_rate: '', start_date: '', end_date: '', notes: '' });
         showSuccess('Job successfully created!');
       } else {
         const errorData = await res.json();
