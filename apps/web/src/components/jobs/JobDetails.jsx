@@ -403,7 +403,7 @@ export const JobDetails = () => {
                           <button onClick={() => { setHoursData(h); setHoursOpen(true); }} className="text-black hover:text-primary cursor-pointer transition-colors" title="Edit">
                             <span className="material-symbols-outlined text-[18px]">edit</span>
                           </button>
-                          <button onClick={() => handleDeleteHour(h.id)} className="text-black hover:text-red-600 cursor-pointer transition-colors" title="Delete">
+                          <button onClick={() => { setItemToDelete({ id: h.id, type: 'hour' }); setDeleteModalOpen(true); }} className="text-black hover:text-red-600 cursor-pointer transition-colors" title="Delete">
                             <span className="material-symbols-outlined text-[18px]">delete</span>
                           </button>
                         </div>
@@ -465,7 +465,7 @@ export const JobDetails = () => {
                           <button onClick={() => { setMatData(m); setMatOpen(true); }} className="text-black hover:text-primary cursor-pointer transition-colors" title="Edit">
                             <span className="material-symbols-outlined text-[18px]">edit</span>
                           </button>
-                          <button onClick={() => handleDeleteMaterial(m.id)} className="text-black hover:text-red-600 cursor-pointer transition-colors" title="Delete">
+                          <button onClick={() => { setItemToDelete({ id: m.id, type: 'material' }); setDeleteModalOpen(true); }} className="text-black hover:text-red-600 cursor-pointer transition-colors" title="Delete">
                             <span className="material-symbols-outlined text-[18px]">delete</span>
                           </button>
                         </div>

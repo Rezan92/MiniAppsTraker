@@ -70,12 +70,23 @@ async function syncJobToDraftInvoice(jobId, tenantId) {
     const itemsToInsert = [];
     let sortOrder = 0;
     
-    itemsToInsert.push({
-      invoice_id: invoice.id,
-      type: 'labor_detail',
-      description: job.rate_type === 'hourly' ? `${job.title} - ${totalHours} hours` : `${job.title} - Flat Rate`,
-      sort_order: sortOrder++
-    });
+    if (hours && hours.length > 0) {
+      for (const h of hours) {
+        itemsToInsert.push({
+          invoice_id: invoice.id,
+          type: 'labor_detail',
+          description: h.description || `${job.title} - Labor`,
+          sort_order: sortOrder++
+        });
+      }
+    } else {
+      itemsToInsert.push({
+        invoice_id: invoice.id,
+        type: 'labor_detail',
+        description: `${job.title} - Labor`,
+        sort_order: sortOrder++
+      });
+    }
     
     for (const m of (materials || [])) {
       itemsToInsert.push({
