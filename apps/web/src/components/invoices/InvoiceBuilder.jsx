@@ -203,6 +203,8 @@ export const InvoiceBuilder = () => {
 
       const payload = {
         ...formData,
+        job_id: formData.job_id || null,
+        property_id: formData.property_id || null,
         billed_to_name: finalBilledToName,
         labor_amount: Number(formData.labor_amount) || 0,
         labor_details: formData.labor_details.filter(d => d.description.trim()),
