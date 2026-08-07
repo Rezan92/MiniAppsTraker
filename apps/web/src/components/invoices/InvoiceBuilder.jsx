@@ -346,16 +346,44 @@ export const InvoiceBuilder = () => {
                   )}
                 </div>
               )}
-              {formData.bill_to_type !== 'property_address' && (
+              {formData.bill_to_type !== 'property_address' && formData.bill_to_type !== 'renter_name' && (
                 <div>
                   <label className="block text-label-md text-gray-700 mb-1">Property Address (Optional)</label>
-                  <textarea 
-                    value={formData.property_address}
-                    onChange={(e) => setFormData({...formData, property_address: e.target.value})}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary"
-                    rows="2"
-                    placeholder="e.g. 123 Main St, Apt 4B"
-                  />
+                  {(clients.find(c => c.id === formData.client_id)?.client_type === 'property_manager' || properties.length > 0) ? (
+                    <select
+                      value={formData.property_address}
+                      onChange={(e) => {
+                         const val = e.target.value;
+                         const prop = properties.find(p => p.address === val);
+                         setFormData({
+                           ...formData, 
+                           property_address: val, 
+                           property_id: prop ? prop.id : ''
+                         });
+                      }}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary bg-white"
+                    >
+                      <option value="">Leave blank</option>
+                      {clients.find(c => c.id === formData.client_id)?.address && (
+                        <option value={clients.find(c => c.id === formData.client_id)?.address}>
+                          [Primary Address] {clients.find(c => c.id === formData.client_id)?.address}
+                        </option>
+                      )}
+                      {properties.map(p => (
+                        <option key={p.id} value={p.address}>
+                          {p.name ? `${p.name} - ` : ''}{p.address}
+                        </option>
+                      ))}
+                    </select>
+                  ) : (
+                    <textarea 
+                      value={formData.property_address}
+                      onChange={(e) => setFormData({...formData, property_address: e.target.value, property_id: ''})}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary"
+                      rows="2"
+                      placeholder="e.g. 123 Main St, Apt 4B"
+                    />
+                  )}
                 </div>
               )}
             </div>
