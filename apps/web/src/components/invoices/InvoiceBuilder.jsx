@@ -47,16 +47,17 @@ export const InvoiceBuilder = () => {
     enabled: !!session
   });
 
-  // Fetch completed jobs for selected client
-  const { data: completedJobs = [] } = useQuery({
-    queryKey: ['jobs', 'completed', formData.client_id],
+  // Fetch available jobs for selected client
+  const { data: availableJobs = [] } = useQuery({
+    queryKey: ['jobs', 'available', formData.client_id],
     queryFn: async () => {
-      const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:4000'}/api/jobs?client_id=${formData.client_id}&status=completed`, {
+      const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:4000'}/api/jobs?client_id=${formData.client_id}`, {
         headers: { 'Authorization': `Bearer ${session.access_token}` }
       });
       const json = await res.json();
       if (!res.ok || !json.success) throw new Error(json.error);
-      return json.data;
+      // Filter out jobs that already have an invoice, unless it's the currently selected job
+      return json.data.filter(j => !j.invoices || j.invoices.length === 0 || j.id === formData.job_id);
     },
     enabled: !!session && !!formData.client_id
   });
@@ -426,8 +427,8 @@ export const InvoiceBuilder = () => {
                   disabled={!formData.client_id}
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary bg-white disabled:bg-gray-50"
                 >
-                  <option value="">Select a completed job...</option>
-                  {completedJobs.map(j => (
+                  <option value="">Select an available job...</option>
+                  {availableJobs.map(j => (
                     <option key={j.id} value={j.id}>{j.title}</option>
                   ))}
                 </select>

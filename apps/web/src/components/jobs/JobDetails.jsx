@@ -39,6 +39,18 @@ export const JobDetails = () => {
     enabled: !!session?.access_token && !!id
   });
 
+  const { data: invoice } = useQuery({
+    queryKey: ['invoice', 'job', id],
+    queryFn: async () => {
+      const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:4000'}/api/invoices?job_id=${id}`, {
+        headers: { 'Authorization': `Bearer ${session?.access_token}` }
+      });
+      const json = await res.json();
+      return json.data?.[0] || null;
+    },
+    enabled: !!session?.access_token && !!id
+  });
+
   const { data: materials = [], isLoading: loadingMaterials } = useQuery({
     queryKey: ['materials', 'job', id],
     queryFn: async () => {
@@ -279,6 +291,24 @@ export const JobDetails = () => {
             <span className="material-symbols-outlined text-[18px]">edit</span>
             Edit Job
           </button>
+
+          {invoice ? (
+            <button 
+              onClick={() => navigate(`/invoices/${invoice.id}`)}
+              className="px-4 py-2 bg-primary text-black rounded font-body-md font-bold hover:bg-opacity-90 transition-colors flex items-center gap-2 shadow-sm"
+            >
+              <span className="material-symbols-outlined text-[18px]">receipt</span>
+              View Invoice
+            </button>
+          ) : (
+            <button 
+              onClick={() => navigate(`/invoices/new?job_id=${job.id}&client_id=${job.client_id}`)}
+              className="px-4 py-2 bg-primary text-black rounded font-body-md font-bold hover:bg-opacity-90 transition-colors flex items-center gap-2 shadow-sm"
+            >
+              <span className="material-symbols-outlined text-[18px]">add_circle</span>
+              Generate Invoice
+            </button>
+          )}
         </div>
       </div>
 

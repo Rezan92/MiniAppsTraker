@@ -92,6 +92,20 @@ router.post('/', async (req, res, next) => {
     }
 
     const { materials, labor_details, due_date, ...invoiceData } = result.data;
+    
+    if (invoiceData.job_id) {
+      const { data: existingInvoice } = await supabase
+        .from('invoices')
+        .select('id')
+        .eq('job_id', invoiceData.job_id)
+        .eq('tenant_id', req.user.tenant_id)
+        .maybeSingle();
+      
+      if (existingInvoice) {
+        return res.status(400).json({ success: false, error: 'An invoice already exists for this job.' });
+      }
+    }
+
     const sanitizedDueDate = due_date === '' ? null : due_date;
     const materialsAmount = materials.reduce((sum, m) => sum + m.cost, 0);
     const totalAmount = (invoiceData.labor_amount || 0) + materialsAmount;
@@ -272,6 +286,23 @@ router.patch('/:id/status', async (req, res, next) => {
       .single();
 
     if (error) throw error;
+
+    // Auto-complete job on send
+    if (result.data.status === 'sent' && data.job_id) {
+      const { data: job } = await supabase
+        .from('jobs')
+        .select('status')
+        .eq('id', data.job_id)
+        .single();
+        
+      if (job && job.status !== 'completed') {
+        await supabase
+          .from('jobs')
+          .update({ status: 'completed' })
+          .eq('id', data.job_id);
+      }
+    }
+
     res.json({ success: true, data });
   } catch (err) {
     next(err);

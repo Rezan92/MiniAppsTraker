@@ -40,12 +40,67 @@ const jobHoursSchema = z.object({
   description: z.string().optional()
 });
 
+async function syncJobToDraftInvoice(jobId, tenantId) {
+  try {
+    const { data: invoice } = await supabase
+      .from('invoices')
+      .select('id, status')
+      .eq('job_id', jobId)
+      .eq('tenant_id', tenantId)
+      .eq('status', 'draft')
+      .single();
+      
+    if (!invoice) return;
+
+    const { data: job } = await supabase.from('jobs').select('hourly_rate, flat_rate, rate_type, title').eq('id', jobId).single();
+    const { data: hours } = await supabase.from('job_hours').select('*').eq('job_id', jobId);
+    const { data: materials } = await supabase.from('job_materials').select('*').eq('job_id', jobId);
+
+    const totalHours = (hours || []).reduce((sum, h) => sum + Number(h.hours), 0);
+    const laborAmount = job.rate_type === 'hourly' ? totalHours * (job.hourly_rate || 0) : (job.flat_rate || 0);
+    const materialsAmount = (materials || []).reduce((sum, m) => sum + Number(m.cost), 0);
+    const totalAmount = laborAmount + materialsAmount;
+
+    await supabase.from('invoices')
+      .update({ labor_amount: laborAmount, materials_amount: materialsAmount, total_amount: totalAmount })
+      .eq('id', invoice.id);
+
+    await supabase.from('invoice_items').delete().eq('invoice_id', invoice.id);
+    
+    const itemsToInsert = [];
+    let sortOrder = 0;
+    
+    itemsToInsert.push({
+      invoice_id: invoice.id,
+      type: 'labor_detail',
+      description: job.rate_type === 'hourly' ? `${job.title} - ${totalHours} hours` : `${job.title} - Flat Rate`,
+      sort_order: sortOrder++
+    });
+    
+    for (const m of (materials || [])) {
+      itemsToInsert.push({
+        invoice_id: invoice.id,
+        type: 'material',
+        description: m.description,
+        total_price: m.cost,
+        sort_order: sortOrder++
+      });
+    }
+
+    if (itemsToInsert.length > 0) {
+      await supabase.from('invoice_items').insert(itemsToInsert);
+    }
+  } catch (err) {
+    console.error('Failed to sync job to draft invoice:', err);
+  }
+}
+
 router.get('/', async (req, res, next) => {
   try {
     const { client_id, property_id, status } = req.query;
     let query = supabase
       .from('jobs')
-      .select('*, clients(name), rental_properties(name, address)')
+      .select('*, clients(name), rental_properties(name, address), invoices(id)')
       .eq('tenant_id', req.user.tenant_id);
 
     if (client_id) query = query.eq('client_id', client_id);
@@ -171,6 +226,10 @@ router.post('/:id/materials', async (req, res, next) => {
       .single();
 
     if (error) throw error;
+    
+    // Sync to draft invoice
+    await syncJobToDraftInvoice(job.id, req.user.tenant_id);
+
     res.json({ success: true, data });
   } catch (err) {
     next(err);
@@ -229,6 +288,10 @@ router.patch('/:id/materials/:materialId', async (req, res, next) => {
       .single();
 
     if (error) throw error;
+    
+    // Sync to draft invoice
+    await syncJobToDraftInvoice(job.id, req.user.tenant_id);
+
     res.json({ success: true, data });
   } catch (err) {
     next(err);
@@ -255,6 +318,10 @@ router.delete('/:id/materials/:materialId', async (req, res, next) => {
       .eq('job_id', job.id);
 
     if (error) throw error;
+    
+    // Sync to draft invoice
+    await syncJobToDraftInvoice(job.id, req.user.tenant_id);
+    
     res.json({ success: true });
   } catch (err) {
     next(err);
@@ -290,6 +357,10 @@ router.post('/:id/hours', async (req, res, next) => {
       .single();
 
     if (error) throw error;
+    
+    // Sync to draft invoice
+    await syncJobToDraftInvoice(job.id, req.user.tenant_id);
+    
     res.json({ success: true, data });
   } catch (err) {
     next(err);
@@ -352,6 +423,10 @@ router.patch('/:id/hours/:hourId', async (req, res, next) => {
       .single();
 
     if (error) throw error;
+    
+    // Sync to draft invoice
+    await syncJobToDraftInvoice(job.id, req.user.tenant_id);
+    
     res.json({ success: true, data });
   } catch (err) {
     next(err);
@@ -378,6 +453,10 @@ router.delete('/:id/hours/:hourId', async (req, res, next) => {
       .eq('job_id', job.id);
 
     if (error) throw error;
+    
+    // Sync to draft invoice
+    await syncJobToDraftInvoice(job.id, req.user.tenant_id);
+    
     res.json({ success: true });
   } catch (err) {
     next(err);

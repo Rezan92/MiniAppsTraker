@@ -42,10 +42,10 @@
 *Technical Note:* This will require a new `invoice_payments` table (`id`, `invoice_id`, `amount`, `payment_method`, `payment_date`, `notes`) to log multiple payments per invoice.
 
 ### Phase 3: Dynamic 1:1 Job Invoicing (Major Feature)
-1. [ ] **Invoice Anytime:** A user can generate an invoice for a job even if the job's status is not yet "completed".
-2. [ ] **1-to-1 Constraint:** A job can only ever have *one* invoice tied to it. The system must enforce this and hide the "Create Invoice" button on the job page if one already exists.
-3. [ ] **Dynamic Syncing:** If labor hours or materials are added to a job *after* its invoice is created, the invoice must automatically recalculate and pick up those new costs.
-4. [ ] **Safety Lock Rule:** The dynamic syncing described above must *only* happen if the invoice is in a `draft` status. Once an invoice is marked as `sent` or `paid`, it is permanently locked and will ignore any future hours/materials logged to the job.
-5. [ ] **Auto-Complete Job on Send:** When a user clicks "Send Invoice", the system must do two things:
+1. [x] **Invoice Anytime:** A user can generate an invoice for a job even if the job's status is not yet "completed".
+2. [x] **1-to-1 Constraint:** A job can only ever have *one* invoice tied to it. The system must enforce this and hide the "Create Invoice" button on the job page if one already exists.
+3. [x] **Dynamic Syncing:** If labor hours or materials are added to a job *after* its invoice is created, the invoice must automatically recalculate and pick up those new costs.
+4. [x] **Safety Lock Rule:** The dynamic syncing described above must *only* happen if the invoice is in a `draft` status. Once an invoice is marked as `sent` or `paid`, it is permanently locked and will ignore any future hours/materials logged to the job.
+5. [x] **Auto-Complete Job on Send:** When a user clicks "Send Invoice", the system must do two things:
    - Update the invoice status to `sent`.
    - Check the related job's status. If the job is not completed, automatically update the job status to `completed`.
