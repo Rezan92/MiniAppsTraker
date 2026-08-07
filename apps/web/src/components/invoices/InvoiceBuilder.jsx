@@ -310,7 +310,8 @@ export const InvoiceBuilder = () => {
                       client_id: cid, 
                       job_id: '',
                       bill_to_type: 'client_name',
-                      billed_to_name: client?.name || ''
+                      billed_to_name: client?.name || '',
+                      property_address: client?.address || ''
                     });
                   }}
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary bg-white"
@@ -371,10 +372,10 @@ export const InvoiceBuilder = () => {
                   )}
                 </div>
               )}
-              {formData.bill_to_type !== 'property_address' && formData.bill_to_type !== 'renter_name' && (
+              {formData.client_id && formData.bill_to_type !== 'property_address' && formData.bill_to_type !== 'renter_name' && (
                 <div>
                   <label className="block text-label-md text-gray-700 mb-1">Property Address (Optional)</label>
-                  {(clients.find(c => c.id === formData.client_id)?.client_type === 'property_manager' || properties.length > 0) ? (
+                  {(clients.find(c => c.id === formData.client_id)?.address || properties.length > 0) ? (
                     <select
                       value={formData.property_address}
                       onChange={(e) => {

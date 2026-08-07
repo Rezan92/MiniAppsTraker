@@ -5,6 +5,7 @@ import { useToast } from '../../contexts/ToastContext';
 import { AddMaterialModal } from './AddMaterialModal';
 import { AddJobHoursModal } from './AddJobHoursModal';
 import { AddJobModal } from './AddJobModal';
+import { DeleteJobItemModal } from './DeleteJobItemModal';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { NotFound } from '../errors/NotFound';
 import { translateApiError } from '../../utils/errorTranslator';
@@ -25,6 +26,9 @@ export const JobDetails = () => {
   
   const [hoursOpen, setHoursOpen] = useState(false);
   const [hoursData, setHoursData] = useState({ date: new Date().toISOString().split('T')[0], hours: '', description: '', start_time: '', end_time: '' });
+
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [itemToDelete, setItemToDelete] = useState(null);
 
   const { data: job, isLoading: loadingJob, isError: errorJob } = useQuery({
     queryKey: ['job', id],
@@ -152,41 +156,27 @@ export const JobDetails = () => {
     }
   };
 
-  const handleDeleteHour = async (hourId) => {
-    if (!window.confirm("Are you sure you want to delete this hour entry?")) return;
+  const confirmDelete = async () => {
+    if (!itemToDelete) return;
+    const { id: itemId, type } = itemToDelete;
+    const endpoint = type === 'hour' ? 'hours' : 'materials';
     try {
-      const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:4000'}/api/jobs/${id}/hours/${hourId}`, {
+      const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:4000'}/api/jobs/${id}/${endpoint}/${itemId}`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${session?.access_token}` }
       });
       if (res.ok) {
-        showSuccess('Hour entry deleted successfully!');
-        queryClient.invalidateQueries({ queryKey: ['hours', 'job', id] });
+        showSuccess(`${type === 'hour' ? 'Hour' : 'Material'} entry deleted successfully!`);
+        queryClient.invalidateQueries({ queryKey: [endpoint, 'job', id] });
       } else {
         const errorData = await res.json();
-        showError(errorData.error?.message || 'Failed to delete hour entry');
+        showError(errorData.error?.message || `Failed to delete ${type} entry`);
       }
     } catch (err) {
       showError('An unexpected error occurred.');
-    }
-  };
-
-  const handleDeleteMaterial = async (materialId) => {
-    if (!window.confirm("Are you sure you want to delete this material entry?")) return;
-    try {
-      const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:4000'}/api/jobs/${id}/materials/${materialId}`, {
-        method: 'DELETE',
-        headers: { 'Authorization': `Bearer ${session?.access_token}` }
-      });
-      if (res.ok) {
-        showSuccess('Material entry deleted successfully!');
-        queryClient.invalidateQueries({ queryKey: ['materials', 'job', id] });
-      } else {
-        const errorData = await res.json();
-        showError(errorData.error?.message || 'Failed to delete material entry');
-      }
-    } catch (err) {
-      showError('An unexpected error occurred.');
+    } finally {
+      setDeleteModalOpen(false);
+      setItemToDelete(null);
     }
   };
 
@@ -306,7 +296,7 @@ export const JobDetails = () => {
               className="px-4 py-2 bg-primary text-black rounded font-body-md font-bold hover:bg-opacity-90 transition-colors flex items-center gap-2 shadow-sm"
             >
               <span className="material-symbols-outlined text-[18px]">add_circle</span>
-              Generate Invoice
+              Create Invoice
             </button>
           )}
         </div>
@@ -515,6 +505,12 @@ export const JobDetails = () => {
         formData={editFormData}
         setFormData={setEditFormData}
         clients={clients}
+      />
+      <DeleteJobItemModal
+        open={deleteModalOpen}
+        onClose={() => { setDeleteModalOpen(false); setItemToDelete(null); }}
+        onConfirm={confirmDelete}
+        type={itemToDelete?.type}
       />
     </div>
   );
