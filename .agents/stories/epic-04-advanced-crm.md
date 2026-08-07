@@ -19,3 +19,16 @@
   - Database: Add `billed_to_name`, `bill_to_type`, and `property_id` to the `invoices` table. (Note: `property_address` already exists).
   - Business Logic: When an invoice is finalized, save a hardcoded snapshot of the name billed (Client or LLC) to `billed_to_name`, and copy the string address to `property_address`. Do not rely on joins.
   - UI: Update Invoice Builder to include a "Bill To" dropdown allowing selection between Client Name, Company Name, or a specific Rental Property. Update Invoice PDF views to respect `billed_to_name` and `property_address`.
+
+### Phase 1: Property Page Workflow Automation
+1. [ ] **Add Job Button:** Add an "Add Job" button next to the "New Invoice" button on the Rental Property details page.
+2. [ ] **Smart Add Job Form:** Clicking "Add Job" from a property page must open the modal and auto-populate:
+   - `Client`: Set to the Property Manager.
+   - `Property`: Set to the current Property Address.
+3. [ ] **Smart New Invoice Form:** Clicking "New Invoice" from a property page must open the builder and auto-populate:
+   - `Client`: Set to the Property Manager.
+   - `Property Address`: Set to the current Property Address.
+   - `Bill To`: Default to the manager's `company_name` (fallback to client name if no company exists).
+
+### Phase 2: UI Bug Fixes
+1. [ ] **Update Job Button Text:** In the Job Modal, if the user is editing an existing job, the submit button text must dynamically change from "Create Job" to "Update Job".
