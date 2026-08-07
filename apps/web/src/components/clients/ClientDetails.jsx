@@ -12,7 +12,7 @@ export const ClientDetails = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const { session } = useAuth();
-  const { showError } = useToast();
+  const { showError, showSuccess } = useToast();
   const queryClient = useQueryClient();
 
   const [jobModalOpen, setJobModalOpen] = useState(false);
