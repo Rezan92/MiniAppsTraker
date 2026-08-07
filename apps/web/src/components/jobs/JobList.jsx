@@ -21,7 +21,7 @@ export const JobList = () => {
   const [statusFilter, setStatusFilter] = useState('all');
 
   const [open, setOpen] = useState(false);
-  const [formData, setFormData] = useState({ client_id: '', title: '', rate_type: 'flat', hourly_rate: '', flat_rate: '', start_date: '', end_date: '', notes: '' });
+  const [formData, setFormData] = useState({ client_id: '', property_id: '', title: '', rate_type: 'flat', hourly_rate: '', flat_rate: '', start_date: '', end_date: '', notes: '' });
 
   const [matOpen, setMatOpen] = useState(false);
   const [selectedJobId, setSelectedJobId] = useState('');
@@ -88,15 +88,22 @@ export const JobList = () => {
     enabled: !!session?.access_token
   });
 
-  const handleCreateJob = async () => {
+  const handleSaveJob = async () => {
     try {
       const payload = {
         ...formData,
+        property_id: formData.property_id || null,
         hourly_rate: formData.rate_type === 'hourly' ? parseFloat(formData.hourly_rate) : undefined,
         flat_rate: formData.rate_type === 'flat' ? parseFloat(formData.flat_rate) : undefined
       };
-      const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:4000'}/api/jobs`, {
-        method: 'POST',
+      
+      const method = formData.id ? 'PUT' : 'POST';
+      const url = formData.id 
+        ? `${import.meta.env.VITE_API_URL || 'http://localhost:4000'}/api/jobs/${formData.id}`
+        : `${import.meta.env.VITE_API_URL || 'http://localhost:4000'}/api/jobs`;
+
+      const res = await fetch(url, {
+        method,
         headers: { 
           'Authorization': `Bearer ${session?.access_token}`,
           'Content-Type': 'application/json'
@@ -106,11 +113,11 @@ export const JobList = () => {
       if (res.ok) {
         queryClient.invalidateQueries({ queryKey: ['jobs'] });
         setOpen(false);
-        setFormData({ client_id: '', title: '', rate_type: 'flat', hourly_rate: '', flat_rate: '', start_date: '', end_date: '', notes: '' });
-        showSuccess('Job successfully created!');
+        setFormData({ client_id: '', property_id: '', title: '', rate_type: 'flat', hourly_rate: '', flat_rate: '', start_date: '', end_date: '', notes: '' });
+        showSuccess(`Job successfully ${formData.id ? 'updated' : 'created'}!`);
       } else {
         const errorData = await res.json();
-        showError(translateApiError(errorData.error?.message || errorData.message || 'Failed to create job'));
+        showError(translateApiError(errorData.error?.message || errorData.message || 'Failed to save job'));
       }
     } catch (err) {
       console.error(err);
@@ -279,6 +286,27 @@ export const JobList = () => {
                   <td className="py-4 px-4 align-top text-center" onClick={e => e.stopPropagation()}>
                     <div className="flex justify-center gap-2">
                       <button 
+                        onClick={() => {
+                          setFormData({
+                            id: j.id,
+                            client_id: j.client_id,
+                            property_id: j.property_id || '',
+                            title: j.title,
+                            rate_type: j.rate_type,
+                            hourly_rate: j.hourly_rate || '',
+                            flat_rate: j.flat_rate || '',
+                            start_date: j.start_date || '',
+                            end_date: j.end_date || '',
+                            notes: j.notes || ''
+                          });
+                          setOpen(true);
+                        }}
+                        className="p-1 text-black hover:text-gray-600 transition-colors rounded hover:bg-gray-200"
+                        title="Edit Job"
+                      >
+                        <span className="material-symbols-outlined text-[20px]">edit</span>
+                      </button>
+                      <button 
                         onClick={() => { setSelectedJobId(j.id); setHoursOpen(true); }}
                         className="p-1 text-black hover:text-gray-600 transition-colors rounded hover:bg-gray-200"
                         title="Log Hours"
@@ -321,13 +349,16 @@ export const JobList = () => {
         
         {/* Modals */}
         <AddJobModal 
-          open={open} 
-          onClose={() => setOpen(false)} 
-          onSubmit={handleCreateJob} 
-          formData={formData} 
-          setFormData={setFormData} 
-          clients={clients} 
-        />
+        open={open}
+        onClose={() => {
+          setOpen(false);
+          setFormData({ client_id: '', property_id: '', title: '', rate_type: 'flat', hourly_rate: '', flat_rate: '', start_date: '', end_date: '', notes: '' });
+        }}
+        onSubmit={handleSaveJob}
+        formData={formData}
+        setFormData={setFormData}
+        clients={clients}
+      />
         <AddMaterialModal 
           open={matOpen} 
           onClose={() => setMatOpen(false)} 

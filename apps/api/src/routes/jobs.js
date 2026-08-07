@@ -101,6 +101,28 @@ router.post('/', async (req, res, next) => {
   }
 });
 
+router.put('/:id', async (req, res, next) => {
+  try {
+    const result = jobSchema.safeParse(req.body);
+    if (!result.success) {
+      return res.status(400).json({ success: false, error: result.error.issues[0].message });
+    }
+
+    const { data, error } = await supabase
+      .from('jobs')
+      .update(result.data)
+      .eq('id', req.params.id)
+      .eq('tenant_id', req.user.tenant_id)
+      .select()
+      .single();
+
+    if (error) throw error;
+    res.json({ success: true, data });
+  } catch (err) {
+    next(err);
+  }
+});
+
 router.patch('/:id/status', async (req, res, next) => {
   try {
     const result = statusSchema.safeParse(req.body);

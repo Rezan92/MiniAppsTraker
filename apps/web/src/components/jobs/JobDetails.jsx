@@ -4,8 +4,10 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useToast } from '../../contexts/ToastContext';
 import { AddMaterialModal } from './AddMaterialModal';
 import { AddJobHoursModal } from './AddJobHoursModal';
+import { AddJobModal } from './AddJobModal';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { NotFound } from '../errors/NotFound';
+import { translateApiError } from '../../utils/errorTranslator';
 
 export const JobDetails = () => {
   const { id } = useParams();
@@ -13,6 +15,9 @@ export const JobDetails = () => {
   const { session } = useAuth();
   const { showError, showSuccess } = useToast();
   const queryClient = useQueryClient();
+
+  const [editOpen, setEditOpen] = useState(false);
+  const [editFormData, setEditFormData] = useState({ id: '', client_id: '', property_id: '', title: '', rate_type: 'flat', hourly_rate: '', flat_rate: '', start_date: '', end_date: '', notes: '' });
 
   // Modals state
   const [matOpen, setMatOpen] = useState(false);
@@ -58,6 +63,19 @@ export const JobDetails = () => {
       return data.data || [];
     },
     enabled: !!session?.access_token && !!id
+  });
+
+  const { data: clients = [] } = useQuery({
+    queryKey: ['clients'],
+    queryFn: async () => {
+      const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:4000'}/api/clients`, {
+        headers: { 'Authorization': `Bearer ${session?.access_token}` }
+      });
+      const data = await res.json();
+      if (!data.success) throw new Error(data.error?.message || 'Failed to fetch clients');
+      return data.data;
+    },
+    enabled: !!session?.access_token
   });
 
   const handleAddMaterial = async () => {
@@ -160,6 +178,38 @@ export const JobDetails = () => {
     }
   };
 
+  const handleEditJob = async () => {
+    try {
+      const payload = {
+        ...editFormData,
+        property_id: editFormData.property_id || null,
+        hourly_rate: editFormData.rate_type === 'hourly' ? parseFloat(editFormData.hourly_rate) : undefined,
+        flat_rate: editFormData.rate_type === 'flat' ? parseFloat(editFormData.flat_rate) : undefined
+      };
+      
+      const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:4000'}/api/jobs/${id}`, {
+        method: 'PUT',
+        headers: { 
+          'Authorization': `Bearer ${session?.access_token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(payload)
+      });
+      if (res.ok) {
+        queryClient.invalidateQueries({ queryKey: ['job', id] });
+        queryClient.invalidateQueries({ queryKey: ['jobs'] });
+        setEditOpen(false);
+        showSuccess('Job successfully updated!');
+      } else {
+        const errorData = await res.json();
+        showError(translateApiError(errorData.error?.message || errorData.message || 'Failed to update job'));
+      }
+    } catch (err) {
+      console.error(err);
+      showError(translateApiError(err));
+    }
+  };
+
   if (loadingJob) {
     return <div className="p-8 text-center text-gray-500">Loading job details...</div>;
   }
@@ -208,7 +258,24 @@ export const JobDetails = () => {
           </div>
         </div>
         <div className="flex gap-3">
-          <button className="px-4 py-2 bg-white border border-gray-300 rounded text-gray-700 font-body-md font-bold hover:bg-gray-50 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2 shadow-sm">
+          <button 
+            onClick={() => {
+              setEditFormData({
+                id: job.id,
+                client_id: job.client_id,
+                property_id: job.property_id || '',
+                title: job.title,
+                rate_type: job.rate_type,
+                hourly_rate: job.hourly_rate || '',
+                flat_rate: job.flat_rate || '',
+                start_date: job.start_date || '',
+                end_date: job.end_date || '',
+                notes: job.notes || ''
+              });
+              setEditOpen(true);
+            }}
+            className="px-4 py-2 bg-white border border-gray-300 rounded text-gray-700 font-body-md font-bold hover:bg-gray-50 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2 shadow-sm"
+          >
             <span className="material-symbols-outlined text-[18px]">edit</span>
             Edit Job
           </button>
@@ -408,8 +475,16 @@ export const JobDetails = () => {
         open={hoursOpen} 
         onClose={() => setHoursOpen(false)} 
         onSubmit={handleLogHours} 
-        hoursData={hoursData} 
-        setHoursData={setHoursData} 
+        formData={hoursData} 
+        setFormData={setHoursData} 
+      />
+      <AddJobModal 
+        open={editOpen}
+        onClose={() => setEditOpen(false)}
+        onSubmit={handleEditJob}
+        formData={editFormData}
+        setFormData={setEditFormData}
+        clients={clients}
       />
     </div>
   );
