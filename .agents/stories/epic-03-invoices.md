@@ -49,3 +49,35 @@
 5. [x] **Auto-Complete Job on Send:** When a user clicks "Send Invoice", the system must do two things:
    - Update the invoice status to `sent`.
    - Check the related job's status. If the job is not completed, automatically update the job status to `completed`.
+
+### Phase 4: Multi-Invoice Jobs & Strict State Management (Architectural Pivot)
+
+**User Story 4.1: 1-to-Many Job to Invoices**
+"As a professional service provider, I want to generate multiple invoices for a single job (e.g., progress billing, change orders), so that I can accurately bill for different phases of work without duplicating jobs."
+- [ ] Sub-Task: Remove `UNIQUE(job_id)` constraint on the `invoices` table.
+- [ ] Sub-Task: Add a nullable `invoice_id` foreign key to `job_materials` and `job_hours` tables with `ON DELETE SET NULL`.
+
+**User Story 4.2: Strict Audit Trail for Invoices**
+"As an Admin, I want an immutable log of every action taken on an invoice (Created, Sent, Reverted, Paid, Voided), so that I have a strict financial audit trail."
+- [ ] Sub-Task: Create the `invoice_logs` table (`id`, `invoice_id`, `action`, `reason`, `user_id`, `created_at`).
+- [ ] Sub-Task: Create a UI Modal to prompt the user for a "Reason" when moving a Sent invoice back to Draft or when Voiding an invoice.
+- [ ] Sub-Task: Implement backend logic to save the reason directly into the `invoice_logs` table.
+
+**User Story 4.3: Invoice State Locking and Voiding**
+"As an Admin, I want strict lock controls on my invoices to prevent accidental modification of finalized financial records."
+- [ ] Sub-Task: **Paid State (Total Lockdown):** Permanently lock any `job_materials` or `job_hours` linked to a Paid invoice. Block deletion of the parent Job if it contains any paid invoices.
+- [ ] Sub-Task: **Sent State (Read-Only):** Prevent direct editing of a Sent invoice. Require users to use "Revert to Draft" (which logs a reason) to unlock linked items for editing.
+- [ ] Sub-Task: **Voiding:** Implement a "Void" action instead of hard-deleting finalized invoices to preserve numbering. Voiding must reset the linked `job_materials` and `job_hours` to unbilled (`invoice_id = NULL`) so they can be billed again.
+
+**User Story 4.4: UI/UX - Job Dashboard Enhancements**
+"As a User, I want to see a clear list of all invoices tied to a job and quickly identify which materials/hours have been billed."
+- [ ] Sub-Task: Update the Job Details UI to render an array/list of associated invoices with their statuses instead of assuming a single invoice.
+- [ ] Sub-Task: Add visual tags to `job_materials` and `job_hours`: 🔴 Red Tag for Unbilled (`invoice_id` is null) and 🟢 Green Tag for Billed in Inv #XXX.
+- [ ] Sub-Task: Add a tooltip/pop-up on the 'Edit' button for green Billed items linked to Paid invoices: "This item is linked to a Paid invoice. To bill for additional work, please add a new unbilled item."
+
+**User Story 4.5: Auto-Syncing Drafts & Two-Way Sync**
+"As a User, I want the system to intelligently sweep new work into my open draft invoice, or let me add work directly from the invoice builder, minimizing manual data entry."
+- [ ] Sub-Task: Implement Smart Buttons on the Job Dashboard: If a Draft exists, show "View Draft Invoice". If no draft exists, show "Generate Invoice".
+- [ ] Sub-Task: Implement Auto-Sync: When adding new materials/hours to a Job, check for a Draft invoice. If one exists, auto-assign the item's `invoice_id` to it. Otherwise, leave it unbilled.
+- [ ] Sub-Task: Two-Way Sync: Allow adding new line items directly from the Draft Invoice UI, which creates corresponding `job_materials` or `job_hours` linked to the Job and the Draft.
+- [ ] Sub-Task: Auto-Calculating Hours UX Shortcut: If a user enters a flat integer (e.g., "5 hours") directly on the invoice builder, automatically calculate `job_hours`. Set `start_time` to 09:00 and `end_time` to match the duration (e.g., 14:00).
