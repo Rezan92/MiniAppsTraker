@@ -40,21 +40,31 @@ const jobHoursSchema = z.object({
   description: z.string().optional()
 });
 
-async function syncJobToDraftInvoice(jobId, tenantId) {
+async function verifyItemEditability(invoiceId) {
+  if (!invoiceId) return true; // Unbilled items are editable
+  const { data: invoice } = await supabase.from('invoices').select('status').eq('id', invoiceId).single();
+  if (!invoice) return true;
+  if (['sent', 'paid', 'in_progress', 'voided'].includes(invoice.status)) {
+    return false;
+  }
+  return true;
+}
+
+async function syncJobToDraftInvoice(invoiceId, tenantId) {
   try {
     const { data: invoice } = await supabase
       .from('invoices')
-      .select('id, status')
-      .eq('job_id', jobId)
+      .select('id, status, job_id')
+      .eq('id', invoiceId)
       .eq('tenant_id', tenantId)
       .eq('status', 'draft')
       .single();
       
     if (!invoice) return;
 
-    const { data: job } = await supabase.from('jobs').select('hourly_rate, flat_rate, rate_type, title').eq('id', jobId).single();
-    const { data: hours } = await supabase.from('job_hours').select('*').eq('job_id', jobId);
-    const { data: materials } = await supabase.from('job_materials').select('*').eq('job_id', jobId);
+    const { data: job } = await supabase.from('jobs').select('hourly_rate, flat_rate, rate_type, title').eq('id', invoice.job_id).single();
+    const { data: hours } = await supabase.from('job_hours').select('*').eq('invoice_id', invoice.id);
+    const { data: materials } = await supabase.from('job_materials').select('*').eq('invoice_id', invoice.id);
 
     const totalHours = (hours || []).reduce((sum, h) => sum + Number(h.hours), 0);
     const laborAmount = job.rate_type === 'hourly' ? totalHours * (job.hourly_rate || 0) : (job.flat_rate || 0);
@@ -237,9 +247,6 @@ router.post('/:id/materials', async (req, res, next) => {
       .single();
 
     if (error) throw error;
-    
-    // Sync to draft invoice
-    await syncJobToDraftInvoice(job.id, req.user.tenant_id);
 
     res.json({ success: true, data });
   } catch (err) {
@@ -290,6 +297,11 @@ router.patch('/:id/materials/:materialId', async (req, res, next) => {
       return res.status(404).json({ success: false, error: 'Job not found' });
     }
 
+    const { data: existing } = await supabase.from('job_materials').select('invoice_id').eq('id', req.params.materialId).single();
+    if (existing && !(await verifyItemEditability(existing.invoice_id))) {
+      return res.status(403).json({ success: false, error: 'Cannot modify items linked to a sent, in_progress, paid, or voided invoice.' });
+    }
+
     const { data, error } = await supabase
       .from('job_materials')
       .update(result.data)
@@ -300,8 +312,10 @@ router.patch('/:id/materials/:materialId', async (req, res, next) => {
 
     if (error) throw error;
     
-    // Sync to draft invoice
-    await syncJobToDraftInvoice(job.id, req.user.tenant_id);
+    // Sync to draft invoice if linked to one
+    if (existing && existing.invoice_id) {
+      await syncJobToDraftInvoice(existing.invoice_id, req.user.tenant_id);
+    }
 
     res.json({ success: true, data });
   } catch (err) {
@@ -322,6 +336,11 @@ router.delete('/:id/materials/:materialId', async (req, res, next) => {
       return res.status(404).json({ success: false, error: 'Job not found' });
     }
 
+    const { data: existing } = await supabase.from('job_materials').select('invoice_id').eq('id', req.params.materialId).single();
+    if (existing && !(await verifyItemEditability(existing.invoice_id))) {
+      return res.status(403).json({ success: false, error: 'Cannot modify items linked to a sent, in_progress, paid, or voided invoice.' });
+    }
+
     const { error } = await supabase
       .from('job_materials')
       .delete()
@@ -330,8 +349,9 @@ router.delete('/:id/materials/:materialId', async (req, res, next) => {
 
     if (error) throw error;
     
-    // Sync to draft invoice
-    await syncJobToDraftInvoice(job.id, req.user.tenant_id);
+    if (existing && existing.invoice_id) {
+      await syncJobToDraftInvoice(existing.invoice_id, req.user.tenant_id);
+    }
     
     res.json({ success: true });
   } catch (err) {
@@ -368,10 +388,7 @@ router.post('/:id/hours', async (req, res, next) => {
       .single();
 
     if (error) throw error;
-    
-    // Sync to draft invoice
-    await syncJobToDraftInvoice(job.id, req.user.tenant_id);
-    
+
     res.json({ success: true, data });
   } catch (err) {
     next(err);
@@ -425,6 +442,11 @@ router.patch('/:id/hours/:hourId', async (req, res, next) => {
       return res.status(404).json({ success: false, error: 'Job not found' });
     }
 
+    const { data: existing } = await supabase.from('job_hours').select('invoice_id').eq('id', req.params.hourId).single();
+    if (existing && !(await verifyItemEditability(existing.invoice_id))) {
+      return res.status(403).json({ success: false, error: 'Cannot modify items linked to a sent, in_progress, paid, or voided invoice.' });
+    }
+
     const { data, error } = await supabase
       .from('job_hours')
       .update(result.data)
@@ -435,8 +457,9 @@ router.patch('/:id/hours/:hourId', async (req, res, next) => {
 
     if (error) throw error;
     
-    // Sync to draft invoice
-    await syncJobToDraftInvoice(job.id, req.user.tenant_id);
+    if (existing && existing.invoice_id) {
+      await syncJobToDraftInvoice(existing.invoice_id, req.user.tenant_id);
+    }
     
     res.json({ success: true, data });
   } catch (err) {
@@ -457,6 +480,11 @@ router.delete('/:id/hours/:hourId', async (req, res, next) => {
       return res.status(404).json({ success: false, error: 'Job not found' });
     }
 
+    const { data: existing } = await supabase.from('job_hours').select('invoice_id').eq('id', req.params.hourId).single();
+    if (existing && !(await verifyItemEditability(existing.invoice_id))) {
+      return res.status(403).json({ success: false, error: 'Cannot modify items linked to a sent, in_progress, paid, or voided invoice.' });
+    }
+
     const { error } = await supabase
       .from('job_hours')
       .delete()
@@ -465,9 +493,35 @@ router.delete('/:id/hours/:hourId', async (req, res, next) => {
 
     if (error) throw error;
     
-    // Sync to draft invoice
-    await syncJobToDraftInvoice(job.id, req.user.tenant_id);
+    if (existing && existing.invoice_id) {
+      await syncJobToDraftInvoice(existing.invoice_id, req.user.tenant_id);
+    }
     
+    res.json({ success: true });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.delete('/:id', async (req, res, next) => {
+  try {
+    const { data: invoices } = await supabase
+      .from('invoices')
+      .select('status')
+      .eq('job_id', req.params.id)
+      .eq('tenant_id', req.user.tenant_id);
+      
+    if (invoices && invoices.some(inv => inv.status === 'paid' || inv.status === 'in_progress')) {
+      return res.status(403).json({ success: false, error: 'Cannot delete a job that has paid or in-progress invoices.' });
+    }
+
+    const { error } = await supabase
+      .from('jobs')
+      .delete()
+      .eq('id', req.params.id)
+      .eq('tenant_id', req.user.tenant_id);
+
+    if (error) throw error;
     res.json({ success: true });
   } catch (err) {
     next(err);

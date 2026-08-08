@@ -28,7 +28,8 @@ const invoiceSchema = z.object({
 });
 
 const statusSchema = z.object({
-  status: z.enum(['draft', 'sent', 'in_progress', 'paid', 'overdue'])
+  status: z.enum(['draft', 'sent', 'in_progress', 'paid', 'overdue', 'voided']),
+  reason: z.string().optional()
 });
 
 // GET all invoices
@@ -94,18 +95,7 @@ router.post('/', async (req, res, next) => {
 
     const { materials, labor_details, due_date, ...invoiceData } = result.data;
     
-    if (invoiceData.job_id) {
-      const { data: existingInvoice } = await supabase
-        .from('invoices')
-        .select('id')
-        .eq('job_id', invoiceData.job_id)
-        .eq('tenant_id', req.user.tenant_id)
-        .maybeSingle();
-      
-      if (existingInvoice) {
-        return res.status(400).json({ success: false, error: 'An invoice already exists for this job.' });
-      }
-    }
+    // Note: 1:1 job_id constraint check has been removed (Multi-Invoice Jobs)
 
     const sanitizedDueDate = due_date === '' ? null : due_date;
     const materialsAmount = materials.reduce((sum, m) => sum + m.cost, 0);
@@ -175,6 +165,27 @@ router.post('/', async (req, res, next) => {
       
       if (itemsError) throw itemsError;
     }
+
+    // 5. Lock unbilled job items (Sweep)
+    if (invoice.job_id) {
+      await supabase.from('job_materials')
+        .update({ invoice_id: invoice.id })
+        .eq('job_id', invoice.job_id)
+        .is('invoice_id', null);
+        
+      await supabase.from('job_hours')
+        .update({ invoice_id: invoice.id })
+        .eq('job_id', invoice.job_id)
+        .is('invoice_id', null);
+    }
+
+    // 6. Audit Trail (Log Creation)
+    await supabase.from('invoice_logs').insert([{
+      invoice_id: invoice.id,
+      tenant_id: req.user.tenant_id,
+      action: 'Created',
+      user_id: req.user.id
+    }]);
 
     res.json({ success: true, data: invoice });
   } catch (err) {
@@ -271,8 +282,28 @@ router.patch('/:id/status', async (req, res, next) => {
       return res.status(400).json({ success: false, error: result.error.issues[0].message });
     }
 
-    const updateData = { status: result.data.status };
-    if (result.data.status === 'paid') {
+    const { status, reason } = result.data;
+
+    const { data: existing, error: existError } = await supabase
+      .from('invoices')
+      .select('status')
+      .eq('id', req.params.id)
+      .single();
+
+    if (existError) throw existError;
+
+    let action = 'Updated';
+    if (status === 'sent') action = 'Sent';
+    if (status === 'paid') action = 'Paid';
+    if (status === 'voided') action = 'Voided';
+    if (status === 'draft' && existing.status !== 'draft') action = 'Reverted';
+    
+    if ((action === 'Reverted' || action === 'Voided') && !reason) {
+      return res.status(400).json({ success: false, error: 'A reason is required to revert or void an invoice' });
+    }
+
+    const updateData = { status };
+    if (status === 'paid') {
       updateData.paid_at = new Date().toISOString();
     } else {
       updateData.paid_at = null;
@@ -288,8 +319,13 @@ router.patch('/:id/status', async (req, res, next) => {
 
     if (error) throw error;
 
+    if (action === 'Voided') {
+      await supabase.from('job_materials').update({ invoice_id: null }).eq('invoice_id', req.params.id);
+      await supabase.from('job_hours').update({ invoice_id: null }).eq('invoice_id', req.params.id);
+    }
+
     // Auto-complete job on send
-    if (result.data.status === 'sent' && data.job_id) {
+    if (status === 'sent' && data.job_id) {
       const { data: job } = await supabase
         .from('jobs')
         .select('status')
@@ -303,6 +339,14 @@ router.patch('/:id/status', async (req, res, next) => {
           .eq('id', data.job_id);
       }
     }
+
+    await supabase.from('invoice_logs').insert([{
+      invoice_id: req.params.id,
+      tenant_id: req.user.tenant_id,
+      action: action,
+      reason: reason || null,
+      user_id: req.user.id
+    }]);
 
     res.json({ success: true, data });
   } catch (err) {
