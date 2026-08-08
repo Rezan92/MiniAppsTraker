@@ -54,20 +54,20 @@
 
 **User Story 4.1: 1-to-Many Job to Invoices**
 "As a professional service provider, I want to generate multiple invoices for a single job (e.g., progress billing, change orders), so that I can accurately bill for different phases of work without duplicating jobs."
-- [ ] Sub-Task: Remove `UNIQUE(job_id)` constraint on the `invoices` table.
-- [ ] Sub-Task: Add a nullable `invoice_id` foreign key to `job_materials` and `job_hours` tables with `ON DELETE SET NULL`.
+- [x] Sub-Task: Remove `UNIQUE(job_id)` constraint on the `invoices` table.
+- [x] Sub-Task: Add a nullable `invoice_id` foreign key to `job_materials` and `job_hours` tables with `ON DELETE SET NULL`.
 
 **User Story 4.2: Strict Audit Trail for Invoices**
 "As an Admin, I want an immutable log of every action taken on an invoice (Created, Sent, Reverted, Paid, Voided), so that I have a strict financial audit trail."
-- [ ] Sub-Task: Create the `invoice_logs` table (`id`, `invoice_id`, `action`, `reason`, `user_id`, `created_at`).
+- [x] Sub-Task: Create the `invoice_logs` table (`id`, `invoice_id`, `action`, `reason`, `user_id`, `created_at`).
 - [ ] Sub-Task: Create a UI Modal to prompt the user for a "Reason" when moving a Sent invoice back to Draft or when Voiding an invoice.
-- [ ] Sub-Task: Implement backend logic to save the reason directly into the `invoice_logs` table.
+- [x] Sub-Task: Implement backend logic to save the reason directly into the `invoice_logs` table.
 
 **User Story 4.3: Invoice State Locking and Voiding**
 "As an Admin, I want strict lock controls on my invoices to prevent accidental modification of finalized financial records."
-- [ ] Sub-Task: **Paid State (Total Lockdown):** Permanently lock any `job_materials` or `job_hours` linked to a Paid invoice. Block deletion of the parent Job if it contains any paid invoices.
-- [ ] Sub-Task: **Sent State (Read-Only):** Prevent direct editing of a Sent invoice. Require users to use "Revert to Draft" (which logs a reason) to unlock linked items for editing.
-- [ ] Sub-Task: **Voiding:** Implement a "Void" action instead of hard-deleting finalized invoices to preserve numbering. Voiding must reset the linked `job_materials` and `job_hours` to unbilled (`invoice_id = NULL`) so they can be billed again.
+- [x] Sub-Task: **Paid State (Total Lockdown):** Permanently lock any `job_materials` or `job_hours` linked to a Paid invoice. Block deletion of the parent Job if it contains any paid invoices.
+- [x] Sub-Task: **Sent State (Read-Only):** Prevent direct editing of a Sent invoice. Require users to use "Revert to Draft" (which logs a reason) to unlock linked items for editing.
+- [x] Sub-Task: **Voiding:** Implement a "Void" action instead of hard-deleting finalized invoices to preserve numbering. Voiding must reset the linked `job_materials` and `job_hours` to unbilled (`invoice_id = NULL`) so they can be billed again.
 
 **User Story 4.4: UI/UX - Job Dashboard Enhancements**
 "As a User, I want to see a clear list of all invoices tied to a job and quickly identify which materials/hours have been billed."
