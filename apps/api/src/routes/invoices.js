@@ -410,15 +410,19 @@ router.get('/from-job/:jobId', async (req, res, next) => {
       .from('jobs')
       .select(`
         *,
-        clients(id, name, email, phone, address),
-        job_hours(hours, description),
-        job_materials(description, cost)
+        clients(id, name, email, phone, address)
       `)
       .eq('id', req.params.jobId)
       .eq('tenant_id', req.user.tenant_id)
       .single();
 
     if (jobError) throw jobError;
+
+    const { data: hours } = await supabase.from('job_hours').select('hours, description').eq('job_id', job.id).is('invoice_id', null);
+    const { data: materials } = await supabase.from('job_materials').select('description, cost').eq('job_id', job.id).is('invoice_id', null);
+    
+    job.job_hours = hours || [];
+    job.job_materials = materials || [];
 
     let laborAmount = 0;
     if (job.rate_type === 'flat') {
