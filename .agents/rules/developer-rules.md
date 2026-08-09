@@ -13,3 +13,7 @@ When finishing a feature, bugfix, or distinct unit of work, automatically stage 
 ## Rule 3: Critical Evaluation of Prompts
 **Do not blindly agree with every prompt or proposed solution given to you.**
 Unless explicitly instructed to "follow this information exactly," you must independently investigate, validate assumptions, and verify if the provided technical instructions or root cause analyses are actually correct. If they are flawed, implement the correct solution instead and explain why.
+
+## Rule 4: Highlight Manual User Actions
+**Always explicitly list any actions the user must perform themselves.**
+If a task requires manual intervention from the user (such as running a script locally, manually executing a database migration, creating a third-party account, etc.), you must clearly state this at the very end of your response. Prefix this section with "**Important Note:**" so it is highly visible and the user knows exactly what is expected of them to complete the workflow.
