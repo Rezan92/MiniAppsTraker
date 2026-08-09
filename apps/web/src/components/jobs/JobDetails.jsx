@@ -43,7 +43,8 @@ export const JobDetails = () => {
     enabled: !!session?.access_token && !!id
   });
 
-  const invoices = job?.invoices || [];
+  const rawInvoices = job?.invoices;
+  const invoices = Array.isArray(rawInvoices) ? rawInvoices : (rawInvoices ? [rawInvoices] : []);
   const draftInvoice = invoices.find(inv => inv.status === 'draft');
 
   const { data: materials = [], isLoading: loadingMaterials } = useQuery({
