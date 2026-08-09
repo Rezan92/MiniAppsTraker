@@ -29,7 +29,8 @@ const materialSchema = z.object({
   is_from_stock: z.boolean().optional().default(false),
   store: z.string().optional(),
   purchase_date: z.string().optional(),
-  notes: z.string().optional()
+  notes: z.string().optional(),
+  invoice_id: z.string().uuid().optional().nullable()
 });
 
 const jobHoursSchema = z.object({
@@ -37,7 +38,8 @@ const jobHoursSchema = z.object({
   hours: z.number().min(0, "Hours must be positive"),
   start_time: z.string().optional(),
   end_time: z.string().optional(),
-  description: z.string().optional()
+  description: z.string().optional(),
+  invoice_id: z.string().uuid().optional().nullable()
 });
 
 async function verifyItemEditability(invoiceId) {
@@ -121,7 +123,7 @@ router.get('/', async (req, res, next) => {
     const { client_id, property_id, status } = req.query;
     let query = supabase
       .from('jobs')
-      .select('*, clients(name), rental_properties(name, address), invoices(id)')
+      .select('*, clients(name), rental_properties(name, address), invoices(id, status, invoice_number)')
       .eq('tenant_id', req.user.tenant_id);
 
     if (client_id) query = query.eq('client_id', client_id);
@@ -140,7 +142,7 @@ router.get('/:id', async (req, res, next) => {
   try {
     const { data, error } = await supabase
       .from('jobs')
-      .select('*, clients(name)')
+      .select('*, clients(name), invoices(id, status, invoice_number)')
       .eq('id', req.params.id)
       .eq('tenant_id', req.user.tenant_id)
       .single();
@@ -240,6 +242,13 @@ router.post('/:id/materials', async (req, res, next) => {
       return res.status(404).json({ success: false, error: 'Job not found' });
     }
 
+    if (result.data.invoice_id) {
+      const { data: invoice } = await supabase.from('invoices').select('status').eq('id', result.data.invoice_id).single();
+      if (!invoice || invoice.status !== 'draft') {
+        return res.status(400).json({ success: false, error: 'Can only link new items to a draft invoice' });
+      }
+    }
+
     const { data, error } = await supabase
       .from('job_materials')
       .insert([{ ...result.data, job_id: job.id }])
@@ -247,6 +256,10 @@ router.post('/:id/materials', async (req, res, next) => {
       .single();
 
     if (error) throw error;
+
+    if (result.data.invoice_id) {
+      await syncJobToDraftInvoice(result.data.invoice_id, req.user.tenant_id);
+    }
 
     res.json({ success: true, data });
   } catch (err) {
@@ -381,6 +394,13 @@ router.post('/:id/hours', async (req, res, next) => {
       return res.status(404).json({ success: false, error: 'Job not found' });
     }
 
+    if (result.data.invoice_id) {
+      const { data: invoice } = await supabase.from('invoices').select('status').eq('id', result.data.invoice_id).single();
+      if (!invoice || invoice.status !== 'draft') {
+        return res.status(400).json({ success: false, error: 'Can only link new items to a draft invoice' });
+      }
+    }
+
     const { data, error } = await supabase
       .from('job_hours')
       .insert([{ ...result.data, job_id: job.id }])
@@ -388,6 +408,10 @@ router.post('/:id/hours', async (req, res, next) => {
       .single();
 
     if (error) throw error;
+
+    if (result.data.invoice_id) {
+      await syncJobToDraftInvoice(result.data.invoice_id, req.user.tenant_id);
+    }
 
     res.json({ success: true, data });
   } catch (err) {

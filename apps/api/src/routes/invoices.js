@@ -448,4 +448,21 @@ router.get('/from-job/:jobId', async (req, res, next) => {
   }
 });
 
+// GET invoice logs
+router.get('/:id/logs', async (req, res, next) => {
+  try {
+    const { data, error } = await supabase
+      .from('invoice_logs')
+      .select('*')
+      .eq('invoice_id', req.params.id)
+      .eq('tenant_id', req.user.tenant_id)
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+    res.json({ success: true, data });
+  } catch (err) {
+    next(err);
+  }
+});
+
 export default router;

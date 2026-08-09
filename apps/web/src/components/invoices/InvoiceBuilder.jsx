@@ -5,6 +5,8 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useToast } from '../../contexts/ToastContext';
 import { translateApiError } from '../../utils/errorTranslator';
 import { DatePicker } from '../common/DatePicker';
+import { AddMaterialModal } from '../jobs/AddMaterialModal';
+import { AddJobHoursModal } from '../jobs/AddJobHoursModal';
 
 export const InvoiceBuilder = () => {
   const { id } = useParams();
@@ -32,6 +34,68 @@ export const InvoiceBuilder = () => {
     billed_to_name: '',
     property_id: presetPropertyId || ''
   });
+
+  const [matOpen, setMatOpen] = useState(false);
+  const [matData, setMatData] = useState({ description: '', cost: '', is_from_stock: false, store: '', purchase_date: '', notes: '' });
+
+  const [hoursOpen, setHoursOpen] = useState(false);
+  const [hoursData, setHoursData] = useState({ date: new Date().toISOString().split('T')[0], hours: '', description: '', start_time: '', end_time: '' });
+
+  const handleJobMaterialSubmit = async () => {
+    try {
+      const payload = { ...matData, cost: parseFloat(matData.cost) };
+      if (isEditing) {
+        payload.invoice_id = id;
+      }
+      const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:4000'}/api/jobs/${formData.job_id}/materials`, {
+        method: 'POST',
+        headers: { 
+          'Authorization': `Bearer ${session?.access_token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(payload)
+      });
+      if (res.ok) {
+        setMatOpen(false);
+        setMatData({ description: '', cost: '', is_from_stock: false, store: '', purchase_date: '', notes: '' });
+        showSuccess('Material added and synced to job!');
+        handleJobSelect({ target: { value: formData.job_id } });
+      } else {
+        const errorData = await res.json();
+        showError(errorData.error?.message || 'Failed to add material');
+      }
+    } catch (err) {
+      showError('An unexpected error occurred.');
+    }
+  };
+
+  const handleJobHoursSubmit = async () => {
+    try {
+      const payload = { ...hoursData, hours: parseFloat(hoursData.hours) };
+      if (isEditing) {
+        payload.invoice_id = id;
+      }
+      const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:4000'}/api/jobs/${formData.job_id}/hours`, {
+        method: 'POST',
+        headers: { 
+          'Authorization': `Bearer ${session?.access_token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(payload)
+      });
+      if (res.ok) {
+        setHoursOpen(false);
+        setHoursData({ date: new Date().toISOString().split('T')[0], hours: '', description: '', start_time: '', end_time: '' });
+        showSuccess('Time logged and synced to job!');
+        handleJobSelect({ target: { value: formData.job_id } });
+      } else {
+        const errorData = await res.json();
+        showError(errorData.error?.message || 'Failed to log hours');
+      }
+    } catch (err) {
+      showError('An unexpected error occurred.');
+    }
+  };
 
   // Fetch clients
   const { data: clients = [] } = useQuery({
@@ -170,8 +234,16 @@ export const InvoiceBuilder = () => {
   };
 
   const handleLaborDetailChange = (index, value) => {
+    let parsedValue = value;
+    if (/^\d+$/.test(value)) {
+      const hours = parseInt(value, 10);
+      if (hours > 0 && hours <= 24) {
+        const endHour = (9 + hours).toString().padStart(2, '0');
+        parsedValue = `09:00 - ${endHour}:00 - Labor`;
+      }
+    }
     const newList = [...formData.labor_details];
-    newList[index].description = value;
+    newList[index].description = parsedValue;
     setFormData(prev => ({ ...prev, labor_details: newList }));
   };
 
@@ -534,13 +606,24 @@ export const InvoiceBuilder = () => {
                   </button>
                 </div>
               ))}
-              <button 
-                onClick={addLaborDetail}
-                className="inline-flex items-center gap-1 text-sm font-medium text-primary hover:underline mt-2"
-              >
-                <span className="material-symbols-outlined text-[18px]">add</span>
-                Add Bullet Point
-              </button>
+              <div className="flex gap-4 mt-2">
+                <button 
+                  onClick={addLaborDetail}
+                  className="inline-flex items-center gap-1 text-sm font-medium text-primary hover:underline"
+                >
+                  <span className="material-symbols-outlined text-[18px]">add</span>
+                  Add Bullet Point
+                </button>
+                {formData.job_id && (
+                  <button 
+                    onClick={() => setHoursOpen(true)}
+                    className="inline-flex items-center gap-1 text-sm font-medium text-sky-600 hover:underline border-l border-gray-300 pl-4"
+                  >
+                    <span className="material-symbols-outlined text-[18px]">sync</span>
+                    Add & Sync Job Time
+                  </button>
+                )}
+              </div>
             </div>
           </div>
 
@@ -580,13 +663,24 @@ export const InvoiceBuilder = () => {
                 </div>
               ))}
               
-              <button 
-                onClick={addMaterial}
-                className="inline-flex items-center gap-1 text-sm font-medium text-primary hover:underline mt-2"
-              >
-                <span className="material-symbols-outlined text-[18px]">add</span>
-                Add Material
-              </button>
+              <div className="flex gap-4 mt-2">
+                <button 
+                  onClick={addMaterial}
+                  className="inline-flex items-center gap-1 text-sm font-medium text-primary hover:underline"
+                >
+                  <span className="material-symbols-outlined text-[18px]">add</span>
+                  Add Material Line
+                </button>
+                {formData.job_id && (
+                  <button 
+                    onClick={() => setMatOpen(true)}
+                    className="inline-flex items-center gap-1 text-sm font-medium text-sky-600 hover:underline border-l border-gray-300 pl-4"
+                  >
+                    <span className="material-symbols-outlined text-[18px]">sync</span>
+                    Add & Sync Job Material
+                  </button>
+                )}
+              </div>
             </div>
           </div>
 
@@ -610,6 +704,20 @@ export const InvoiceBuilder = () => {
 
         </div>
       </div>
+      <AddMaterialModal 
+        isOpen={matOpen}
+        onClose={() => setMatOpen(false)}
+        formData={matData}
+        setFormData={setMatData}
+        onSubmit={handleJobMaterialSubmit}
+      />
+      <AddJobHoursModal
+        isOpen={hoursOpen}
+        onClose={() => setHoursOpen(false)}
+        formData={hoursData}
+        setFormData={setHoursData}
+        onSubmit={handleJobHoursSubmit}
+      />
     </div>
   );
 };

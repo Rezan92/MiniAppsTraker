@@ -28,6 +28,9 @@ export const InvoiceDetails = () => {
   const [isEditingNotes, setIsEditingNotes] = useState(false);
   const [draftNotes, setDraftNotes] = useState('');
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [reasonModalOpen, setReasonModalOpen] = useState(false);
+  const [reasonAction, setReasonAction] = useState('');
+  const [reasonText, setReasonText] = useState('');
 
   const { data: invoice, isLoading } = useQuery({
     queryKey: ['invoice', id],
@@ -40,6 +43,19 @@ export const InvoiceDetails = () => {
       return json.data;
     },
     enabled: !!session
+  });
+
+  const { data: logs = [] } = useQuery({
+    queryKey: ['invoice_logs', id],
+    queryFn: async () => {
+      const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:4000'}/api/invoices/${id}/logs`, {
+        headers: { 'Authorization': `Bearer ${session.access_token}` }
+      });
+      const json = await res.json();
+      if (!res.ok || !json.success) throw new Error(json.error);
+      return json.data;
+    },
+    enabled: !!session && !!id
   });
 
   const generateFilename = () => {
@@ -69,14 +85,14 @@ export const InvoiceDetails = () => {
   });
 
   const statusMutation = useMutation({
-    mutationFn: async (newStatus) => {
+    mutationFn: async ({ status, reason }) => {
       const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:4000'}/api/invoices/${id}/status`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${session.access_token}`
         },
-        body: JSON.stringify({ status: newStatus })
+        body: JSON.stringify({ status, reason })
       });
       const json = await res.json();
       if (!res.ok || !json.success) throw new Error(json.error);
@@ -86,6 +102,7 @@ export const InvoiceDetails = () => {
       showSuccess("Status updated successfully");
       queryClient.invalidateQueries(['invoice', id]);
       queryClient.invalidateQueries(['invoices']);
+      queryClient.invalidateQueries(['invoice_logs', id]);
     },
     onError: (err) => {
       showError(translateApiError(err));
@@ -140,6 +157,16 @@ export const InvoiceDetails = () => {
     setIsEditingNotes(true);
   };
 
+  const submitReasonAction = () => {
+    if (!reasonText.trim()) {
+      showError("A reason is required");
+      return;
+    }
+    statusMutation.mutate({ status: reasonAction, reason: reasonText });
+    setReasonModalOpen(false);
+    setReasonText('');
+  };
+
   if (isLoading) {
     return <div className="p-8 text-center text-gray-500">Loading invoice details...</div>;
   }
@@ -187,7 +214,7 @@ export const InvoiceDetails = () => {
 
           {isDraft && (
             <button 
-              onClick={() => statusMutation.mutate('sent')}
+              onClick={() => statusMutation.mutate({ status: 'sent' })}
               className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 cursor-pointer"
             >
               <span className="material-symbols-outlined text-[18px]">send</span>
@@ -196,12 +223,31 @@ export const InvoiceDetails = () => {
           )}
           
           {(invoice.status === 'sent' || invoice.status === 'overdue' || invoice.status === 'in_progress') && (
+            <>
+              <button 
+                onClick={() => { setReasonAction('draft'); setReasonText(''); setReasonModalOpen(true); }}
+                className="inline-flex items-center gap-2 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-50 cursor-pointer"
+              >
+                <span className="material-symbols-outlined text-[18px]">undo</span>
+                Revert to Draft
+              </button>
+              <button 
+                onClick={() => statusMutation.mutate({ status: 'paid' })}
+                className="inline-flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg text-sm font-medium hover:bg-green-700 cursor-pointer"
+              >
+                <span className="material-symbols-outlined text-[18px]">check_circle</span>
+                Mark as Paid
+              </button>
+            </>
+          )}
+
+          {['sent', 'in_progress', 'paid', 'overdue'].includes(invoice.status) && invoice.status !== 'voided' && (
             <button 
-              onClick={() => statusMutation.mutate('paid')}
-              className="inline-flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg text-sm font-medium hover:bg-green-700 cursor-pointer"
+              onClick={() => { setReasonAction('voided'); setReasonText(''); setReasonModalOpen(true); }}
+              className="inline-flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg text-sm font-medium hover:bg-red-700 cursor-pointer"
             >
-              <span className="material-symbols-outlined text-[18px]">check_circle</span>
-              Mark as Paid
+              <span className="material-symbols-outlined text-[18px]">cancel</span>
+              Void Invoice
             </button>
           )}
 
@@ -298,6 +344,43 @@ export const InvoiceDetails = () => {
         </div>
       </div>
 
+      {/* Audit Logs Section */}
+      <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm mt-8">
+        <h3 className="text-title-sm font-bold text-gray-900 flex items-center gap-2 mb-4">
+          <span className="material-symbols-outlined text-gray-500">history</span>
+          Invoice Audit Trail
+        </h3>
+        <div className="space-y-4 relative before:absolute before:inset-0 before:ml-5 before:-translate-x-px md:before:mx-auto md:before:translate-x-0 before:h-full before:w-0.5 before:bg-gradient-to-b before:from-transparent before:via-slate-300 before:to-transparent">
+          {logs.map((log) => (
+            <div key={log.id} className="relative flex items-center justify-between md:justify-normal md:odd:flex-row-reverse group is-active">
+              <div className="flex items-center justify-center w-10 h-10 rounded-full border border-white bg-slate-300 group-[.is-active]:bg-primary text-slate-500 group-[.is-active]:text-white shadow shrink-0 md:order-1 md:group-odd:-translate-x-1/2 md:group-even:translate-x-1/2">
+                <span className="material-symbols-outlined text-sm">
+                  {log.action === 'Created' ? 'add' :
+                   log.action === 'Sent' ? 'send' :
+                   log.action === 'Paid' ? 'check_circle' :
+                   log.action === 'Voided' ? 'cancel' :
+                   log.action === 'Reverted' ? 'undo' : 'history'}
+                </span>
+              </div>
+              <div className="w-[calc(100%-4rem)] md:w-[calc(50%-2.5rem)] bg-white p-4 rounded border border-slate-200 shadow">
+                <div className="flex items-center justify-between space-x-2 mb-1">
+                  <div className="font-bold text-slate-900">{log.action}</div>
+                  <time className="text-xs font-medium text-slate-500">{new Date(log.created_at).toLocaleString()}</time>
+                </div>
+                {log.reason && (
+                  <div className="text-sm text-slate-700 bg-slate-50 p-2 rounded mt-2 border border-slate-100 italic">
+                    Reason: {log.reason}
+                  </div>
+                )}
+              </div>
+            </div>
+          ))}
+          {logs.length === 0 && (
+            <p className="text-center text-gray-500 italic py-4">No audit logs found.</p>
+          )}
+        </div>
+      </div>
+
       <DeleteInvoiceModal
         isOpen={deleteModalOpen}
         onClose={() => setDeleteModalOpen(false)}
@@ -305,6 +388,47 @@ export const InvoiceDetails = () => {
         invoiceNumber={invoice.invoice_number}
         loading={deleteMutation.isPending}
       />
+
+      {/* Reason Modal */}
+      {reasonModalOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6">
+            <h3 className="text-lg font-bold text-gray-900 mb-2">
+              {reasonAction === 'draft' ? 'Revert to Draft' : 'Void Invoice'}
+            </h3>
+            <p className="text-sm text-gray-600 mb-4">
+              Please provide a reason for this action. This will be permanently recorded in the audit trail.
+            </p>
+            
+            <textarea
+              className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary mb-4 h-24 resize-none text-sm"
+              placeholder="Enter reason..."
+              value={reasonText}
+              onChange={(e) => setReasonText(e.target.value)}
+            />
+            
+            <div className="flex justify-end gap-3 mt-6">
+              <button
+                type="button"
+                onClick={() => setReasonModalOpen(false)}
+                className="px-4 py-2 font-medium text-gray-700 hover:bg-gray-100 rounded-lg transition-colors cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={submitReasonAction}
+                disabled={statusMutation.isPending || !reasonText.trim()}
+                className={`px-4 py-2 font-medium text-white rounded-lg transition-colors cursor-pointer ${
+                  reasonAction === 'voided' ? 'bg-red-600 hover:bg-red-700' : 'bg-primary hover:bg-opacity-90'
+                } disabled:opacity-50 disabled:cursor-not-allowed`}
+              >
+                {statusMutation.isPending ? 'Processing...' : 'Confirm Action'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

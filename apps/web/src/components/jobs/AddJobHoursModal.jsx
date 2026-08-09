@@ -1,8 +1,12 @@
 import React from 'react';
 import { DatePicker } from '../common/DatePicker';
 
-export const AddJobHoursModal = ({ open, onClose, onSubmit, hoursData, setHoursData }) => {
-  if (!open) return null;
+export const AddJobHoursModal = ({ open, isOpen, onClose, onSubmit, hoursData, setHoursData, formData, setFormData }) => {
+  const isModalOpen = open || isOpen;
+  const data = hoursData || formData || {};
+  const setData = setHoursData || setFormData;
+
+  if (!isModalOpen) return null;
 
   const calculateHours = (start, end) => {
     if (!start || !end) return '';
@@ -16,13 +20,13 @@ export const AddJobHoursModal = ({ open, onClose, onSubmit, hoursData, setHoursD
   };
 
   const handleTimeChange = (field, value) => {
-    const newData = { ...hoursData, [field]: value };
+    const newData = { ...data, [field]: value };
     
     if (newData.start_time && newData.end_time) {
       newData.hours = calculateHours(newData.start_time, newData.end_time);
     }
     
-    setHoursData(newData);
+    setData(newData);
   };
 
   return (
@@ -35,7 +39,7 @@ export const AddJobHoursModal = ({ open, onClose, onSubmit, hoursData, setHoursD
         onMouseDown={e => e.stopPropagation()}
       >
         <div className="px-6 py-4 border-b border-outline-variant flex justify-between items-center">
-          <h2 className="font-title-md text-title-md font-bold text-primary">{hoursData.id ? 'Edit Hours' : 'Log Hours'}</h2>
+          <h2 className="font-title-md text-title-md font-bold text-primary">{data.id ? 'Edit Hours' : 'Log Hours'}</h2>
           <button 
             type="button"
             onClick={onClose}
@@ -51,8 +55,8 @@ export const AddJobHoursModal = ({ open, onClose, onSubmit, hoursData, setHoursD
             <div>
               <label className="block font-label-md text-label-md text-on-surface-variant mb-1">Date *</label>
               <DatePicker
-                value={hoursData.date}
-                onChange={(val) => setHoursData({...hoursData, date: val})}
+                value={data.date}
+                onChange={(val) => setData({...data, date: val})}
                 placeholder="Select date"
               />
             </div>
@@ -64,7 +68,7 @@ export const AddJobHoursModal = ({ open, onClose, onSubmit, hoursData, setHoursD
                 <input 
                   className="w-full px-3 py-2 border border-outline-variant rounded-md bg-surface text-on-surface focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-shadow" 
                   type="time" 
-                  value={hoursData.start_time || ''}
+                  value={data.start_time || ''}
                   onChange={e => handleTimeChange('start_time', e.target.value)}
                 />
               </div>
@@ -73,7 +77,7 @@ export const AddJobHoursModal = ({ open, onClose, onSubmit, hoursData, setHoursD
                 <input 
                   className="w-full px-3 py-2 border border-outline-variant rounded-md bg-surface text-on-surface focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-shadow" 
                   type="time" 
-                  value={hoursData.end_time || ''}
+                  value={data.end_time || ''}
                   onChange={e => handleTimeChange('end_time', e.target.value)}
                 />
               </div>
@@ -88,8 +92,8 @@ export const AddJobHoursModal = ({ open, onClose, onSubmit, hoursData, setHoursD
                 type="number" 
                 min="0"
                 step="0.01"
-                value={hoursData.hours}
-                onChange={e => setHoursData({...hoursData, hours: e.target.value})}
+                value={data.hours || ''}
+                onChange={e => setData({...data, hours: e.target.value})}
                 required
               />
             </div>
@@ -99,8 +103,8 @@ export const AddJobHoursModal = ({ open, onClose, onSubmit, hoursData, setHoursD
               <label className="block font-label-md text-label-md text-on-surface-variant mb-1">Work Description</label>
               <textarea 
                 className="w-full px-3 py-2 border border-outline-variant rounded-md bg-surface text-on-surface focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-shadow placeholder:text-on-surface-variant/50"
-                value={hoursData.description || ''}
-                onChange={e => setHoursData({...hoursData, description: e.target.value})}
+                value={data.description || ''}
+                onChange={e => setData({...data, description: e.target.value})}
                 placeholder="E.g., Initial site prep..."
                 rows={2}
               />
@@ -119,10 +123,10 @@ export const AddJobHoursModal = ({ open, onClose, onSubmit, hoursData, setHoursD
           <button 
             type="button"
             onClick={onSubmit} 
-            disabled={!hoursData.date || !hoursData.hours} 
+            disabled={!data.date || !data.hours} 
             className="px-4 py-2 bg-primary text-black font-body-md font-bold rounded cursor-pointer hover:bg-opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors focus:outline-none focus:ring-2 focus:ring-primary shadow-sm"
           >
-            {hoursData.id ? 'Save Changes' : 'Log Hours'}
+            {data.id ? 'Save Changes' : 'Log Hours'}
           </button>
         </div>
       </div>

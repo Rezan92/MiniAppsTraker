@@ -43,17 +43,8 @@ export const JobDetails = () => {
     enabled: !!session?.access_token && !!id
   });
 
-  const { data: invoice } = useQuery({
-    queryKey: ['invoice', 'job', id],
-    queryFn: async () => {
-      const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:4000'}/api/invoices?job_id=${id}`, {
-        headers: { 'Authorization': `Bearer ${session?.access_token}` }
-      });
-      const json = await res.json();
-      return json.data?.[0] || null;
-    },
-    enabled: !!session?.access_token && !!id
-  });
+  const invoices = job?.invoices || [];
+  const draftInvoice = invoices.find(inv => inv.status === 'draft');
 
   const { data: materials = [], isLoading: loadingMaterials } = useQuery({
     queryKey: ['materials', 'job', id],
@@ -97,6 +88,9 @@ export const JobDetails = () => {
   const handleAddMaterial = async () => {
     try {
       const payload = { ...matData, cost: parseFloat(matData.cost) };
+      if (!matData.id && draftInvoice) {
+        payload.invoice_id = draftInvoice.id;
+      }
       const method = matData.id ? 'PATCH' : 'POST';
       const url = matData.id 
         ? `${import.meta.env.VITE_API_URL || 'http://localhost:4000'}/api/jobs/${id}/materials/${matData.id}`
@@ -128,6 +122,9 @@ export const JobDetails = () => {
   const handleLogHours = async () => {
     try {
       const payload = { ...hoursData, hours: parseFloat(hoursData.hours) };
+      if (!hoursData.id && draftInvoice) {
+        payload.invoice_id = draftInvoice.id;
+      }
       const method = hoursData.id ? 'PATCH' : 'POST';
       const url = hoursData.id 
         ? `${import.meta.env.VITE_API_URL || 'http://localhost:4000'}/api/jobs/${id}/hours/${hoursData.id}`
@@ -282,13 +279,13 @@ export const JobDetails = () => {
             Edit Job
           </button>
 
-          {invoice ? (
+          {draftInvoice ? (
             <button 
-              onClick={() => navigate(`/invoices/${invoice.id}`)}
+              onClick={() => navigate(`/invoices/${draftInvoice.id}`)}
               className="px-4 py-2 bg-primary text-black rounded font-body-md font-bold hover:bg-opacity-90 transition-colors flex items-center gap-2 shadow-sm"
             >
               <span className="material-symbols-outlined text-[18px]">receipt</span>
-              View Invoice
+              View Draft Invoice
             </button>
           ) : (
             <button 
@@ -296,7 +293,7 @@ export const JobDetails = () => {
               className="px-4 py-2 bg-primary text-black rounded font-body-md font-bold hover:bg-opacity-90 transition-colors flex items-center gap-2 shadow-sm"
             >
               <span className="material-symbols-outlined text-[18px]">add_circle</span>
-              Create Invoice
+              Generate Invoice
             </button>
           )}
         </div>
@@ -339,8 +336,40 @@ export const JobDetails = () => {
           </div>
         </div>
 
+        {/* Related Invoices */}
+        <div className="xl:col-span-4 bg-white border border-gray-200 rounded-lg p-6 flex flex-col shadow-sm">
+          <div className="flex justify-between items-center mb-4 border-b border-gray-100 pb-2">
+            <h3 className="font-label-caps text-xs tracking-wider text-gray-500 uppercase flex items-center gap-2 font-bold">
+              <span className="material-symbols-outlined text-[18px]">receipt_long</span>
+              Related Invoices
+            </h3>
+          </div>
+          <div className="flex-1 space-y-3">
+            {invoices.length === 0 ? (
+              <p className="text-gray-400 text-sm italic">No invoices generated yet.</p>
+            ) : (
+              invoices.map(inv => (
+                <div key={inv.id} className="flex items-center justify-between p-3 border border-gray-100 rounded bg-gray-50 hover:bg-gray-100 transition-colors">
+                  <Link to={`/invoices/${inv.id}`} className="font-body-md font-bold text-gray-900 hover:text-primary transition-colors">
+                    #{inv.invoice_number}
+                  </Link>
+                  <span className={`px-2 py-0.5 rounded text-xs font-bold uppercase tracking-wider ${
+                    inv.status === 'draft' ? 'bg-gray-200 text-gray-700' :
+                    inv.status === 'sent' ? 'bg-blue-100 text-blue-700' :
+                    inv.status === 'paid' ? 'bg-emerald-100 text-emerald-700' :
+                    inv.status === 'voided' ? 'bg-red-100 text-red-700' :
+                    'bg-amber-100 text-amber-700'
+                  }`}>
+                    {inv.status}
+                  </span>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+
         {/* Job Notes */}
-        <div className="xl:col-span-8 bg-white border border-gray-200 rounded-lg p-6 hover:shadow-sm transition-shadow flex flex-col">
+        <div className="xl:col-span-5 bg-white border border-gray-200 rounded-lg p-6 hover:shadow-sm transition-shadow flex flex-col">
           <div className="flex justify-between items-center mb-4 border-b border-gray-100 pb-2">
             <h3 className="font-label-caps text-xs tracking-wider text-gray-500 uppercase flex items-center gap-2 font-bold">
               <span className="material-symbols-outlined text-[18px]">note_alt</span>
@@ -374,6 +403,7 @@ export const JobDetails = () => {
                 <tr>
                   <th className="p-3 border-b border-gray-200">Date</th>
                   <th className="p-3 border-b border-gray-200">Time / Desc</th>
+                  <th className="p-3 border-b border-gray-200 text-center">Status</th>
                   <th className="p-3 border-b border-gray-200 text-right">Hours</th>
                   <th className="p-3 border-b border-gray-200 text-right w-20">Actions</th>
                 </tr>
@@ -388,7 +418,10 @@ export const JobDetails = () => {
                     <td colSpan="4" className="p-4 text-center text-gray-400 italic">No hours logged yet.</td>
                   </tr>
                 ) : (
-                  hours.map(h => (
+                  hours.map(h => {
+                    const isLocked = h.invoice_id && invoices.find(i => i.id === h.invoice_id && ['sent', 'in_progress', 'paid', 'voided'].includes(i.status));
+                    const linkedInvoice = h.invoice_id ? invoices.find(i => i.id === h.invoice_id) : null;
+                    return (
                     <tr key={h.id} className="border-b border-gray-100 hover:bg-gray-50 transition-colors group">
                       <td className="p-3 font-medium">{new Date(h.date).toLocaleDateString()}</td>
                       <td className="p-3">
@@ -397,19 +430,41 @@ export const JobDetails = () => {
                         )}
                         <div>{h.description || '-'}</div>
                       </td>
+                      <td className="p-3 text-center">
+                        {h.invoice_id ? (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                            🟢 Billed {linkedInvoice ? `in #${linkedInvoice.invoice_number}` : ''}
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-bold bg-red-50 text-red-700 border border-red-200">
+                            🔴 Unbilled
+                          </span>
+                        )}
+                      </td>
                       <td className="p-3 text-right font-medium">{h.hours} hrs</td>
                       <td className="p-3 text-right">
                         <div className="flex justify-end gap-2">
-                          <button onClick={() => { setHoursData(h); setHoursOpen(true); }} className="text-black hover:text-primary cursor-pointer transition-colors" title="Edit">
+                          <button 
+                            onClick={() => { setHoursData(h); setHoursOpen(true); }} 
+                            className={`transition-colors ${isLocked ? 'text-gray-300 cursor-not-allowed' : 'text-black hover:text-primary cursor-pointer'}`}
+                            disabled={isLocked}
+                            title={isLocked ? "This item is linked to a finalized invoice. To bill for additional work, please add a new unbilled item." : "Edit"}
+                          >
                             <span className="material-symbols-outlined text-[18px]">edit</span>
                           </button>
-                          <button onClick={() => { setItemToDelete({ id: h.id, type: 'hour' }); setDeleteModalOpen(true); }} className="text-black hover:text-red-600 cursor-pointer transition-colors" title="Delete">
+                          <button 
+                            onClick={() => { setItemToDelete({ id: h.id, type: 'hour' }); setDeleteModalOpen(true); }} 
+                            className={`transition-colors ${isLocked ? 'text-gray-300 cursor-not-allowed' : 'text-black hover:text-red-600 cursor-pointer'}`}
+                            disabled={isLocked}
+                            title={isLocked ? "This item is linked to a finalized invoice and cannot be deleted." : "Delete"}
+                          >
                             <span className="material-symbols-outlined text-[18px]">delete</span>
                           </button>
                         </div>
                       </td>
                     </tr>
-                  ))
+                  )
+                  })
                 )}
               </tbody>
             </table>
@@ -438,6 +493,7 @@ export const JobDetails = () => {
                 <tr>
                   <th className="p-3 border-b border-gray-200">Item</th>
                   <th className="p-3 border-b border-gray-200">Source / Date</th>
+                  <th className="p-3 border-b border-gray-200 text-center">Status</th>
                   <th className="p-3 border-b border-gray-200 text-right">Cost</th>
                   <th className="p-3 border-b border-gray-200 text-right w-20">Actions</th>
                 </tr>
@@ -452,26 +508,60 @@ export const JobDetails = () => {
                     <td colSpan="4" className="p-4 text-center text-gray-400 italic">No materials added yet.</td>
                   </tr>
                 ) : (
-                  materials.map(m => (
+                  materials.map(m => {
+                    const isLocked = m.invoice_id && invoices.find(i => i.id === m.invoice_id && ['sent', 'in_progress', 'paid', 'voided'].includes(i.status));
+                    const linkedInvoice = m.invoice_id ? invoices.find(i => i.id === m.invoice_id) : null;
+                    return (
                     <tr key={m.id} className="border-b border-gray-100 hover:bg-gray-50 transition-colors group">
-                      <td className="p-3 font-medium">{m.description}</td>
                       <td className="p-3">
-                        <div className="text-xs text-gray-500">{m.is_from_stock ? 'Stock' : m.store}</div>
-                        <div className="text-xs">{m.purchase_date ? new Date(m.purchase_date).toLocaleDateString() : '-'}</div>
+                        <div className="font-medium text-gray-900">{m.description}</div>
+                        {m.notes && <div className="text-xs text-gray-500 mt-1">{m.notes}</div>}
+                      </td>
+                      <td className="p-3">
+                        {m.is_from_stock ? (
+                          <span className="inline-block px-2 py-1 bg-amber-100 text-amber-800 rounded-full text-xs font-bold font-label-caps uppercase">Stock</span>
+                        ) : (
+                          <div className="text-sm">
+                            <div className="font-medium">{m.store || 'N/A'}</div>
+                            <div className="text-xs text-gray-500">{m.purchase_date ? new Date(m.purchase_date).toLocaleDateString() : 'No date'}</div>
+                          </div>
+                        )}
+                      </td>
+                      <td className="p-3 text-center">
+                        {m.invoice_id ? (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                            🟢 Billed {linkedInvoice ? `in #${linkedInvoice.invoice_number}` : ''}
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-bold bg-red-50 text-red-700 border border-red-200">
+                            🔴 Unbilled
+                          </span>
+                        )}
                       </td>
                       <td className="p-3 text-right font-medium">${Number(m.cost).toFixed(2)}</td>
                       <td className="p-3 text-right">
                         <div className="flex justify-end gap-2">
-                          <button onClick={() => { setMatData(m); setMatOpen(true); }} className="text-black hover:text-primary cursor-pointer transition-colors" title="Edit">
+                          <button 
+                            onClick={() => { setMatData(m); setMatOpen(true); }} 
+                            className={`transition-colors ${isLocked ? 'text-gray-300 cursor-not-allowed' : 'text-black hover:text-primary cursor-pointer'}`}
+                            disabled={isLocked}
+                            title={isLocked ? "This item is linked to a finalized invoice. To bill for additional work, please add a new unbilled item." : "Edit"}
+                          >
                             <span className="material-symbols-outlined text-[18px]">edit</span>
                           </button>
-                          <button onClick={() => { setItemToDelete({ id: m.id, type: 'material' }); setDeleteModalOpen(true); }} className="text-black hover:text-red-600 cursor-pointer transition-colors" title="Delete">
+                          <button 
+                            onClick={() => { setItemToDelete({ id: m.id, type: 'material' }); setDeleteModalOpen(true); }} 
+                            className={`transition-colors ${isLocked ? 'text-gray-300 cursor-not-allowed' : 'text-black hover:text-red-600 cursor-pointer'}`}
+                            disabled={isLocked}
+                            title={isLocked ? "This item is linked to a finalized invoice and cannot be deleted." : "Delete"}
+                          >
                             <span className="material-symbols-outlined text-[18px]">delete</span>
                           </button>
                         </div>
                       </td>
                     </tr>
-                  ))
+                  )
+                  })
                 )}
               </tbody>
             </table>

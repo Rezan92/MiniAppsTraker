@@ -60,7 +60,7 @@
 **User Story 4.2: Strict Audit Trail for Invoices**
 "As an Admin, I want an immutable log of every action taken on an invoice (Created, Sent, Reverted, Paid, Voided), so that I have a strict financial audit trail."
 - [x] Sub-Task: Create the `invoice_logs` table (`id`, `invoice_id`, `action`, `reason`, `user_id`, `created_at`).
-- [ ] Sub-Task: Create a UI Modal to prompt the user for a "Reason" when moving a Sent invoice back to Draft or when Voiding an invoice.
+- [x] Sub-Task: Create a UI Modal to prompt the user for a "Reason" when moving a Sent invoice back to Draft or when Voiding an invoice.
 - [x] Sub-Task: Implement backend logic to save the reason directly into the `invoice_logs` table.
 
 **User Story 4.3: Invoice State Locking and Voiding**
@@ -71,13 +71,13 @@
 
 **User Story 4.4: UI/UX - Job Dashboard Enhancements**
 "As a User, I want to see a clear list of all invoices tied to a job and quickly identify which materials/hours have been billed."
-- [ ] Sub-Task: Update the Job Details UI to render an array/list of associated invoices with their statuses instead of assuming a single invoice.
-- [ ] Sub-Task: Add visual tags to `job_materials` and `job_hours`: 🔴 Red Tag for Unbilled (`invoice_id` is null) and 🟢 Green Tag for Billed in Inv #XXX.
-- [ ] Sub-Task: Add a tooltip/pop-up on the 'Edit' button for green Billed items linked to Paid invoices: "This item is linked to a Paid invoice. To bill for additional work, please add a new unbilled item."
+- [x] Sub-Task: Update the Job Details UI to render an array/list of associated invoices with their statuses instead of assuming a single invoice.
+- [x] Sub-Task: Add visual tags to `job_materials` and `job_hours`: 🔴 Red Tag for Unbilled (`invoice_id` is null) and 🟢 Green Tag for Billed in Inv #XXX.
+- [x] Sub-Task: Add a tooltip/pop-up on the 'Edit' button for green Billed items linked to Paid invoices: "This item is linked to a Paid invoice. To bill for additional work, please add a new unbilled item."
 
 **User Story 4.5: Auto-Syncing Drafts & Two-Way Sync**
 "As a User, I want the system to intelligently sweep new work into my open draft invoice, or let me add work directly from the invoice builder, minimizing manual data entry."
-- [ ] Sub-Task: Implement Smart Buttons on the Job Dashboard: If a Draft exists, show "View Draft Invoice". If no draft exists, show "Generate Invoice".
-- [ ] Sub-Task: Implement Auto-Sync: When adding new materials/hours to a Job, check for a Draft invoice. If one exists, auto-assign the item's `invoice_id` to it. Otherwise, leave it unbilled.
-- [ ] Sub-Task: Two-Way Sync: Allow adding new line items directly from the Draft Invoice UI, which creates corresponding `job_materials` or `job_hours` linked to the Job and the Draft.
-- [ ] Sub-Task: Auto-Calculating Hours UX Shortcut: If a user enters a flat integer (e.g., "5 hours") directly on the invoice builder, automatically calculate `job_hours`. Set `start_time` to 09:00 and `end_time` to match the duration (e.g., 14:00).
+- [x] Sub-Task: Implement Smart Buttons on the Job Dashboard: If a Draft exists, show "View Draft Invoice". If no draft exists, show "Generate Invoice".
+- [x] Sub-Task: Implement Auto-Sync: When adding new materials/hours to a Job, check for a Draft invoice. If one exists, auto-assign the item's `invoice_id` to it. Otherwise, leave it unbilled.
+- [x] Sub-Task: Two-Way Sync: Allow adding new line items directly from the Draft Invoice UI, which creates corresponding `job_materials` or `job_hours` linked to the Job and the Draft.
+- [x] Sub-Task: Auto-Calculating Hours UX Shortcut: If a user enters a flat integer (e.g., "5 hours") directly on the invoice builder, automatically calculate `job_hours`. Set `start_time` to 09:00 and `end_time` to match the duration (e.g., 14:00).
