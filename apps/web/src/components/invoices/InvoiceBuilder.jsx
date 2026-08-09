@@ -17,10 +17,11 @@ export const InvoiceBuilder = () => {
   const [searchParams] = useSearchParams();
   const presetClientId = searchParams.get('client_id');
   const presetPropertyId = searchParams.get('property_id');
+  const presetJobId = searchParams.get('job_id');
 
   const [formData, setFormData] = useState({
     client_id: presetClientId || '',
-    job_id: '',
+    job_id: presetJobId || '',
     invoice_date: new Date().toISOString().split('T')[0],
     due_date: '',
     property_address: '',
@@ -67,6 +68,37 @@ export const InvoiceBuilder = () => {
     }
   });
 
+  const [hasAutoPopulatedJob, setHasAutoPopulatedJob] = useState(false);
+
+  useEffect(() => {
+    if (presetJobId && !isEditing && session && !hasAutoPopulatedJob) {
+      const fetchPresetJob = async () => {
+        try {
+          const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:4000'}/api/invoices/from-job/${presetJobId}`, {
+            headers: { 'Authorization': `Bearer ${session.access_token}` }
+          });
+          const json = await res.json();
+          if (!res.ok || !json.success) return;
+          
+          const payload = json.data;
+          setFormData(prev => ({
+            ...prev,
+            client_id: prev.client_id || payload.client_id,
+            labor_title: payload.labor_title || 'Labor',
+            labor_amount: payload.labor_amount || 0,
+            labor_details: payload.labor_details.map((d, i) => ({ id: Date.now() + i, description: d.description })),
+            materials: payload.materials.map((m, i) => ({ id: Date.now() + 1000 + i, description: m.description, cost: m.cost })),
+            property_address: payload.property_address || prev.property_address
+          }));
+          setHasAutoPopulatedJob(true);
+        } catch (err) {
+          console.error(err);
+        }
+      };
+      fetchPresetJob();
+    }
+  }, [presetJobId, isEditing, session, hasAutoPopulatedJob]);
+
   // Fetch clients
   const { data: clients = [] } = useQuery({
     queryKey: ['clients'],
@@ -90,8 +122,8 @@ export const InvoiceBuilder = () => {
       });
       const json = await res.json();
       if (!res.ok || !json.success) throw new Error(json.error);
-      // Filter out jobs that already have an invoice, unless it's the currently selected job
-      return json.data.filter(j => !j.invoices || j.invoices.length === 0 || j.id === formData.job_id);
+      // Jobs can have multiple invoices (Progress Billing)
+      return json.data;
     },
     enabled: !!session && !!formData.client_id
   });
