@@ -193,6 +193,180 @@ router.post('/', async (req, res, next) => {
   }
 });
 
+// GET check if invoice is out of sync with job
+router.get('/:id/sync-status', async (req, res, next) => {
+  try {
+    const { data: invoice, error } = await supabase
+      .from('invoices')
+      .select('*, jobs(*)')
+      .eq('id', req.params.id)
+      .eq('tenant_id', req.user.tenant_id)
+      .single();
+
+    if (error) throw error;
+    if (!invoice.job_id || invoice.status !== 'draft') {
+      return res.json({ success: true, outOfSync: false });
+    }
+
+    const { data: materials } = await supabase.from('job_materials').select('*').eq('invoice_id', invoice.id);
+    const { data: hours } = await supabase.from('job_hours').select('*').eq('invoice_id', invoice.id);
+    const { data: existingItems } = await supabase.from('invoice_items').select('*').eq('invoice_id', invoice.id);
+
+    const existingMaterials = existingItems.filter(i => i.type === 'material');
+    const existingLabor = existingItems.filter(i => i.type === 'labor_detail');
+
+    let outOfSync = false;
+
+    // Check material counts/costs
+    for (const m of (materials || [])) {
+      const existing = existingMaterials.find(em => em.description === m.description);
+      if (!existing || existing.total_price !== m.cost) {
+        outOfSync = true;
+        break;
+      }
+    }
+
+    // Check hours
+    if (!outOfSync) {
+      for (const h of (hours || [])) {
+        const desc = h.description || `${h.hours} hours logged`;
+        if (!existingLabor.find(el => el.description === desc)) {
+          outOfSync = true;
+          break;
+        }
+      }
+    }
+
+    // Check rate changes
+    if (!outOfSync) {
+      const job = invoice.jobs;
+      let laborAmount = 0;
+      if (job.rate_type === 'flat') {
+        laborAmount = job.flat_rate || 0;
+      } else {
+        const totalHours = (hours || []).reduce((sum, h) => sum + h.hours, 0);
+        laborAmount = totalHours * (job.hourly_rate || 0);
+      }
+      if (laborAmount !== invoice.labor_amount) {
+        outOfSync = true;
+      }
+    }
+
+    res.json({ success: true, outOfSync });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// POST sync invoice with job data
+router.post('/:id/sync', async (req, res, next) => {
+  try {
+    const { data: invoice, error: checkError } = await supabase
+      .from('invoices')
+      .select('*, jobs(*)')
+      .eq('id', req.params.id)
+      .eq('tenant_id', req.user.tenant_id)
+      .single();
+
+    if (checkError) throw checkError;
+    if (invoice.status !== 'draft') {
+      return res.status(403).json({ success: false, error: 'Only draft invoices can be synced' });
+    }
+    if (!invoice.job_id) {
+      return res.status(400).json({ success: false, error: 'Invoice is not linked to a job' });
+    }
+
+    const job = invoice.jobs;
+
+    // Sweep any unbilled items just in case
+    await supabase.from('job_materials')
+      .update({ invoice_id: invoice.id })
+      .eq('job_id', job.id)
+      .is('invoice_id', null);
+      
+    await supabase.from('job_hours')
+      .update({ invoice_id: invoice.id })
+      .eq('job_id', job.id)
+      .is('invoice_id', null);
+
+    const { data: materials } = await supabase.from('job_materials').select('*').eq('invoice_id', invoice.id);
+    const { data: hours } = await supabase.from('job_hours').select('*').eq('invoice_id', invoice.id);
+    const { data: existingItems } = await supabase.from('invoice_items').select('*').eq('invoice_id', invoice.id);
+
+    const existingMaterials = existingItems.filter(i => i.type === 'material');
+    const existingLabor = existingItems.filter(i => i.type === 'labor_detail');
+    let maxSortOrder = existingItems.reduce((max, i) => Math.max(max, i.sort_order), -1);
+
+    const itemsToInsert = [];
+
+    // Diff Materials
+    for (const m of (materials || [])) {
+      const existing = existingMaterials.find(em => em.description === m.description);
+      if (!existing) {
+        maxSortOrder++;
+        itemsToInsert.push({
+          invoice_id: invoice.id,
+          type: 'material',
+          description: m.description,
+          total_price: m.cost,
+          sort_order: maxSortOrder
+        });
+      } else if (existing.total_price !== m.cost) {
+        await supabase.from('invoice_items').update({ total_price: m.cost }).eq('id', existing.id);
+      }
+    }
+
+    // Diff Hours
+    for (const h of (hours || [])) {
+      const desc = h.description || `${h.hours} hours logged`;
+      const existing = existingLabor.find(el => el.description === desc);
+      if (!existing) {
+        maxSortOrder++;
+        itemsToInsert.push({
+          invoice_id: invoice.id,
+          type: 'labor_detail',
+          description: desc,
+          sort_order: maxSortOrder
+        });
+      }
+    }
+
+    if (itemsToInsert.length > 0) {
+      const { error: itemsError } = await supabase.from('invoice_items').insert(itemsToInsert);
+      if (itemsError) throw itemsError;
+    }
+
+    // Recalculate totals and check rate structure changes
+    let laborAmount = 0;
+    if (job.rate_type === 'flat') {
+      laborAmount = job.flat_rate || 0;
+    } else {
+      const totalHours = (hours || []).reduce((sum, h) => sum + h.hours, 0);
+      laborAmount = totalHours * (job.hourly_rate || 0);
+    }
+
+    // Re-fetch items to get the actual total of materials (including custom ones added on invoice)
+    const { data: finalItems } = await supabase.from('invoice_items').select('*').eq('invoice_id', invoice.id);
+    const materialsAmount = finalItems.filter(i => i.type === 'material').reduce((sum, m) => sum + (m.total_price || 0), 0);
+    const totalAmount = laborAmount + materialsAmount;
+
+    const { error: updateError } = await supabase
+      .from('invoices')
+      .update({
+        labor_amount: laborAmount,
+        materials_amount: materialsAmount,
+        total_amount: totalAmount
+      })
+      .eq('id', invoice.id);
+
+    if (updateError) throw updateError;
+
+    res.json({ success: true });
+  } catch (err) {
+    next(err);
+  }
+});
+
 // PATCH update draft invoice
 router.patch('/:id', async (req, res, next) => {
   try {

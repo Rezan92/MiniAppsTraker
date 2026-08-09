@@ -5,8 +5,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useToast } from '../../contexts/ToastContext';
 import { translateApiError } from '../../utils/errorTranslator';
 import { DatePicker } from '../common/DatePicker';
-import { AddMaterialModal } from '../jobs/AddMaterialModal';
-import { AddJobHoursModal } from '../jobs/AddJobHoursModal';
+// Modals removed for UX standardization
 
 export const InvoiceBuilder = () => {
   const { id } = useParams();
@@ -35,67 +34,38 @@ export const InvoiceBuilder = () => {
     property_id: presetPropertyId || ''
   });
 
-  const [matOpen, setMatOpen] = useState(false);
-  const [matData, setMatData] = useState({ description: '', cost: '', is_from_stock: false, store: '', purchase_date: '', notes: '' });
-
-  const [hoursOpen, setHoursOpen] = useState(false);
-  const [hoursData, setHoursData] = useState({ date: new Date().toISOString().split('T')[0], hours: '', description: '', start_time: '', end_time: '' });
-
-  const handleJobMaterialSubmit = async () => {
-    try {
-      const payload = { ...matData, cost: parseFloat(matData.cost) };
-      if (isEditing) {
-        payload.invoice_id = id;
-      }
-      const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:4000'}/api/jobs/${formData.job_id}/materials`, {
-        method: 'POST',
-        headers: { 
-          'Authorization': `Bearer ${session?.access_token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(payload)
+  // Fetch sync status if editing a draft linked to a job
+  const { data: syncStatus, refetch: refetchSyncStatus } = useQuery({
+    queryKey: ['syncStatus', id],
+    queryFn: async () => {
+      const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:4000'}/api/invoices/${id}/sync-status`, {
+        headers: { 'Authorization': `Bearer ${session.access_token}` }
       });
-      if (res.ok) {
-        setMatOpen(false);
-        setMatData({ description: '', cost: '', is_from_stock: false, store: '', purchase_date: '', notes: '' });
-        showSuccess('Material added and synced to job!');
-        handleJobSelect({ target: { value: formData.job_id } });
-      } else {
-        const errorData = await res.json();
-        showError(errorData.error?.message || 'Failed to add material');
-      }
-    } catch (err) {
-      showError('An unexpected error occurred.');
-    }
-  };
+      const json = await res.json();
+      return json;
+    },
+    enabled: !!session && isEditing && !!formData.job_id
+  });
 
-  const handleJobHoursSubmit = async () => {
-    try {
-      const payload = { ...hoursData, hours: parseFloat(hoursData.hours) };
-      if (isEditing) {
-        payload.invoice_id = id;
-      }
-      const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:4000'}/api/jobs/${formData.job_id}/hours`, {
+  const syncMutation = useMutation({
+    mutationFn: async () => {
+      const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:4000'}/api/invoices/${id}/sync`, {
         method: 'POST',
-        headers: { 
-          'Authorization': `Bearer ${session?.access_token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(payload)
+        headers: { 'Authorization': `Bearer ${session.access_token}` }
       });
-      if (res.ok) {
-        setHoursOpen(false);
-        setHoursData({ date: new Date().toISOString().split('T')[0], hours: '', description: '', start_time: '', end_time: '' });
-        showSuccess('Time logged and synced to job!');
-        handleJobSelect({ target: { value: formData.job_id } });
-      } else {
-        const errorData = await res.json();
-        showError(errorData.error?.message || 'Failed to log hours');
-      }
-    } catch (err) {
-      showError('An unexpected error occurred.');
+      const json = await res.json();
+      if (!res.ok || !json.success) throw new Error(json.error || 'Sync failed');
+      return json;
+    },
+    onSuccess: () => {
+      showSuccess('Invoice synced with job data');
+      queryClient.invalidateQueries(['invoice', id]);
+      refetchSyncStatus();
+    },
+    onError: (err) => {
+      showError(err.message);
     }
-  };
+  });
 
   // Fetch clients
   const { data: clients = [] } = useQuery({
@@ -363,6 +333,22 @@ export const InvoiceBuilder = () => {
         </div>
       </div>
 
+      {syncStatus?.outOfSync && (
+        <div className="mb-6 p-4 bg-amber-50 border border-amber-200 rounded-lg flex items-center justify-between">
+          <div className="flex items-center gap-3 text-amber-800">
+            <span className="material-symbols-outlined">warning</span>
+            <p className="font-medium text-sm">Out of sync items detected. Job materials, hours, or rates have changed since this draft was created.</p>
+          </div>
+          <button 
+            onClick={() => syncMutation.mutate()}
+            disabled={syncMutation.isLoading}
+            className="px-4 py-2 bg-amber-100 text-amber-900 rounded-lg font-title-sm hover:bg-amber-200 transition-colors disabled:opacity-50"
+          >
+            {syncMutation.isLoading ? 'Syncing...' : 'Sync Now'}
+          </button>
+        </div>
+      )}
+
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
         <div className="p-8 space-y-8">
           
@@ -614,15 +600,6 @@ export const InvoiceBuilder = () => {
                   <span className="material-symbols-outlined text-[18px]">add</span>
                   Add Bullet Point
                 </button>
-                {formData.job_id && (
-                  <button 
-                    onClick={() => setHoursOpen(true)}
-                    className="inline-flex items-center gap-1 text-sm font-medium text-sky-600 hover:underline border-l border-gray-300 pl-4"
-                  >
-                    <span className="material-symbols-outlined text-[18px]">sync</span>
-                    Add & Sync Job Time
-                  </button>
-                )}
               </div>
             </div>
           </div>
@@ -671,15 +648,6 @@ export const InvoiceBuilder = () => {
                   <span className="material-symbols-outlined text-[18px]">add</span>
                   Add Material Line
                 </button>
-                {formData.job_id && (
-                  <button 
-                    onClick={() => setMatOpen(true)}
-                    className="inline-flex items-center gap-1 text-sm font-medium text-sky-600 hover:underline border-l border-gray-300 pl-4"
-                  >
-                    <span className="material-symbols-outlined text-[18px]">sync</span>
-                    Add & Sync Job Material
-                  </button>
-                )}
               </div>
             </div>
           </div>
@@ -704,20 +672,7 @@ export const InvoiceBuilder = () => {
 
         </div>
       </div>
-      <AddMaterialModal 
-        isOpen={matOpen}
-        onClose={() => setMatOpen(false)}
-        formData={matData}
-        setFormData={setMatData}
-        onSubmit={handleJobMaterialSubmit}
-      />
-      <AddJobHoursModal
-        isOpen={hoursOpen}
-        onClose={() => setHoursOpen(false)}
-        formData={hoursData}
-        setFormData={setHoursData}
-        onSubmit={handleJobHoursSubmit}
-      />
+
     </div>
   );
 };
