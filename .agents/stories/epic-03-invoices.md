@@ -81,3 +81,12 @@
 - [x] Sub-Task: Implement Auto-Sync: When adding new materials/hours to a Job, check for a Draft invoice. If one exists, auto-assign the item's `invoice_id` to it. Otherwise, leave it unbilled.
 - [x] Sub-Task: Two-Way Sync: Allow adding new line items directly from the Draft Invoice UI, which creates corresponding `job_materials` or `job_hours` linked to the Job and the Draft.
 - [x] Sub-Task: Auto-Calculating Hours UX Shortcut: If a user enters a flat integer (e.g., "5 hours") directly on the invoice builder, automatically calculate `job_hours`. Set `start_time` to 09:00 and `end_time` to match the duration (e.g., 14:00).
+
+### Phase 5: Draft Invoice Manual Syncing (QA Observation 3.2)
+
+**User Story 5.1: Explicit Manual Syncing for Draft Invoices**
+"As an Admin, I want to manually sync my draft invoice with the latest job data (new materials, new hours, or changed job rates), so that I can control exactly when my financial document updates and ensure the final bill is perfectly accurate before sending."
+
+- [ ] Sub-Task: **Backend Sync Route** (`POST /api/invoices/:id/sync`): Create an endpoint that queries the parent Job and its associated `job_materials` and `job_hours` tied to this `invoice_id`. Identify missing items, generate the corresponding `invoice_items`, detect changes in the Job's rate structure (e.g., Flat Rate vs Hourly) to update unit prices, and recalculate the grand total.
+- [ ] Sub-Task: **Frontend Sync Warning Banner**: In the Invoice Builder, detect discrepancies between the database's actual job items and the draft's line items. If they are out of sync, display a highly visible warning banner: *"Out of sync items detected. Click Sync to update this draft."*
+- [ ] Sub-Task: **Frontend UI Cleanup (UX Standardization)**: Remove the redundant inline "Add & Sync Job Material/Time" buttons from the Invoice Builder. Standardize the workflow so users add billable work on the Job Dashboard and click "Sync" on the draft.
