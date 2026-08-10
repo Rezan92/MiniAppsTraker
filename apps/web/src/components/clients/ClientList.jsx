@@ -4,7 +4,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useToast } from '../../contexts/ToastContext';
 import { useNavigate } from 'react-router-dom';
 import { AddClientModal } from './AddClientModal';
-import { DeleteConfirmationModal } from './DeleteConfirmationModal';
+import { ConfirmModal } from '../common/ConfirmModal';
 import { useQuery, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import { useDebounce } from '../../hooks/useDebounce';
 import { translateApiError } from '../../utils/errorTranslator';
@@ -289,12 +289,14 @@ export const ClientList = () => {
         setFormData={setFormData}
         editMode={editMode}
       />
-      <DeleteConfirmationModal
+      <ConfirmModal
         open={deleteModalOpen}
         onClose={() => { setDeleteModalOpen(false); setClientToDelete(null); }}
         onConfirm={executeDelete}
-        clientName={clientToDelete?.name || 'this client'}
-        warningMessage="This action cannot be undone. All jobs and invoices associated with this client will also be deleted."
+        title="Delete Client?"
+        message={`Are you sure you want to delete ${clientToDelete?.name || 'this client'}? This action is permanent and will remove all associated job history and invoices.`}
+        confirmText="Delete Client"
+        confirmColor="red"
       />
       
       {/* Status Dropdown Portal */}

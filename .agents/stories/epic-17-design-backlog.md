@@ -72,6 +72,10 @@ This epic tracks all pending HTML/Tailwind screen designs required from the UI/U
 
 ## Pending Screens & Specifications
 
+- [ ] **Task 17.0: Standardized UI Elements**
+  - **Description:** Design a polished, reusable Tooltip component to replace all native browser `title` attributes. It should support top/bottom/left/right positioning, have a subtle fade-in animation, and look professional and distinct.
+
+
 - [ ] **Task 17.1: Pre-Login Gateway (Welcome Choice)**
   - **Description:** The entry screen before login. Two split cards.
   - **Card A:** "I'm a Business Owner" -> "Start a New Business".

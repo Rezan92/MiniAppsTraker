@@ -95,7 +95,9 @@ export const AddJobModal = ({ open, onClose, onSubmit, formData, setFormData, cl
                     value={formData.property_id || ''} 
                     onChange={e => setFormData({...formData, property_id: e.target.value})}
                   >
-                    <option value="">None (Link to Client Only)</option>
+                    <option value="">
+                      {selectedClient?.address ? `[Primary Address] ${selectedClient.address}` : 'None (Link to Client Only)'}
+                    </option>
                     {properties.map(p => (
                       <option key={p.id} value={p.id}>{p.name ? `${p.name} - ` : ''}{p.address}</option>
                     ))}

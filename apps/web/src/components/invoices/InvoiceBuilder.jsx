@@ -5,6 +5,8 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useToast } from '../../contexts/ToastContext';
 import { translateApiError } from '../../utils/errorTranslator';
 import { DatePicker } from '../common/DatePicker';
+import { Tooltip } from '../common/Tooltip';
+import { ConfirmModal } from '../common/ConfirmModal';
 // Modals removed for UX standardization
 
 export const InvoiceBuilder = () => {
@@ -18,6 +20,7 @@ export const InvoiceBuilder = () => {
   const presetClientId = searchParams.get('client_id');
   const presetPropertyId = searchParams.get('property_id');
   const presetJobId = searchParams.get('job_id');
+  const [syncConfirmOpen, setSyncConfirmOpen] = useState(false);
 
   const [formData, setFormData] = useState({
     client_id: presetClientId || '',
@@ -387,11 +390,7 @@ export const InvoiceBuilder = () => {
             </div>
           </div>
           <button 
-            onClick={() => {
-              if (window.confirm("Warning: Syncing will immediately update the saved draft in the database. This action cannot be undone by clicking Cancel. Do you want to proceed?")) {
-                syncMutation.mutate();
-              }
-            }}
+            onClick={() => setSyncConfirmOpen(true)}
             disabled={syncMutation.isLoading}
             className="px-4 py-2 bg-amber-100 text-amber-900 rounded-lg font-title-sm hover:bg-amber-200 transition-colors disabled:opacity-50 self-center"
           >
@@ -436,49 +435,53 @@ export const InvoiceBuilder = () => {
               {formData.client_id && (
                 <div>
                   <label className="block text-label-md text-gray-700 mb-1">Bill To</label>
-                  <select 
-                    value={formData.bill_to_type}
-                    onChange={(e) => {
-                      const type = e.target.value;
-                      const client = clients.find(c => c.id === formData.client_id);
-                      let billedToName = client?.name || '';
-                      if (type === 'company_name' && client?.company_name) billedToName = client.company_name;
-                      setFormData({...formData, bill_to_type: type, billed_to_name: billedToName, property_id: '', property_address: ''});
-                    }}
-                    disabled={!!formData.job_id}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary bg-white mb-3 disabled:bg-gray-100 disabled:opacity-70 disabled:cursor-not-allowed"
-                  >
-                    <option value="client_name">Client Name ({clients.find(c => c.id === formData.client_id)?.name})</option>
-                    {clients.find(c => c.id === formData.client_id)?.company_name && (
-                      <option value="company_name">Company Name ({clients.find(c => c.id === formData.client_id)?.company_name})</option>
-                    )}
-                    <option value="property_address">Rental Property Address</option>
-                    <option value="renter_name">Tenant (Renter)</option>
-                  </select>
+                  <Tooltip text={formData.job_id ? "You can only change this on the job." : ""} position="top">
+                    <select 
+                      value={formData.bill_to_type}
+                      onChange={(e) => {
+                        const type = e.target.value;
+                        const client = clients.find(c => c.id === formData.client_id);
+                        let billedToName = client?.name || '';
+                        if (type === 'company_name' && client?.company_name) billedToName = client.company_name;
+                        setFormData({...formData, bill_to_type: type, billed_to_name: billedToName, property_id: '', property_address: ''});
+                      }}
+                      disabled={!!formData.job_id}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary bg-white mb-3 disabled:bg-gray-100 disabled:opacity-70 disabled:cursor-not-allowed"
+                    >
+                      <option value="client_name">Client Name ({clients.find(c => c.id === formData.client_id)?.name})</option>
+                      {clients.find(c => c.id === formData.client_id)?.company_name && (
+                        <option value="company_name">Company Name ({clients.find(c => c.id === formData.client_id)?.company_name})</option>
+                      )}
+                      <option value="property_address">Rental Property Address</option>
+                      <option value="renter_name">Tenant (Renter)</option>
+                    </select>
+                  </Tooltip>
 
                   {(formData.bill_to_type === 'property_address' || formData.bill_to_type === 'renter_name') && (
                     <div>
-                      <select
-                        value={formData.property_id}
-                        onChange={(e) => {
-                          const propId = e.target.value;
-                          const prop = properties.find(p => p.id === propId);
-                          const billedToName = formData.bill_to_type === 'renter_name' 
-                            ? (prop?.renter_name || 'Unknown Tenant') 
-                            : (prop?.address || '');
-                          setFormData({...formData, property_id: propId, property_address: prop?.address || '', billed_to_name: billedToName});
-                        }}
-                        disabled={!!formData.job_id}
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary bg-white disabled:bg-gray-100 disabled:opacity-70 disabled:cursor-not-allowed"
-                        required
-                      >
-                        <option value="">Select a property...</option>
-                        {properties.map(p => (
-                          <option key={p.id} value={p.id}>
-                            {p.name ? `${p.name} - ` : ''}{p.address} {formData.bill_to_type === 'renter_name' && p.renter_name ? `(${p.renter_name})` : ''}
-                          </option>
-                        ))}
-                      </select>
+                      <Tooltip text={formData.job_id ? "You can only change this on the job." : ""} position="top">
+                        <select
+                          value={formData.property_id}
+                          onChange={(e) => {
+                            const propId = e.target.value;
+                            const prop = properties.find(p => p.id === propId);
+                            const billedToName = formData.bill_to_type === 'renter_name' 
+                              ? (prop?.renter_name || 'Unknown Tenant') 
+                              : (prop?.address || '');
+                            setFormData({...formData, property_id: propId, property_address: prop?.address || '', billed_to_name: billedToName});
+                          }}
+                          disabled={!!formData.job_id}
+                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary bg-white disabled:bg-gray-100 disabled:opacity-70 disabled:cursor-not-allowed"
+                          required
+                        >
+                          <option value="">Select a property...</option>
+                          {properties.map(p => (
+                            <option key={p.id} value={p.id}>
+                              {p.name ? `${p.name} - ` : ''}{p.address} {formData.bill_to_type === 'renter_name' && p.renter_name ? `(${p.renter_name})` : ''}
+                            </option>
+                          ))}
+                        </select>
+                      </Tooltip>
                     </div>
                   )}
                 </div>
@@ -487,19 +490,21 @@ export const InvoiceBuilder = () => {
                 <div>
                   <label className="block text-label-md text-gray-700 mb-1">Property Address (Optional)</label>
                   {(clients.find(c => c.id === formData.client_id)?.address || properties.length > 0) ? (
-                    <select
-                      value={formData.property_address}
-                      onChange={(e) => {
-                         const val = e.target.value;
-                         const prop = properties.find(p => p.address === val);
-                         setFormData({
-                           ...formData, 
-                           property_address: val, 
-                           property_id: prop ? prop.id : ''
-                         });
-                      }}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary bg-white"
-                    >
+                    <Tooltip text={formData.job_id ? "You can only change this on the job." : ""} position="top">
+                      <select
+                        value={formData.property_address}
+                        onChange={(e) => {
+                           const val = e.target.value;
+                           const prop = properties.find(p => p.address === val);
+                           setFormData({
+                             ...formData, 
+                             property_address: val, 
+                             property_id: prop ? prop.id : ''
+                           });
+                        }}
+                        disabled={!!formData.job_id}
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary bg-white disabled:bg-gray-100 disabled:opacity-70 disabled:cursor-not-allowed"
+                      >
                       <option value="">Leave blank</option>
                       {clients.find(c => c.id === formData.client_id)?.address && (
                         <option value={clients.find(c => c.id === formData.client_id)?.address}>
@@ -533,19 +538,21 @@ export const InvoiceBuilder = () => {
                   <span>Auto-populate from Job (Optional)</span>
                   {formData.job_id && <span className="text-green-600 text-xs font-bold">Linked</span>}
                 </label>
-                <div title={isEditing ? "An invoice is permanently linked to its parent job. To bill a different job, delete this draft and create a new one." : ""}>
-                  <select 
-                    value={formData.job_id}
-                    onChange={handleJobSelect}
-                    disabled={!formData.client_id || isEditing}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary bg-white disabled:bg-gray-100 disabled:opacity-70 disabled:cursor-not-allowed"
-                  >
-                  <option value="">Select an available job...</option>
-                  {availableJobs.map(j => (
-                    <option key={j.id} value={j.id}>{j.title}</option>
-                  ))}
-                  </select>
-                </div>
+                <Tooltip text={isEditing ? "An invoice is permanently linked to its parent job. To bill a different job, delete this draft and create a new one." : ""} position="top">
+                  <div className="w-full">
+                    <select 
+                      value={formData.job_id}
+                      onChange={handleJobSelect}
+                      disabled={!formData.client_id || isEditing}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary bg-white disabled:bg-gray-100 disabled:opacity-70 disabled:cursor-not-allowed"
+                    >
+                    <option value="">Select an available job...</option>
+                    {availableJobs.map(j => (
+                      <option key={j.id} value={j.id}>{j.title}</option>
+                    ))}
+                    </select>
+                  </div>
+                </Tooltip>
                 <p className="text-xs text-gray-500 mt-1">This will overwrite the labor and materials below.</p>
               </div>
 
@@ -727,6 +734,18 @@ export const InvoiceBuilder = () => {
 
         </div>
       </div>
+
+      </div>
+
+      <ConfirmModal
+        open={syncConfirmOpen}
+        onClose={() => setSyncConfirmOpen(false)}
+        onConfirm={() => syncMutation.mutate()}
+        title="Sync Draft Invoice?"
+        message="Warning: Syncing will immediately update the saved draft in the database. This action cannot be undone by clicking Cancel. Do you want to proceed?"
+        confirmText="Sync Now"
+        confirmColor="amber"
+      />
 
     </div>
   );

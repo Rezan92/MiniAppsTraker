@@ -1,7 +1,32 @@
 import React from 'react';
 
-export const DeleteConfirmationModal = ({ open, onClose, onConfirm, clientName }) => {
+export const ConfirmModal = ({ 
+  open, 
+  onClose, 
+  onConfirm, 
+  title, 
+  message, 
+  confirmText = 'Confirm', 
+  confirmColor = 'red' 
+}) => {
   if (!open) return null;
+
+  const colorStyles = {
+    red: {
+      bg: 'bg-red-100',
+      text: 'text-red-600',
+      icon: 'warning',
+      button: 'bg-red-600 hover:bg-red-700 focus:ring-red-600 shadow-[0_2px_10px_rgba(220,38,38,0.3)] hover:shadow-[0_4px_14px_rgba(220,38,38,0.4)]'
+    },
+    amber: {
+      bg: 'bg-amber-100',
+      text: 'text-amber-600',
+      icon: 'warning',
+      button: 'bg-amber-500 hover:bg-amber-600 focus:ring-amber-500 shadow-[0_2px_10px_rgba(245,158,11,0.3)] hover:shadow-[0_4px_14px_rgba(245,158,11,0.4)]'
+    }
+  };
+
+  const style = colorStyles[confirmColor] || colorStyles.red;
 
   return (
     <div 
@@ -15,16 +40,18 @@ export const DeleteConfirmationModal = ({ open, onClose, onConfirm, clientName }
         {/* Modal Header / Content */}
         <div className="p-6 flex flex-col items-center text-center gap-4">
           {/* Icon */}
-          <div className="w-16 h-16 rounded-full bg-red-100 flex items-center justify-center mb-2">
-            <span className="material-symbols-outlined text-[32px] text-red-600" style={{ fontVariationSettings: "'FILL' 1" }}>warning</span>
+          <div className={`w-16 h-16 rounded-full ${style.bg} flex items-center justify-center mb-2`}>
+            <span className={`material-symbols-outlined text-[32px] ${style.text}`} style={{ fontVariationSettings: "'FILL' 1" }}>
+              {style.icon}
+            </span>
           </div>
           
           {/* Text */}
           <div>
-            <h2 className="font-headline-md text-headline-md text-gray-900 mb-2 font-bold">Delete Client?</h2>
-            <p className="font-body-md text-body-md text-gray-600">
-              Are you sure you want to delete <strong className="text-gray-900">{clientName || 'this client'}</strong>? This action is permanent and will remove all associated job history and invoices.
-            </p>
+            <h2 className="font-headline-md text-headline-md text-gray-900 mb-2 font-bold">{title}</h2>
+            <div className="font-body-md text-body-md text-gray-600">
+              {message}
+            </div>
           </div>
         </div>
         
@@ -38,9 +65,9 @@ export const DeleteConfirmationModal = ({ open, onClose, onConfirm, clientName }
           </button>
           <button 
             onClick={() => { onConfirm(); onClose(); }}
-            className="flex-1 px-4 py-3 rounded bg-red-600 text-white font-label-md text-label-md hover:bg-red-700 transition-colors focus:outline-none focus:ring-2 focus:ring-red-600 shadow-[0_2px_10px_rgba(220,38,38,0.3)] hover:shadow-[0_4px_14px_rgba(220,38,38,0.4)] cursor-pointer"
+            className={`flex-1 px-4 py-3 rounded text-white font-label-md text-label-md transition-colors focus:outline-none focus:ring-2 cursor-pointer ${style.button}`}
           >
-            Delete Client
+            {confirmText}
           </button>
         </div>
       </div>

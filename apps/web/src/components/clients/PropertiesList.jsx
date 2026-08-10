@@ -3,6 +3,8 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../../contexts/AuthContext';
 import { useToast } from '../../contexts/ToastContext';
 import { useNavigate } from 'react-router-dom';
+import { Tooltip } from '../common/Tooltip';
+import { ConfirmModal } from '../common/ConfirmModal';
 
 export const PropertiesList = ({ clientId }) => {
   const { session } = useAuth();
@@ -11,6 +13,8 @@ export const PropertiesList = ({ clientId }) => {
   const navigate = useNavigate();
 
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [propToDelete, setPropToDelete] = useState(null);
   const [editingId, setEditingId] = useState(null);
   const [formData, setFormData] = useState({ name: '', address: '', renter_name: '', renter_phone: '', notes: '' });
 
@@ -39,10 +43,15 @@ export const PropertiesList = ({ clientId }) => {
     setIsModalOpen(true);
   };
 
-  const handleDelete = async (id) => {
-    if (!window.confirm('Are you sure you want to delete this property?')) return;
+  const confirmDelete = (id) => {
+    setPropToDelete(id);
+    setDeleteModalOpen(true);
+  };
+
+  const executeDelete = async () => {
+    if (!propToDelete) return;
     try {
-      const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:4000'}/api/properties/${id}`, {
+      const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:4000'}/api/properties/${propToDelete}`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${session?.access_token}` }
       });
@@ -54,6 +63,9 @@ export const PropertiesList = ({ clientId }) => {
       }
     } catch (err) {
       showError('An error occurred');
+    } finally {
+      setDeleteModalOpen(false);
+      setPropToDelete(null);
     }
   };
 
@@ -138,20 +150,22 @@ export const PropertiesList = ({ clientId }) => {
                   </td>
                   <td className="p-4 max-w-xs truncate">{prop.notes || '-'}</td>
                   <td className="p-4 text-right">
-                    <button 
-                      onClick={(e) => { e.stopPropagation(); handleOpenEdit(prop); }} 
-                      className="text-black hover:opacity-80 transition-opacity p-1 cursor-pointer" 
-                      title="Edit"
-                    >
-                      <span className="material-symbols-outlined text-[18px]">edit</span>
-                    </button>
-                    <button 
-                      onClick={(e) => { e.stopPropagation(); handleDelete(prop.id); }} 
-                      className="text-black hover:opacity-80 transition-opacity p-1 ml-2 cursor-pointer" 
-                      title="Delete"
-                    >
-                      <span className="material-symbols-outlined text-[18px]">delete</span>
-                    </button>
+                    <Tooltip text="Edit" position="top">
+                      <button 
+                        onClick={(e) => { e.stopPropagation(); handleOpenEdit(prop); }} 
+                        className="text-black hover:opacity-80 transition-opacity p-1 cursor-pointer" 
+                      >
+                        <span className="material-symbols-outlined text-[18px]">edit</span>
+                      </button>
+                    </Tooltip>
+                    <Tooltip text="Delete" position="top">
+                      <button 
+                        onClick={(e) => { e.stopPropagation(); confirmDelete(prop.id); }} 
+                        className="text-black hover:opacity-80 transition-opacity p-1 ml-2 cursor-pointer" 
+                      >
+                        <span className="material-symbols-outlined text-[18px]">delete</span>
+                      </button>
+                    </Tooltip>
                   </td>
                 </tr>
               ))
@@ -232,6 +246,14 @@ export const PropertiesList = ({ clientId }) => {
           </div>
         </div>
       )}
+
+      <ConfirmModal
+        open={deleteModalOpen}
+        onClose={() => { setDeleteModalOpen(false); setPropToDelete(null); }}
+        onConfirm={executeDelete}
+        title="Delete Property?"
+        message="Are you sure you want to delete this property?"
+      />
     </div>
   );
 };

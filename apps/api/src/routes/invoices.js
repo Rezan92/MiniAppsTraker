@@ -264,7 +264,7 @@ router.post('/:id/sync', async (req, res, next) => {
   try {
     const { data: invoice, error: checkError } = await supabase
       .from('invoices')
-      .select('*, jobs(*)')
+      .select('*, jobs(*, clients(*))')
       .eq('id', req.params.id)
       .eq('tenant_id', req.user.tenant_id)
       .single();
@@ -356,7 +356,7 @@ router.post('/:id/sync', async (req, res, next) => {
       const { data: prop } = await supabase.from('properties').select('address').eq('id', job.property_id).single();
       if (prop) newPropertyAddress = prop.address;
     } else {
-      newPropertyAddress = null;
+      newPropertyAddress = job.clients?.address || null;
     }
 
     const { error: updateError } = await supabase

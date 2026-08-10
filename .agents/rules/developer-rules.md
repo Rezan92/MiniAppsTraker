@@ -17,3 +17,7 @@ Unless explicitly instructed to "follow this information exactly," you must inde
 ## Rule 4: Highlight Manual User Actions
 **Always explicitly list any actions the user must perform themselves.**
 If a task requires manual intervention from the user (such as running a script locally, manually executing a database migration, creating a third-party account, etc.), you must clearly state this at the very end of your response. Prefix this section with "**Important Note:**" so it is highly visible and the user knows exactly what is expected of them to complete the workflow.
+
+## Rule 5: Component Reusability First
+**Always follow best practices by abstracting recurring UI patterns into reusable components.**
+If a UI pattern or logic is recurring (e.g., confirmation modals, tooltips), never use native browser equivalents (like `window.confirm` or HTML `title` attributes) or duplicate code. Always extract it into a unified, reusable component to ensure a professional look and feel across the application.
