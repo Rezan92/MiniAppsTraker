@@ -99,6 +99,7 @@ export const InvoiceBuilder = () => {
             labor_amount: payload.labor_amount || 0,
             labor_details: payload.labor_details.map((d, i) => ({ id: Date.now() + i, description: d.description })),
             materials: payload.materials.map((m, i) => ({ id: Date.now() + 1000 + i, description: m.description, cost: m.cost })),
+            property_id: payload.property_id || '',
             property_address: payload.property_address || prev.property_address
           }));
           setHasAutoPopulatedJob(true);
