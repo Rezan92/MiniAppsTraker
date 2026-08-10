@@ -264,7 +264,7 @@ router.post('/:id/sync', async (req, res, next) => {
   try {
     const { data: invoice, error: checkError } = await supabase
       .from('invoices')
-      .select('*, jobs(*, clients(*), properties(*))')
+      .select('*, jobs(*, clients(*), rental_properties(*))')
       .eq('id', req.params.id)
       .eq('tenant_id', req.user.tenant_id)
       .single();
@@ -358,7 +358,7 @@ router.post('/:id/sync', async (req, res, next) => {
         materials_amount: materialsAmount,
         total_amount: totalAmount,
         property_id: job.property_id,
-        property_address: job.properties?.address || ''
+        property_address: job.rental_properties?.address || ''
       })
       .eq('id', invoice.id);
 
