@@ -460,9 +460,16 @@ export const InvoiceBuilder = () => {
               )}
               {formData.client_id && (
                 <div>
-                  <label className="block text-label-md text-gray-700 mb-1">Property Address (Optional)</label>
-                  {(clients.find(c => c.id === formData.client_id)?.address || properties.length > 0) ? (
-                    <Tooltip text={formData.job_id ? "You can only change this on the job." : ""} position="top">
+                  <label className="block text-label-md text-gray-700 mb-1">
+                    Property Address {!formData.job_id && "(Optional)"}
+                  </label>
+                  
+                  {formData.job_id ? (
+                    <div className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-100 text-gray-700 cursor-not-allowed">
+                      {formData.property_address || 'No property assigned to job'}
+                    </div>
+                  ) : (
+                    (clients.find(c => c.id === formData.client_id)?.address || properties.length > 0) ? (
                       <select
                         value={formData.property_address}
                         onChange={(e) => {
@@ -479,8 +486,7 @@ export const InvoiceBuilder = () => {
                              billed_to_name: newBilledToName
                            });
                         }}
-                        disabled={!!formData.job_id}
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary bg-white disabled:bg-gray-100 disabled:opacity-70 disabled:cursor-not-allowed"
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary bg-white"
                       >
                         <option value="">Leave blank</option>
                         {clients.find(c => c.id === formData.client_id)?.address && (
@@ -488,23 +494,21 @@ export const InvoiceBuilder = () => {
                             [Primary Address] {clients.find(c => c.id === formData.client_id)?.address}
                           </option>
                         )}
-                        {properties
-                          .filter(p => !formData.job_id || p.id === (availableJobs.find(j => j.id === formData.job_id)?.property_id || existingInvoice?.jobs?.property_id))
-                          .map(p => (
+                        {properties.map(p => (
                           <option key={p.id} value={p.address}>
                             {p.name ? `${p.name} - ` : ''}{p.address}
                           </option>
                         ))}
                       </select>
-                    </Tooltip>
-                  ) : (
-                    <textarea 
-                      value={formData.property_address}
-                      onChange={(e) => setFormData({...formData, property_address: e.target.value, property_id: ''})}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary"
-                      rows="2"
-                      placeholder="e.g. 123 Main St, Apt 4B"
-                    />
+                    ) : (
+                      <textarea 
+                        value={formData.property_address}
+                        onChange={(e) => setFormData({...formData, property_address: e.target.value, property_id: ''})}
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary"
+                        rows="2"
+                        placeholder="e.g. 123 Main St, Apt 4B"
+                      />
+                    )
                   )}
                 </div>
               )}
