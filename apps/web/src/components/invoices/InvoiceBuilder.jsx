@@ -442,7 +442,9 @@ export const InvoiceBuilder = () => {
                       const client = clients.find(c => c.id === formData.client_id);
                       let billedToName = client?.name || '';
                       if (type === 'company_name' && client?.company_name) billedToName = client.company_name;
-                      setFormData({...formData, bill_to_type: type, billed_to_name: billedToName, property_id: '', property_address: ''});
+                      
+                      // CRITICAL: We only update the bill_to entity. We never erase the physical property address here.
+                      setFormData({...formData, bill_to_type: type, billed_to_name: billedToName});
                     }}
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary bg-white mb-3"
                   >
