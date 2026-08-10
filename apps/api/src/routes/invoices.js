@@ -610,7 +610,8 @@ router.get('/from-job/:jobId', async (req, res, next) => {
       .from('jobs')
       .select(`
         *,
-        clients(id, name, email, phone, address)
+        clients(id, name, email, phone, address),
+        rental_properties(id, address)
       `)
       .eq('id', req.params.jobId)
       .eq('tenant_id', req.user.tenant_id)
@@ -639,7 +640,7 @@ router.get('/from-job/:jobId', async (req, res, next) => {
       labor_amount: laborAmount,
       labor_details: (job.job_hours || []).map(h => ({ description: h.description || `${h.hours} hours logged` })),
       materials: (job.job_materials || []).map(m => ({ description: m.description, cost: m.cost })),
-      property_address: job.clients?.address || ''
+      property_address: job.rental_properties?.address || job.clients?.address || ''
     };
 
     res.json({ success: true, data: payload });
