@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useReactToPrint } from 'react-to-print';
@@ -58,7 +58,7 @@ export const InvoiceDetails = () => {
     enabled: !!session && !!id
   });
 
-  const { data: syncStatus } = useQuery({
+  const { data: syncStatus, refetch: refetchSyncStatus } = useQuery({
     queryKey: ['syncStatus', id],
     queryFn: async () => {
       const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:4000'}/api/invoices/${id}/sync-status`, {
@@ -68,8 +68,16 @@ export const InvoiceDetails = () => {
       if (!res.ok || !json.success) throw new Error(json.error);
       return json;
     },
-    enabled: !!session && !!id && invoice?.status === 'draft'
+    enabled: !!session && !!id && invoice?.status === 'draft',
+    refetchOnMount: 'always',
+    refetchOnWindowFocus: true
   });
+
+  useEffect(() => {
+    if (invoice?.status === 'draft') {
+      refetchSyncStatus();
+    }
+  }, [invoice?.status, refetchSyncStatus]);
 
   const generateFilename = () => {
     if (!invoice) return 'Invoice';
