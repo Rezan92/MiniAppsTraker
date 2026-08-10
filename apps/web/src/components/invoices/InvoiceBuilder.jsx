@@ -455,36 +455,7 @@ export const InvoiceBuilder = () => {
                     )}
                   </select>
 
-                  {formData.bill_to_type === 'renter_name' && (
-                    <div>
-                      <label className="block text-label-md text-gray-700 mb-1">Tenant's Property Address *</label>
-                      <Tooltip text={formData.job_id ? "You can only change this on the job." : ""} position="top">
-                        <select
-                          value={formData.property_id}
-                          onChange={(e) => {
-                            const propId = e.target.value;
-                            const prop = properties.find(p => p.id === propId);
-                            setFormData({...formData, property_id: propId, property_address: prop?.address || '', billed_to_name: prop?.renter_name || 'Unknown Tenant'});
-                          }}
-                          disabled={!!formData.job_id}
-                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary bg-white disabled:bg-gray-100 disabled:opacity-70 disabled:cursor-not-allowed"
-                          required
-                        >
-                          <option value="">Select a property...</option>
-                          {properties
-                            .filter(p => !formData.job_id || p.id === (availableJobs.find(j => j.id === formData.job_id)?.property_id || existingInvoice?.jobs?.property_id))
-                            .map(p => (
-                            <option key={p.id} value={p.id}>
-                              {p.name ? `${p.name} - ` : ''}{p.address} {p.renter_name ? `(${p.renter_name})` : ''}
-                            </option>
-                          ))}
-                        </select>
-                      </Tooltip>
-                    </div>
-                  )}
-                </div>
-              )}
-              {formData.client_id && formData.bill_to_type !== 'renter_name' && (
+              {formData.client_id && (
                 <div>
                   <label className="block text-label-md text-gray-700 mb-1">Property Address (Optional)</label>
                   {(clients.find(c => c.id === formData.client_id)?.address || properties.length > 0) ? (
@@ -494,10 +465,15 @@ export const InvoiceBuilder = () => {
                         onChange={(e) => {
                            const val = e.target.value;
                            const prop = properties.find(p => p.address === val);
+                           let newBilledToName = formData.billed_to_name;
+                           if (formData.bill_to_type === 'renter_name') {
+                             newBilledToName = prop?.renter_name || 'Unknown Tenant';
+                           }
                            setFormData({
                              ...formData, 
                              property_address: val, 
-                             property_id: prop ? prop.id : ''
+                             property_id: prop ? prop.id : '',
+                             billed_to_name: newBilledToName
                            });
                         }}
                         disabled={!!formData.job_id}
