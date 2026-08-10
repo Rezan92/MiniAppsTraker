@@ -366,13 +366,15 @@ router.post('/:id/sync', async (req, res, next) => {
 
     const logReason = `Synced from job: Updated labor ($${laborAmount.toFixed(2)}) and materials ($${materialsAmount.toFixed(2)}). Property set to ${job.rental_properties?.address || 'None'}.`;
     
-    await supabase.from('invoice_logs').insert({
+    const { error: logError } = await supabase.from('invoice_logs').insert([{
       invoice_id: invoice.id,
       tenant_id: req.user.tenant_id,
       user_id: req.user.id,
       action: 'Synced',
       reason: logReason
-    });
+    }]);
+
+    if (logError) throw logError;
 
     res.json({ success: true });
   } catch (err) {
@@ -456,13 +458,15 @@ router.patch('/:id', async (req, res, next) => {
       if (itemsError) throw itemsError;
     }
 
-    await supabase.from('invoice_logs').insert({
+    const { error: logError } = await supabase.from('invoice_logs').insert([{
       invoice_id: invoice.id,
       tenant_id: req.user.tenant_id,
       user_id: req.user.id,
       action: 'Updated',
       reason: 'Manual draft update'
-    });
+    }]);
+    
+    if (logError) throw logError;
 
     res.json({ success: true, data: invoice });
   } catch (err) {

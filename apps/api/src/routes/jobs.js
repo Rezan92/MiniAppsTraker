@@ -38,7 +38,7 @@ const jobHoursSchema = z.object({
   hours: z.number().min(0, "Hours must be positive"),
   start_time: z.string().optional(),
   end_time: z.string().optional(),
-  description: z.string().optional(),
+  description: z.string().min(1, "Description is required"),
   invoice_id: z.string().uuid().optional().nullable()
 });
 

@@ -384,9 +384,6 @@ export const InvoiceDetails = () => {
           <InvoicePreview ref={componentRef} invoice={invoice} tenant={invoice.tenants} />
         </div>
       </div>
-
-      </div>
-
       <DeleteInvoiceModal
         isOpen={deleteModalOpen}
         onClose={() => setDeleteModalOpen(false)}

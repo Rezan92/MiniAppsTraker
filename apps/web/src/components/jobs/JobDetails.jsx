@@ -120,15 +120,16 @@ export const JobDetails = () => {
     }
   };
 
-  const handleLogHours = async () => {
+  const handleLogHours = async (submittedData) => {
     try {
-      const payload = { ...hoursData, hours: parseFloat(hoursData.hours) };
-      if (!hoursData.id && draftInvoice) {
+      const dataToUse = submittedData || hoursData;
+      const payload = { ...dataToUse, hours: parseFloat(dataToUse.hours) };
+      if (!dataToUse.id && draftInvoice) {
         payload.invoice_id = draftInvoice.id;
       }
-      const method = hoursData.id ? 'PATCH' : 'POST';
-      const url = hoursData.id 
-        ? `${import.meta.env.VITE_API_URL || 'http://localhost:4000'}/api/jobs/${id}/hours/${hoursData.id}`
+      const method = dataToUse.id ? 'PATCH' : 'POST';
+      const url = dataToUse.id 
+        ? `${import.meta.env.VITE_API_URL || 'http://localhost:4000'}/api/jobs/${id}/hours/${dataToUse.id}`
         : `${import.meta.env.VITE_API_URL || 'http://localhost:4000'}/api/jobs/${id}/hours`;
 
       const res = await fetch(url, {
@@ -142,11 +143,11 @@ export const JobDetails = () => {
       if (res.ok) {
         setHoursOpen(false);
         setHoursData({ date: new Date().toISOString().split('T')[0], hours: '', description: '', start_time: '', end_time: '' });
-        showSuccess(`Hours ${hoursData.id ? 'updated' : 'logged'} successfully!`);
+        showSuccess(`Hours ${dataToUse.id ? 'updated' : 'logged'} successfully!`);
         queryClient.invalidateQueries({ queryKey: ['hours', 'job', id] });
       } else {
         const errorData = await res.json();
-        showError(errorData.error?.message || `Failed to ${hoursData.id ? 'update' : 'log'} hours`);
+        showError(errorData.error?.message || `Failed to ${dataToUse.id ? 'update' : 'log'} hours`);
       }
     } catch (err) {
       console.error(err);
