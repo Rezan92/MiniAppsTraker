@@ -454,7 +454,8 @@ export const InvoiceBuilder = () => {
                       <option value="renter_name">Tenant (Renter)</option>
                     )}
                   </select>
-
+                </div>
+              )}
               {formData.client_id && (
                 <div>
                   <label className="block text-label-md text-gray-700 mb-1">Property Address (Optional)</label>
