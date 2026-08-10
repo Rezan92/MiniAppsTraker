@@ -50,6 +50,12 @@ export const InvoiceBuilder = () => {
     refetchOnWindowFocus: true
   });
 
+  useEffect(() => {
+    if (isEditing && formData.job_id) {
+      refetchSyncStatus();
+    }
+  }, [isEditing, formData.job_id, refetchSyncStatus]);
+
   const syncMutation = useMutation({
     mutationFn: async () => {
       const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:4000'}/api/invoices/${id}/sync`, {
@@ -381,7 +387,11 @@ export const InvoiceBuilder = () => {
             </div>
           </div>
           <button 
-            onClick={() => syncMutation.mutate()}
+            onClick={() => {
+              if (window.confirm("Warning: Syncing will immediately update the saved draft in the database. This action cannot be undone by clicking Cancel. Do you want to proceed?")) {
+                syncMutation.mutate();
+              }
+            }}
             disabled={syncMutation.isLoading}
             className="px-4 py-2 bg-amber-100 text-amber-900 rounded-lg font-title-sm hover:bg-amber-200 transition-colors disabled:opacity-50 self-center"
           >
@@ -435,7 +445,8 @@ export const InvoiceBuilder = () => {
                       if (type === 'company_name' && client?.company_name) billedToName = client.company_name;
                       setFormData({...formData, bill_to_type: type, billed_to_name: billedToName, property_id: '', property_address: ''});
                     }}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary bg-white mb-3"
+                    disabled={!!formData.job_id}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary bg-white mb-3 disabled:bg-gray-100 disabled:opacity-70 disabled:cursor-not-allowed"
                   >
                     <option value="client_name">Client Name ({clients.find(c => c.id === formData.client_id)?.name})</option>
                     {clients.find(c => c.id === formData.client_id)?.company_name && (
@@ -457,7 +468,8 @@ export const InvoiceBuilder = () => {
                             : (prop?.address || '');
                           setFormData({...formData, property_id: propId, property_address: prop?.address || '', billed_to_name: billedToName});
                         }}
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary bg-white"
+                        disabled={!!formData.job_id}
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary bg-white disabled:bg-gray-100 disabled:opacity-70 disabled:cursor-not-allowed"
                         required
                       >
                         <option value="">Select a property...</option>
@@ -521,17 +533,19 @@ export const InvoiceBuilder = () => {
                   <span>Auto-populate from Job (Optional)</span>
                   {formData.job_id && <span className="text-green-600 text-xs font-bold">Linked</span>}
                 </label>
-                <select 
-                  value={formData.job_id}
-                  onChange={handleJobSelect}
-                  disabled={!formData.client_id || isEditing}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary bg-white disabled:bg-gray-50"
-                >
+                <div title={isEditing ? "An invoice is permanently linked to its parent job. To bill a different job, delete this draft and create a new one." : ""}>
+                  <select 
+                    value={formData.job_id}
+                    onChange={handleJobSelect}
+                    disabled={!formData.client_id || isEditing}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary bg-white disabled:bg-gray-100 disabled:opacity-70 disabled:cursor-not-allowed"
+                  >
                   <option value="">Select an available job...</option>
                   {availableJobs.map(j => (
                     <option key={j.id} value={j.id}>{j.title}</option>
                   ))}
-                </select>
+                  </select>
+                </div>
                 <p className="text-xs text-gray-500 mt-1">This will overwrite the labor and materials below.</p>
               </div>
 
