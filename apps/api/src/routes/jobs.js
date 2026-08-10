@@ -242,24 +242,16 @@ router.post('/:id/materials', async (req, res, next) => {
       return res.status(404).json({ success: false, error: 'Job not found' });
     }
 
-    if (result.data.invoice_id) {
-      const { data: invoice } = await supabase.from('invoices').select('status').eq('id', result.data.invoice_id).single();
-      if (!invoice || invoice.status !== 'draft') {
-        return res.status(400).json({ success: false, error: 'Can only link new items to a draft invoice' });
-      }
-    }
+    const payload = { ...result.data, job_id: job.id };
+    delete payload.invoice_id; // Force unbilled for new items
 
     const { data, error } = await supabase
       .from('job_materials')
-      .insert([{ ...result.data, job_id: job.id }])
+      .insert([payload])
       .select()
       .single();
 
     if (error) throw error;
-
-    if (result.data.invoice_id) {
-      await syncJobToDraftInvoice(result.data.invoice_id, req.user.tenant_id);
-    }
 
     res.json({ success: true, data });
   } catch (err) {
@@ -324,11 +316,6 @@ router.patch('/:id/materials/:materialId', async (req, res, next) => {
       .single();
 
     if (error) throw error;
-    
-    // Sync to draft invoice if linked to one
-    if (existing && existing.invoice_id) {
-      await syncJobToDraftInvoice(existing.invoice_id, req.user.tenant_id);
-    }
 
     res.json({ success: true, data });
   } catch (err) {
@@ -362,10 +349,6 @@ router.delete('/:id/materials/:materialId', async (req, res, next) => {
 
     if (error) throw error;
     
-    if (existing && existing.invoice_id) {
-      await syncJobToDraftInvoice(existing.invoice_id, req.user.tenant_id);
-    }
-    
     res.json({ success: true });
   } catch (err) {
     next(err);
@@ -394,24 +377,16 @@ router.post('/:id/hours', async (req, res, next) => {
       return res.status(404).json({ success: false, error: 'Job not found' });
     }
 
-    if (result.data.invoice_id) {
-      const { data: invoice } = await supabase.from('invoices').select('status').eq('id', result.data.invoice_id).single();
-      if (!invoice || invoice.status !== 'draft') {
-        return res.status(400).json({ success: false, error: 'Can only link new items to a draft invoice' });
-      }
-    }
+    const payload = { ...result.data, job_id: job.id };
+    delete payload.invoice_id; // Force unbilled for new items
 
     const { data, error } = await supabase
       .from('job_hours')
-      .insert([{ ...result.data, job_id: job.id }])
+      .insert([payload])
       .select()
       .single();
 
     if (error) throw error;
-
-    if (result.data.invoice_id) {
-      await syncJobToDraftInvoice(result.data.invoice_id, req.user.tenant_id);
-    }
 
     res.json({ success: true, data });
   } catch (err) {
@@ -481,10 +456,6 @@ router.patch('/:id/hours/:hourId', async (req, res, next) => {
 
     if (error) throw error;
     
-    if (existing && existing.invoice_id) {
-      await syncJobToDraftInvoice(existing.invoice_id, req.user.tenant_id);
-    }
-    
     res.json({ success: true, data });
   } catch (err) {
     next(err);
@@ -516,10 +487,6 @@ router.delete('/:id/hours/:hourId', async (req, res, next) => {
       .eq('job_id', job.id);
 
     if (error) throw error;
-    
-    if (existing && existing.invoice_id) {
-      await syncJobToDraftInvoice(existing.invoice_id, req.user.tenant_id);
-    }
     
     res.json({ success: true });
   } catch (err) {

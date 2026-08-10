@@ -58,6 +58,19 @@ export const InvoiceDetails = () => {
     enabled: !!session && !!id
   });
 
+  const { data: syncStatus } = useQuery({
+    queryKey: ['syncStatus', id],
+    queryFn: async () => {
+      const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:4000'}/api/invoices/${id}/sync-status`, {
+        headers: { 'Authorization': `Bearer ${session.access_token}` }
+      });
+      const json = await res.json();
+      if (!res.ok || !json.success) throw new Error(json.error);
+      return json;
+    },
+    enabled: !!session && !!id && invoice?.status === 'draft'
+  });
+
   const generateFilename = () => {
     if (!invoice) return 'Invoice';
     
@@ -262,6 +275,21 @@ export const InvoiceDetails = () => {
           )}
         </div>
       </div>
+
+      {syncStatus?.outOfSync && (
+        <div className="mb-8 bg-yellow-50 border-l-4 border-yellow-400 p-4 rounded-r-md shadow-sm">
+          <div className="flex">
+            <div className="flex-shrink-0">
+              <span className="material-symbols-outlined text-yellow-400">warning</span>
+            </div>
+            <div className="ml-3">
+              <p className="text-sm text-yellow-700 font-medium">
+                Warning: This invoice is out of sync with its job. Click 'Edit Draft' to sync new changes.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Audit Logs Section */}
       {logs.length > 0 && (

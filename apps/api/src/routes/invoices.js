@@ -211,6 +211,8 @@ router.get('/:id/sync-status', async (req, res, next) => {
     const { data: materials } = await supabase.from('job_materials').select('*').eq('invoice_id', invoice.id);
     const { data: hours } = await supabase.from('job_hours').select('*').eq('invoice_id', invoice.id);
     const { data: existingItems } = await supabase.from('invoice_items').select('*').eq('invoice_id', invoice.id);
+    const { data: unbilledMaterials } = await supabase.from('job_materials').select('id').eq('job_id', invoice.job_id).is('invoice_id', null);
+    const { data: unbilledHours } = await supabase.from('job_hours').select('id').eq('job_id', invoice.job_id).is('invoice_id', null);
 
     const existingMaterials = existingItems.filter(i => i.type === 'material');
     const existingLabor = existingItems.filter(i => i.type === 'labor_detail');
@@ -251,6 +253,11 @@ router.get('/:id/sync-status', async (req, res, next) => {
     // Check property changes
     if (invoice.property_id !== job.property_id) {
       reasons.push('Assigned property on job has changed');
+    }
+
+    // Check for unbilled items
+    if ((unbilledMaterials && unbilledMaterials.length > 0) || (unbilledHours && unbilledHours.length > 0)) {
+      reasons.push('New unbilled items were added to the job');
     }
 
     res.json({ success: true, outOfSync: reasons.length > 0, reasons });
