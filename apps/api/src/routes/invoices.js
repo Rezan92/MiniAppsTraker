@@ -248,10 +248,7 @@ router.get('/:id/sync-status', async (req, res, next) => {
       reasons.push('Job rate structure or total labor amount changed');
     }
 
-    // Check property changes
-    if (invoice.property_id !== job.property_id) {
-      reasons.push('Assigned property on job has changed');
-    }
+    // (Property changes are no longer forcibly synced here)
 
     res.json({ success: true, outOfSync: reasons.length > 0, reasons });
   } catch (err) {
@@ -351,22 +348,12 @@ router.post('/:id/sync', async (req, res, next) => {
     const materialsAmount = finalItems.filter(i => i.type === 'material').reduce((sum, m) => sum + (m.total_price || 0), 0);
     const totalAmount = laborAmount + materialsAmount;
 
-    let newPropertyAddress = invoice.property_address;
-    if (job.property_id) {
-      const { data: prop } = await supabase.from('properties').select('address').eq('id', job.property_id).single();
-      if (prop) newPropertyAddress = prop.address;
-    } else {
-      newPropertyAddress = job.clients?.address || null;
-    }
-
     const { error: updateError } = await supabase
       .from('invoices')
       .update({
         labor_amount: laborAmount,
         materials_amount: materialsAmount,
-        total_amount: totalAmount,
-        property_id: job.property_id,
-        property_address: newPropertyAddress
+        total_amount: totalAmount
       })
       .eq('id', invoice.id);
 
