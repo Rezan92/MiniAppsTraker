@@ -435,91 +435,89 @@ export const InvoiceBuilder = () => {
               {formData.client_id && (
                 <div>
                   <label className="block text-label-md text-gray-700 mb-1">Bill To</label>
-                  <Tooltip text={formData.job_id ? "You can only change this on the job." : ""} position="top">
-                    <select 
-                      value={formData.bill_to_type}
-                      onChange={(e) => {
-                        const type = e.target.value;
-                        const client = clients.find(c => c.id === formData.client_id);
-                        let billedToName = client?.name || '';
-                        if (type === 'company_name' && client?.company_name) billedToName = client.company_name;
-                        setFormData({...formData, bill_to_type: type, billed_to_name: billedToName, property_id: '', property_address: ''});
-                      }}
-                      disabled={!!formData.job_id}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary bg-white mb-3 disabled:bg-gray-100 disabled:opacity-70 disabled:cursor-not-allowed"
-                    >
-                      <option value="client_name">Client Name</option>
-                      {clients.find(c => c.id === formData.client_id)?.company_name && (
-                        <option value="company_name">Company Name</option>
-                      )}
-                      {clients.find(c => c.id === formData.client_id)?.client_type === 'property_manager' && (
-                        <>
-                          <option value="property_address">Specific Property</option>
-                          <option value="renter_name">Renter's Name</option>
-                        </>
-                      )}
-                    </select>
-                  </Tooltip>
+                  <select 
+                    value={formData.bill_to_type}
+                    onChange={(e) => {
+                      const type = e.target.value;
+                      const client = clients.find(c => c.id === formData.client_id);
+                      let billedToName = client?.name || '';
+                      if (type === 'company_name' && client?.company_name) billedToName = client.company_name;
+                      setFormData({...formData, bill_to_type: type, billed_to_name: billedToName, property_id: '', property_address: ''});
+                    }}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary bg-white mb-3"
+                  >
+                    <option value="client_name">Client Name ({clients.find(c => c.id === formData.client_id)?.name})</option>
+                    {clients.find(c => c.id === formData.client_id)?.company_name && (
+                      <option value="company_name">Company Name ({clients.find(c => c.id === formData.client_id)?.company_name})</option>
+                    )}
+                    {clients.find(c => c.id === formData.client_id)?.client_type === 'property_manager' && (
+                      <option value="renter_name">Tenant (Renter)</option>
+                    )}
+                  </select>
 
-                  {(formData.bill_to_type === 'property_address' || formData.bill_to_type === 'renter_name') && (
+                  {formData.bill_to_type === 'renter_name' && (
                     <div>
-                      <select
-                        value={formData.property_id}
-                        onChange={(e) => {
-                          const propId = e.target.value;
-                          const prop = properties.find(p => p.id === propId);
-                          const billedToName = formData.bill_to_type === 'renter_name' 
-                            ? (prop?.renter_name || 'Unknown Tenant') 
-                            : (prop?.address || '');
-                          setFormData({...formData, property_id: propId, property_address: prop?.address || '', billed_to_name: billedToName});
-                        }}
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary bg-white"
-                        required
-                      >
-                        <option value="">Select a property...</option>
-                        {properties
-                          .filter(p => !formData.job_id || p.id === (availableJobs.find(j => j.id === formData.job_id)?.property_id || existingInvoice?.jobs?.property_id))
-                          .map(p => (
-                          <option key={p.id} value={p.id}>
-                            {p.name ? `${p.name} - ` : ''}{p.address} {formData.bill_to_type === 'renter_name' && p.renter_name ? `(${p.renter_name})` : ''}
-                          </option>
-                        ))}
-                      </select>
+                      <label className="block text-label-md text-gray-700 mb-1">Tenant's Property Address *</label>
+                      <Tooltip text={formData.job_id ? "You can only change this on the job." : ""} position="top">
+                        <select
+                          value={formData.property_id}
+                          onChange={(e) => {
+                            const propId = e.target.value;
+                            const prop = properties.find(p => p.id === propId);
+                            setFormData({...formData, property_id: propId, property_address: prop?.address || '', billed_to_name: prop?.renter_name || 'Unknown Tenant'});
+                          }}
+                          disabled={!!formData.job_id}
+                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary bg-white disabled:bg-gray-100 disabled:opacity-70 disabled:cursor-not-allowed"
+                          required
+                        >
+                          <option value="">Select a property...</option>
+                          {properties
+                            .filter(p => !formData.job_id || p.id === (availableJobs.find(j => j.id === formData.job_id)?.property_id || existingInvoice?.jobs?.property_id))
+                            .map(p => (
+                            <option key={p.id} value={p.id}>
+                              {p.name ? `${p.name} - ` : ''}{p.address} {p.renter_name ? `(${p.renter_name})` : ''}
+                            </option>
+                          ))}
+                        </select>
+                      </Tooltip>
                     </div>
                   )}
                 </div>
               )}
-              {formData.client_id && formData.bill_to_type !== 'property_address' && formData.bill_to_type !== 'renter_name' && (
+              {formData.client_id && formData.bill_to_type !== 'renter_name' && (
                 <div>
                   <label className="block text-label-md text-gray-700 mb-1">Property Address (Optional)</label>
                   {(clients.find(c => c.id === formData.client_id)?.address || properties.length > 0) ? (
-                    <select
-                      value={formData.property_address}
-                      onChange={(e) => {
-                         const val = e.target.value;
-                         const prop = properties.find(p => p.address === val);
-                         setFormData({
-                           ...formData, 
-                           property_address: val, 
-                           property_id: prop ? prop.id : ''
-                         });
-                      }}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary bg-white"
-                    >
-                      <option value="">Leave blank</option>
-                      {clients.find(c => c.id === formData.client_id)?.address && (
-                        <option value={clients.find(c => c.id === formData.client_id)?.address}>
-                          [Primary Address] {clients.find(c => c.id === formData.client_id)?.address}
-                        </option>
-                      )}
-                      {properties
-                        .filter(p => !formData.job_id || p.id === (availableJobs.find(j => j.id === formData.job_id)?.property_id || existingInvoice?.jobs?.property_id))
-                        .map(p => (
-                        <option key={p.id} value={p.address}>
-                          {p.name ? `${p.name} - ` : ''}{p.address}
-                        </option>
-                      ))}
-                    </select>
+                    <Tooltip text={formData.job_id ? "You can only change this on the job." : ""} position="top">
+                      <select
+                        value={formData.property_address}
+                        onChange={(e) => {
+                           const val = e.target.value;
+                           const prop = properties.find(p => p.address === val);
+                           setFormData({
+                             ...formData, 
+                             property_address: val, 
+                             property_id: prop ? prop.id : ''
+                           });
+                        }}
+                        disabled={!!formData.job_id}
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary bg-white disabled:bg-gray-100 disabled:opacity-70 disabled:cursor-not-allowed"
+                      >
+                        <option value="">Leave blank</option>
+                        {clients.find(c => c.id === formData.client_id)?.address && (
+                          <option value={clients.find(c => c.id === formData.client_id)?.address}>
+                            [Primary Address] {clients.find(c => c.id === formData.client_id)?.address}
+                          </option>
+                        )}
+                        {properties
+                          .filter(p => !formData.job_id || p.id === (availableJobs.find(j => j.id === formData.job_id)?.property_id || existingInvoice?.jobs?.property_id))
+                          .map(p => (
+                          <option key={p.id} value={p.address}>
+                            {p.name ? `${p.name} - ` : ''}{p.address}
+                          </option>
+                        ))}
+                      </select>
+                    </Tooltip>
                   ) : (
                     <textarea 
                       value={formData.property_address}
