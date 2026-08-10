@@ -122,7 +122,24 @@ export const AddJobHoursModal = ({ open, isOpen, onClose, onSubmit, hoursData, s
           </button>
           <button 
             type="button"
-            onClick={onSubmit} 
+            onClick={() => {
+              let finalData = { ...data };
+              if (finalData.hours && !finalData.start_time) {
+                finalData.start_time = '01:00';
+                const hoursNum = parseFloat(finalData.hours);
+                const totalMinutes = hoursNum * 60;
+                let endH = 1 + Math.floor(totalMinutes / 60);
+                let endM = Math.round(totalMinutes % 60);
+                if (endM >= 60) {
+                  endH += Math.floor(endM / 60);
+                  endM = endM % 60;
+                }
+                endH = endH % 24;
+                finalData.end_time = `${String(endH).padStart(2, '0')}:${String(endM).padStart(2, '0')}`;
+              }
+              setData(finalData);
+              setTimeout(onSubmit, 0);
+            }} 
             disabled={!data.date || !data.hours} 
             className="px-4 py-2 bg-primary text-black font-body-md font-bold rounded cursor-pointer hover:bg-opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors focus:outline-none focus:ring-2 focus:ring-primary shadow-sm"
           >

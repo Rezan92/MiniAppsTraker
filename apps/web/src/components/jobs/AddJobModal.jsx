@@ -19,7 +19,7 @@ export const AddJobModal = ({ open, onClose, onSubmit, formData, setFormData, cl
       if (!res.ok || !json.success) throw new Error(json.error);
       return json.data;
     },
-    enabled: !!session && !!formData.client_id && selectedClient?.client_type === 'property_manager'
+    enabled: !!session && !!formData.client_id
   });
 
   if (!open) return null;
@@ -86,7 +86,7 @@ export const AddJobModal = ({ open, onClose, onSubmit, formData, setFormData, cl
             </div>
 
             {/* Select Property */}
-            {selectedClient?.client_type === 'property_manager' && (
+            {formData.client_id && (
               <div>
                 <label className="block font-label-md text-label-md text-on-surface-variant mb-1">Select Property (Optional)</label>
                 <div className="relative">

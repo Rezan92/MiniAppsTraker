@@ -263,6 +263,47 @@ export const InvoiceDetails = () => {
         </div>
       </div>
 
+      {/* Audit Logs Section */}
+      {logs.length > 0 && (
+        <details className="bg-white border border-gray-200 rounded-xl mb-8 shadow-sm group">
+          <summary className="p-4 cursor-pointer font-bold text-gray-900 flex items-center gap-2 list-none hover:bg-gray-50 transition-colors rounded-xl outline-none">
+            <span className="material-symbols-outlined text-gray-500">history</span>
+            Invoice Audit Trail ({logs.length})
+            <span className="material-symbols-outlined ml-auto text-gray-400 group-open:rotate-180 transition-transform">expand_more</span>
+          </summary>
+          <div className="p-6 border-t border-gray-100">
+            <div className="space-y-4 relative before:absolute before:inset-0 before:ml-5 before:-translate-x-px md:before:mx-auto md:before:translate-x-0 before:h-full before:w-0.5 before:bg-gradient-to-b before:from-transparent before:via-slate-300 before:to-transparent">
+              {logs.map((log) => (
+                <div key={log.id} className="relative flex items-center justify-between md:justify-normal md:odd:flex-row-reverse group/item is-active">
+                  <div className="flex items-center justify-center w-10 h-10 rounded-full border border-white bg-slate-300 group-[.is-active]/item:bg-primary text-slate-500 group-[.is-active]/item:text-white shadow shrink-0 md:order-1 md:group-odd/item:-translate-x-1/2 md:group-even/item:translate-x-1/2">
+                    <span className="material-symbols-outlined text-sm">
+                      {log.action === 'Created' ? 'add' :
+                       log.action === 'Sent' ? 'send' :
+                       log.action === 'Paid' ? 'check_circle' :
+                       log.action === 'Voided' ? 'cancel' :
+                       log.action === 'Reverted' ? 'undo' : 
+                       log.action === 'Updated' ? 'edit' :
+                       log.action === 'Synced' ? 'sync' : 'history'}
+                    </span>
+                  </div>
+                  <div className="w-[calc(100%-4rem)] md:w-[calc(50%-2.5rem)] bg-white p-4 rounded border border-slate-200 shadow">
+                    <div className="flex items-center justify-between space-x-2 mb-1">
+                      <div className="font-bold text-slate-900">{log.action}</div>
+                      <time className="text-xs font-medium text-slate-500">{new Date(log.created_at).toLocaleString()}</time>
+                    </div>
+                    {log.reason && (
+                      <div className="text-sm text-slate-700 bg-slate-50 p-2 rounded mt-2 border border-slate-100 italic">
+                        Reason: {log.reason}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </details>
+      )}
+
       {/* Payment Summary */}
       {invoice.status === 'paid' && (
         <div className="bg-green-50 border border-green-200 rounded-xl p-6 mb-8 shadow-sm flex flex-col md:flex-row justify-between gap-4">
@@ -344,41 +385,6 @@ export const InvoiceDetails = () => {
         </div>
       </div>
 
-      {/* Audit Logs Section */}
-      <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm mt-8">
-        <h3 className="text-title-sm font-bold text-gray-900 flex items-center gap-2 mb-4">
-          <span className="material-symbols-outlined text-gray-500">history</span>
-          Invoice Audit Trail
-        </h3>
-        <div className="space-y-4 relative before:absolute before:inset-0 before:ml-5 before:-translate-x-px md:before:mx-auto md:before:translate-x-0 before:h-full before:w-0.5 before:bg-gradient-to-b before:from-transparent before:via-slate-300 before:to-transparent">
-          {logs.map((log) => (
-            <div key={log.id} className="relative flex items-center justify-between md:justify-normal md:odd:flex-row-reverse group is-active">
-              <div className="flex items-center justify-center w-10 h-10 rounded-full border border-white bg-slate-300 group-[.is-active]:bg-primary text-slate-500 group-[.is-active]:text-white shadow shrink-0 md:order-1 md:group-odd:-translate-x-1/2 md:group-even:translate-x-1/2">
-                <span className="material-symbols-outlined text-sm">
-                  {log.action === 'Created' ? 'add' :
-                   log.action === 'Sent' ? 'send' :
-                   log.action === 'Paid' ? 'check_circle' :
-                   log.action === 'Voided' ? 'cancel' :
-                   log.action === 'Reverted' ? 'undo' : 'history'}
-                </span>
-              </div>
-              <div className="w-[calc(100%-4rem)] md:w-[calc(50%-2.5rem)] bg-white p-4 rounded border border-slate-200 shadow">
-                <div className="flex items-center justify-between space-x-2 mb-1">
-                  <div className="font-bold text-slate-900">{log.action}</div>
-                  <time className="text-xs font-medium text-slate-500">{new Date(log.created_at).toLocaleString()}</time>
-                </div>
-                {log.reason && (
-                  <div className="text-sm text-slate-700 bg-slate-50 p-2 rounded mt-2 border border-slate-100 italic">
-                    Reason: {log.reason}
-                  </div>
-                )}
-              </div>
-            </div>
-          ))}
-          {logs.length === 0 && (
-            <p className="text-center text-gray-500 italic py-4">No audit logs found.</p>
-          )}
-        </div>
       </div>
 
       <DeleteInvoiceModal
