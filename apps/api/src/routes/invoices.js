@@ -264,7 +264,7 @@ router.post('/:id/sync', async (req, res, next) => {
   try {
     const { data: invoice, error: checkError } = await supabase
       .from('invoices')
-      .select('*, jobs(*, clients(*))')
+      .select('*, jobs(*, clients(*), properties(*))')
       .eq('id', req.params.id)
       .eq('tenant_id', req.user.tenant_id)
       .single();
@@ -351,14 +351,6 @@ router.post('/:id/sync', async (req, res, next) => {
     const materialsAmount = finalItems.filter(i => i.type === 'material').reduce((sum, m) => sum + (m.total_price || 0), 0);
     const totalAmount = laborAmount + materialsAmount;
 
-    let newPropertyAddress = invoice.property_address;
-    if (job.property_id) {
-      const { data: prop } = await supabase.from('properties').select('address').eq('id', job.property_id).single();
-      if (prop) newPropertyAddress = prop.address;
-    } else {
-      newPropertyAddress = job.clients?.address || null;
-    }
-
     const { error: updateError } = await supabase
       .from('invoices')
       .update({
@@ -366,7 +358,7 @@ router.post('/:id/sync', async (req, res, next) => {
         materials_amount: materialsAmount,
         total_amount: totalAmount,
         property_id: job.property_id,
-        property_address: newPropertyAddress
+        property_address: job.properties?.address || ''
       })
       .eq('id', invoice.id);
 
