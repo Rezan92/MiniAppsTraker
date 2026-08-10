@@ -45,7 +45,9 @@ export const InvoiceBuilder = () => {
       const json = await res.json();
       return json;
     },
-    enabled: !!session && isEditing && !!formData.job_id
+    enabled: !!session && isEditing && !!formData.job_id,
+    refetchOnMount: 'always',
+    refetchOnWindowFocus: true
   });
 
   const syncMutation = useMutation({
@@ -366,15 +368,22 @@ export const InvoiceBuilder = () => {
       </div>
 
       {syncStatus?.outOfSync && (
-        <div className="mb-6 p-4 bg-amber-50 border border-amber-200 rounded-lg flex items-center justify-between">
-          <div className="flex items-center gap-3 text-amber-800">
-            <span className="material-symbols-outlined">warning</span>
-            <p className="font-medium text-sm">Out of sync items detected. Job materials, hours, or rates have changed since this draft was created.</p>
+        <div className="mb-6 p-4 bg-amber-50 border border-amber-200 rounded-lg flex items-start justify-between">
+          <div className="flex items-start gap-3 text-amber-800">
+            <span className="material-symbols-outlined mt-0.5">warning</span>
+            <div>
+              <p className="font-bold text-sm mb-1">Out of sync items detected.</p>
+              <ul className="list-disc pl-4 text-xs space-y-1">
+                {(syncStatus.reasons || []).map((reason, idx) => (
+                  <li key={idx}>{reason}</li>
+                ))}
+              </ul>
+            </div>
           </div>
           <button 
             onClick={() => syncMutation.mutate()}
             disabled={syncMutation.isLoading}
-            className="px-4 py-2 bg-amber-100 text-amber-900 rounded-lg font-title-sm hover:bg-amber-200 transition-colors disabled:opacity-50"
+            className="px-4 py-2 bg-amber-100 text-amber-900 rounded-lg font-title-sm hover:bg-amber-200 transition-colors disabled:opacity-50 self-center"
           >
             {syncMutation.isLoading ? 'Syncing...' : 'Sync Now'}
           </button>
@@ -515,7 +524,7 @@ export const InvoiceBuilder = () => {
                 <select 
                   value={formData.job_id}
                   onChange={handleJobSelect}
-                  disabled={!formData.client_id}
+                  disabled={!formData.client_id || isEditing}
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary bg-white disabled:bg-gray-50"
                 >
                   <option value="">Select an available job...</option>

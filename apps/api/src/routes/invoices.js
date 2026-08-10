@@ -215,44 +215,40 @@ router.get('/:id/sync-status', async (req, res, next) => {
     const existingMaterials = existingItems.filter(i => i.type === 'material');
     const existingLabor = existingItems.filter(i => i.type === 'labor_detail');
 
-    let outOfSync = false;
+    const reasons = [];
 
     // Check material counts/costs
     for (const m of (materials || [])) {
       const existing = existingMaterials.find(em => em.description === m.description);
-      if (!existing || existing.total_price !== m.cost) {
-        outOfSync = true;
-        break;
+      if (!existing) {
+        reasons.push(`Missing material: ${m.description}`);
+      } else if (existing.total_price !== m.cost) {
+        reasons.push(`Price changed for material: ${m.description}`);
       }
     }
 
     // Check hours
-    if (!outOfSync) {
-      for (const h of (hours || [])) {
-        const desc = h.description || `${h.hours} hours logged`;
-        if (!existingLabor.find(el => el.description === desc)) {
-          outOfSync = true;
-          break;
-        }
+    for (const h of (hours || [])) {
+      const desc = h.description || `${h.hours} hours logged`;
+      if (!existingLabor.find(el => el.description === desc)) {
+        reasons.push(`Missing logged hours: ${desc}`);
       }
     }
 
     // Check rate changes
-    if (!outOfSync) {
-      const job = invoice.jobs;
-      let laborAmount = 0;
-      if (job.rate_type === 'flat') {
-        laborAmount = job.flat_rate || 0;
-      } else {
-        const totalHours = (hours || []).reduce((sum, h) => sum + h.hours, 0);
-        laborAmount = totalHours * (job.hourly_rate || 0);
-      }
-      if (laborAmount !== invoice.labor_amount) {
-        outOfSync = true;
-      }
+    const job = invoice.jobs;
+    let laborAmount = 0;
+    if (job.rate_type === 'flat') {
+      laborAmount = job.flat_rate || 0;
+    } else {
+      const totalHours = (hours || []).reduce((sum, h) => sum + h.hours, 0);
+      laborAmount = totalHours * (job.hourly_rate || 0);
+    }
+    if (laborAmount !== invoice.labor_amount) {
+      reasons.push('Job rate structure or total labor amount changed');
     }
 
-    res.json({ success: true, outOfSync });
+    res.json({ success: true, outOfSync: reasons.length > 0, reasons });
   } catch (err) {
     next(err);
   }
@@ -376,6 +372,7 @@ router.patch('/:id', async (req, res, next) => {
     }
 
     const { materials, labor_details, due_date, ...invoiceData } = result.data;
+    delete invoiceData.job_id; // Prevent dangerous job swapping
     const sanitizedDueDate = due_date === '' ? null : due_date;
     const materialsAmount = materials.reduce((sum, m) => sum + m.cost, 0);
     const totalAmount = (invoiceData.labor_amount || 0) + materialsAmount;
