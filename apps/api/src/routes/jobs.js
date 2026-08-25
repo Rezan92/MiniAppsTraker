@@ -42,56 +42,7 @@ const jobHoursSchema = z.object({
   invoice_id: z.string().uuid().optional().nullable()
 });
 
-async function verifyItemEditability(invoiceId) {
-  if (!invoiceId) return true; // Unbilled items are editable
-  const { data: invoice } = await supabase.from('invoices').select('status').eq('id', invoiceId).single();
-  if (!invoice) return true;
-  if (['sent', 'paid', 'in_progress', 'voided'].includes(invoice.status)) {
-    return false;
-  }
-  return true;
-}
-
-async function syncJobToDraftInvoice(invoiceId, tenantId) {
-  try {
-    const { data: invoice } = await supabase
-      .from('invoices')
-      .select('id, status, job_id')
-      .eq('id', invoiceId)
-      .eq('tenant_id', tenantId)
-      .eq('status', 'draft')
-      .single();
-      
-    if (!invoice) return;
-
-    const { data: job } = await supabase.from('jobs').select('hourly_rate, flat_rate, rate_type, title').eq('id', invoice.job_id).single();
-    const { data: hours } = await supabase.from('job_hours').select('*').eq('invoice_id', invoice.id);
-    const { data: materials } = await supabase.from('job_materials').select('*').eq('invoice_id', invoice.id);
-
-    const totalHours = (hours || []).reduce((sum, h) => sum + Number(h.hours), 0);
-    const laborAmount = job.rate_type === 'hourly' ? totalHours * (job.hourly_rate || 0) : (job.flat_rate || 0);
-    const materialsAmount = (materials || []).reduce((sum, m) => sum + Number(m.cost), 0);
-    const totalAmount = laborAmount + materialsAmount;
-
-    await supabase.from('invoices')
-      .update({ labor_amount: laborAmount, materials_amount: materialsAmount, total_amount: totalAmount })
-      .eq('id', invoice.id);
-
-    await supabase.from('invoice_items').delete().eq('invoice_id', invoice.id);
-    
-    const itemsToInsert = [];
-    let sortOrder = 0;
-    
-    if (hours && hours.length > 0) {
-      for (const h of hours) {
-        itemsToInsert.push({
-          invoice_id: invoice.id,
-          type: 'labor_detail',
-          description: h.description || `${job.title} - Labor`,
-          sort_order: sortOrder++
-        });
-      }
-    } else {
+ else {
       itemsToInsert.push({
         invoice_id: invoice.id,
         type: 'labor_detail',
@@ -243,7 +194,7 @@ router.post('/:id/materials', async (req, res, next) => {
     }
 
     const payload = { ...result.data, job_id: job.id };
-    delete payload.invoice_id; // Force unbilled for new items
+     // Force unbilled for new items
 
     const { data, error } = await supabase
       .from('job_materials')
@@ -261,21 +212,13 @@ router.post('/:id/materials', async (req, res, next) => {
 
 router.get('/:id/materials', async (req, res, next) => {
   try {
-    const { data: job, error: jobError } = await supabase
-      .from('jobs')
-      .select('id')
-      .eq('id', req.params.id)
-      .eq('tenant_id', req.user.tenant_id)
-      .single();
-
-    if (jobError || !job) {
-      return res.status(404).json({ success: false, error: 'Job not found' });
+    const { data: job, error: jobError } = await supabase.from('jobs').select('id').eq('id', req.params.id).eq('tenant_id', req.user.tenant_id).single();
+    if (jobError || !job) return res.status(404).json({ success: false, error: 'Job not found' });
+    let query = supabase.from('job_materials').select('*').eq('job_id', job.id);
+    if (req.query.billing_status) {
+      query = query.in('billing_status', req.query.billing_status.split(','));
     }
-
-    const { data, error } = await supabase
-      .from('job_materials')
-      .select('*')
-      .eq('job_id', job.id);
+    const { data, error } = await query;
 
     if (error) throw error;
     res.json({ success: true, data });
@@ -378,7 +321,7 @@ router.post('/:id/hours', async (req, res, next) => {
     }
 
     const payload = { ...result.data, job_id: job.id };
-    delete payload.invoice_id; // Force unbilled for new items
+     // Force unbilled for new items
 
     const { data, error } = await supabase
       .from('job_hours')
@@ -396,22 +339,13 @@ router.post('/:id/hours', async (req, res, next) => {
 
 router.get('/:id/hours', async (req, res, next) => {
   try {
-    const { data: job, error: jobError } = await supabase
-      .from('jobs')
-      .select('id')
-      .eq('id', req.params.id)
-      .eq('tenant_id', req.user.tenant_id)
-      .single();
-
-    if (jobError || !job) {
-      return res.status(404).json({ success: false, error: 'Job not found' });
+    const { data: job, error: jobError } = await supabase.from('jobs').select('id').eq('id', req.params.id).eq('tenant_id', req.user.tenant_id).single();
+    if (jobError || !job) return res.status(404).json({ success: false, error: 'Job not found' });
+    let query = supabase.from('job_hours').select('*').eq('job_id', job.id).order('date', { ascending: false });
+    if (req.query.billing_status) {
+      query = query.in('billing_status', req.query.billing_status.split(','));
     }
-
-    const { data, error } = await supabase
-      .from('job_hours')
-      .select('*')
-      .eq('job_id', job.id)
-      .order('date', { ascending: false });
+    const { data, error } = await query;
 
     if (error) throw error;
     res.json({ success: true, data });

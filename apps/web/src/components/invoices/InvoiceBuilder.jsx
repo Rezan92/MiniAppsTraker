@@ -20,8 +20,7 @@ export const InvoiceBuilder = () => {
   const presetClientId = searchParams.get('client_id');
   const presetPropertyId = searchParams.get('property_id');
   const presetJobId = searchParams.get('job_id');
-  const [syncConfirmOpen, setSyncConfirmOpen] = useState(false);
-
+  
   const [formData, setFormData] = useState({
     client_id: presetClientId || '',
     job_id: presetJobId || '',
@@ -38,14 +37,7 @@ export const InvoiceBuilder = () => {
     property_id: presetPropertyId || ''
   });
 
-  // Fetch sync status if editing a draft linked to a job
-  const { data: syncStatus, refetch: refetchSyncStatus } = useQuery({
-    queryKey: ['syncStatus', id],
-    queryFn: async () => {
-      const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:4000'}/api/invoices/${id}/sync-status`, {
-        headers: { 'Authorization': `Bearer ${session.access_token}` }
-      });
-      const json = await res.json();
+        const json = await res.json();
       return json;
     },
     enabled: !!session && isEditing && !!formData.job_id,
@@ -59,13 +51,7 @@ export const InvoiceBuilder = () => {
     }
   }, [isEditing, formData.job_id, refetchSyncStatus]);
 
-  const syncMutation = useMutation({
-    mutationFn: async () => {
-      const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:4000'}/api/invoices/${id}/sync`, {
-        method: 'POST',
-        headers: { 'Authorization': `Bearer ${session.access_token}` }
-      });
-      const json = await res.json();
+        const json = await res.json();
       if (!res.ok || !json.success) throw new Error(json.error || 'Sync failed');
       return json;
     },
@@ -377,134 +363,7 @@ export const InvoiceBuilder = () => {
         </div>
       </div>
 
-      {syncStatus?.outOfSync && (
-        <div className="mb-6 p-4 bg-amber-50 border border-amber-200 rounded-lg flex items-start justify-between">
-          <div className="flex items-start gap-3 text-amber-800">
-            <span className="material-symbols-outlined mt-0.5">warning</span>
-            <div>
-              <p className="font-bold text-sm mb-1">Out of sync items detected.</p>
-              <ul className="list-disc pl-4 text-xs space-y-1">
-                {(syncStatus.reasons || []).map((reason, idx) => (
-                  <li key={idx}>{reason}</li>
-                ))}
-              </ul>
-            </div>
-          </div>
-          <button 
-            onClick={() => setSyncConfirmOpen(true)}
-            disabled={syncMutation.isLoading}
-            className="px-4 py-2 bg-amber-100 text-amber-900 rounded-lg font-title-sm hover:bg-amber-200 transition-colors disabled:opacity-50 self-center"
-          >
-            {syncMutation.isLoading ? 'Syncing...' : 'Sync Now'}
-          </button>
-        </div>
-      )}
-
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-        <div className="p-8 space-y-8">
-          
-          {/* Header Info */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 border-b border-gray-100 pb-8">
-            <div className="space-y-4">
-              <h3 className="font-title-lg font-bold text-gray-900 border-b border-gray-200 pb-2">Client Details</h3>
-              <div>
-                <label className="block text-label-md text-gray-700 mb-1">Select Client *</label>
-                <select 
-                  value={formData.client_id}
-                  onChange={(e) => {
-                    const cid = e.target.value;
-                    const client = clients?.find(c => c.id === cid);
-                    setFormData({
-                      ...formData, 
-                      client_id: cid, 
-                      job_id: '',
-                      bill_to_type: 'client_name',
-                      billed_to_name: client?.name || '',
-                      property_address: client?.address || ''
-                    });
-                  }}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary bg-white"
-                  required
-                >
-                  <option value="">Select a client...</option>
-                  {clients.map(c => (
-                    <option key={c.id} value={c.id}>{c.name} {c.phone ? `(${c.phone})` : ''}</option>
-                  ))}
-                </select>
-              </div>
-
-              {formData.client_id && (
-                <div>
-                  <label className="block text-label-md text-gray-700 mb-1">Bill To</label>
-                  <select 
-                    value={formData.bill_to_type}
-                    onChange={(e) => {
-                      const type = e.target.value;
-                      const client = clients.find(c => c.id === formData.client_id);
-                      let billedToName = client?.name || '';
-                      if (type === 'company_name' && client?.company_name) billedToName = client.company_name;
-                      
-                      // CRITICAL: We only update the bill_to entity. We never erase the physical property address here.
-                      setFormData({...formData, bill_to_type: type, billed_to_name: billedToName});
-                    }}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary bg-white mb-3"
-                  >
-                    <option value="client_name">Client Name ({clients.find(c => c.id === formData.client_id)?.name})</option>
-                    {clients.find(c => c.id === formData.client_id)?.company_name && (
-                      <option value="company_name">Company Name ({clients.find(c => c.id === formData.client_id)?.company_name})</option>
-                    )}
-                    {clients.find(c => c.id === formData.client_id)?.client_type === 'property_manager' && (
-                      <option value="renter_name">Tenant (Renter)</option>
-                    )}
-                  </select>
-                </div>
-              )}
-              {formData.client_id && (
-                <div>
-                  <label className="block text-label-md text-gray-700 mb-1">
-                    Property Address {!formData.job_id && "(Optional)"}
-                  </label>
-                  
-                  {formData.job_id ? (
-                    <div className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-100 text-gray-700 cursor-not-allowed">
-                      {formData.property_address || 'No property assigned to job'}
-                    </div>
-                  ) : (
-                    (clients.find(c => c.id === formData.client_id)?.address || properties.length > 0) ? (
-                      <select
-                        value={formData.property_address}
-                        onChange={(e) => {
-                           const val = e.target.value;
-                           const prop = properties.find(p => p.address === val);
-                           let newBilledToName = formData.billed_to_name;
-                           if (formData.bill_to_type === 'renter_name') {
-                             newBilledToName = prop?.renter_name || 'Unknown Tenant';
-                           }
-                           setFormData({
-                             ...formData, 
-                             property_address: val, 
-                             property_id: prop ? prop.id : '',
-                             billed_to_name: newBilledToName
-                           });
-                        }}
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary bg-white"
-                      >
-                        <option value="">Leave blank</option>
-                        {clients.find(c => c.id === formData.client_id)?.address && (
-                          <option value={clients.find(c => c.id === formData.client_id)?.address}>
-                            [Primary Address] {clients.find(c => c.id === formData.client_id)?.address}
-                          </option>
-                        )}
-                        {properties.map(p => (
-                          <option key={p.id} value={p.address}>
-                            {p.name ? `${p.name} - ` : ''}{p.address}
-                          </option>
-                        ))}
-                      </select>
-                    ) : (
-                      <textarea 
-                        value={formData.property_address}
-                        onChange={(e) => setFormData({...formData, property_address: e.target.value, property_id: ''})}
+      
                         className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary"
                         rows="2"
                         placeholder="e.g. 123 Main St, Apt 4B"
@@ -720,15 +579,7 @@ export const InvoiceBuilder = () => {
         </div>
       </div>
 
-      <ConfirmModal
-        open={syncConfirmOpen}
-        onClose={() => setSyncConfirmOpen(false)}
-        onConfirm={() => syncMutation.mutate()}
-        title="Sync Draft Invoice?"
-        message="Warning: Syncing will immediately update the saved draft in the database. This action cannot be undone by clicking Cancel. Do you want to proceed?"
-        confirmText="Sync Now"
-        confirmColor="amber"
-      />
+      
 
     </div>
   );

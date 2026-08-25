@@ -58,13 +58,7 @@ export const InvoiceDetails = () => {
     enabled: !!session && !!id
   });
 
-  const { data: syncStatus, refetch: refetchSyncStatus } = useQuery({
-    queryKey: ['syncStatus', id],
-    queryFn: async () => {
-      const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:4000'}/api/invoices/${id}/sync-status`, {
-        headers: { 'Authorization': `Bearer ${session.access_token}` }
-      });
-      const json = await res.json();
+        const json = await res.json();
       if (!res.ok || !json.success) throw new Error(json.error);
       return json;
     },
@@ -73,37 +67,7 @@ export const InvoiceDetails = () => {
     refetchOnWindowFocus: true
   });
 
-  useEffect(() => {
-    if (invoice?.status === 'draft') {
-      refetchSyncStatus();
-    }
-  }, [invoice?.status, refetchSyncStatus]);
-
-  const generateFilename = () => {
-    if (!invoice) return 'Invoice';
-    
-    const sanitize = (str) => str ? str.replace(/[^a-zA-Z0-9 ]/g, '').trim().replace(/\s+/g, '_') : '';
-    
-    const clientName = sanitize(invoice.clients?.name);
-    
-    let propertyStr = '';
-    if (invoice.property_address) {
-      const firstLine = invoice.property_address.split('\n')[0];
-      propertyStr = sanitize(firstLine);
-    }
-    
-    const parts = [clientName];
-    if (propertyStr) parts.push(propertyStr);
-    parts.push(invoice.invoice_number);
-    parts.push(Date.now());
-    
-    return parts.filter(Boolean).join('_');
-  };
-
-  const handlePrint = useReactToPrint({
-    contentRef: componentRef,
-    documentTitle: generateFilename(),
-  });
+  
 
   const statusMutation = useMutation({
     mutationFn: async ({ status, reason }) => {
