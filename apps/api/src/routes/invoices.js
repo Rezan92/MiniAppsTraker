@@ -54,38 +54,6 @@ async function enforceInvoiceEditability(invoiceId, tenantId) {
   }
 }
 
-
-const lineItemSchema = z.object({
-  source_type: z.enum(['labor', 'material', 'ad_hoc']),
-  source_id: z.string().uuid().optional().nullable(),
-  description: z.string().min(1),
-  amount: z.number().default(0),
-  sort_order: z.number().default(0)
-});
-
-const lineItemUpdateSchema = z.object({
-  description: z.string().optional(),
-  amount: z.number().optional(),
-  sort_order: z.number().optional()
-});
-
-async function enforceInvoiceEditability(invoiceId, tenantId) {
-  const { data: invoice, error } = await supabase
-    .from('invoices')
-    .select('status')
-    .eq('id', invoiceId)
-    .eq('tenant_id', tenantId)
-    .single();
-  if (error || !invoice) throw new Error('Invoice not found');
-  if (['ready_to_send', 'sent', 'paid', 'voided'].includes(invoice.status)) {
-    const err = new Error('Invoice is locked and cannot be edited in its current status.');
-    err.status = 403;
-    throw err;
-  }
-}
-
-
-// GET all invoices
 router.get('/', async (req, res, next) => {
   try {
     const { status, client_id, property_id, from_date, to_date, job_id } = req.query;
@@ -112,7 +80,6 @@ router.get('/', async (req, res, next) => {
   }
 });
 
-// GET single invoice
 router.get('/:id', async (req, res, next) => {
   try {
     const { data, error } = await supabase
@@ -121,7 +88,7 @@ router.get('/:id', async (req, res, next) => {
         *,
         clients(name, email, phone, address),
         tenants(name, business_tagline, payment_method, payment_details, phone),
-        invoice_items(*)
+        invoice_line_items(*)
       `)
       .eq('id', req.params.id)
       .eq('tenant_id', req.user.tenant_id)
@@ -138,7 +105,6 @@ router.get('/:id', async (req, res, next) => {
   }
 });
 
-// POST new invoice
 router.post('/', async (req, res, next) => {
   try {
     const result = invoiceSchema.safeParse(req.body);
@@ -147,15 +113,8 @@ router.post('/', async (req, res, next) => {
     }
 
     const { due_date, ...invoiceData } = result.data;
-    
-    // Note: 1:1 job_id constraint check has been removed (Multi-Invoice Jobs)
-
     const sanitizedDueDate = due_date === '' ? null : due_date;
-    const materialsAmount = materials.reduce((sum, m) => sum + m.cost, 0);
-    const totalAmount = (invoiceData.labor_amount || 0) + materialsAmount;
 
-    // Transaction-like approach using an RPC function would be safer, but doing it in steps for now:
-    // 1. Get next invoice number
     const { data: tenant, error: tenantError } = await supabase
       .from('tenants')
       .select('next_invoice_number')
@@ -165,7 +124,6 @@ router.post('/', async (req, res, next) => {
     if (tenantError) throw tenantError;
     const invoiceNumber = `${tenant.next_invoice_number}`;
 
-    // 2. Insert invoice
     const { data: invoice, error: invoiceError } = await supabase
       .from('invoices')
       .insert([{
@@ -182,14 +140,11 @@ router.post('/', async (req, res, next) => {
 
     if (invoiceError) throw invoiceError;
 
-    // 3. Increment next_invoice_number
     await supabase
       .from('tenants')
       .update({ next_invoice_number: tenant.next_invoice_number + 1 })
       .eq('id', req.user.tenant_id);
 
-    // 4. Insert items
-    // 6. Audit Trail (Log Creation)
     await supabase.from('invoice_logs').insert([{
       invoice_id: invoice.id,
       tenant_id: req.user.tenant_id,
@@ -203,177 +158,6 @@ router.post('/', async (req, res, next) => {
   }
 });
 
-    }
-
-    const { data: materials } = await supabase.from('job_materials').select('*').eq('invoice_id', invoice.id);
-    const { data: hours } = await supabase.from('job_hours').select('*').eq('invoice_id', invoice.id);
-    const { data: existingItems } = await supabase.from('invoice_items').select('*').eq('invoice_id', invoice.id);
-    const { data: unbilledMaterials } = await supabase.from('job_materials').select('id').eq('job_id', invoice.job_id).is('invoice_id', null);
-    const { data: unbilledHours } = await supabase.from('job_hours').select('id').eq('job_id', invoice.job_id).is('invoice_id', null);
-
-    const existingMaterials = existingItems.filter(i => i.type === 'material');
-    const existingLabor = existingItems.filter(i => i.type === 'labor_detail');
-
-    const reasons = [];
-
-    // Check material counts/costs
-    for (const m of (materials || [])) {
-      const existing = existingMaterials.find(em => em.description === m.description);
-      if (!existing) {
-        reasons.push(`Missing material: ${m.description}`);
-      } else if (existing.total_price !== m.cost) {
-        reasons.push(`Price changed for material: ${m.description}`);
-      }
-    }
-
-    // Check hours
-    for (const h of (hours || [])) {
-      const desc = h.description || `${h.hours} hours logged`;
-      if (!existingLabor.find(el => el.description === desc)) {
-        reasons.push(`Missing logged hours: ${desc}`);
-      }
-    }
-
-    // Check rate changes
-    const job = invoice.jobs;
-    let laborAmount = 0;
-    if (job.rate_type === 'flat') {
-      laborAmount = job.flat_rate || 0;
-    } else {
-      const totalHours = (hours || []).reduce((sum, h) => sum + h.hours, 0);
-      laborAmount = totalHours * (job.hourly_rate || 0);
-    }
-    if (laborAmount !== invoice.labor_amount) {
-      reasons.push('Job rate structure or total labor amount changed');
-    }
-
-    // Check property changes
-    if (invoice.property_id !== job.property_id) {
-      reasons.push('Assigned property on job has changed');
-    }
-
-    // Check for unbilled items
-    if ((unbilledMaterials && unbilledMaterials.length > 0) || (unbilledHours && unbilledHours.length > 0)) {
-      reasons.push('New unbilled items were added to the job');
-    }
-
-    res.json({ success: true, outOfSync: reasons.length > 0, reasons });
-  } catch (err) {
-    next(err);
-  }
-});
-
-    }
-    if (!invoice.job_id) {
-      return res.status(400).json({ success: false, error: 'Invoice is not linked to a job' });
-    }
-
-    const job = invoice.jobs;
-
-    // Sweep any unbilled items just in case
-    await supabase.from('job_materials')
-      .update({ invoice_id: invoice.id })
-      .eq('job_id', job.id)
-      .is('invoice_id', null);
-      
-    await supabase.from('job_hours')
-      .update({ invoice_id: invoice.id })
-      .eq('job_id', job.id)
-      .is('invoice_id', null);
-
-    const { data: materials } = await supabase.from('job_materials').select('*').eq('invoice_id', invoice.id);
-    const { data: hours } = await supabase.from('job_hours').select('*').eq('invoice_id', invoice.id);
-    const { data: existingItems } = await supabase.from('invoice_items').select('*').eq('invoice_id', invoice.id);
-
-    const existingMaterials = existingItems.filter(i => i.type === 'material');
-    const existingLabor = existingItems.filter(i => i.type === 'labor_detail');
-    let maxSortOrder = existingItems.reduce((max, i) => Math.max(max, i.sort_order), -1);
-
-    const itemsToInsert = [];
-
-    // Diff Materials
-    for (const m of (materials || [])) {
-      const existing = existingMaterials.find(em => em.description === m.description);
-      if (!existing) {
-        maxSortOrder++;
-        itemsToInsert.push({
-          invoice_id: invoice.id,
-          type: 'material',
-          description: m.description,
-          total_price: m.cost,
-          sort_order: maxSortOrder
-        });
-      } else if (existing.total_price !== m.cost) {
-        await supabase.from('invoice_items').update({ total_price: m.cost }).eq('id', existing.id);
-      }
-    }
-
-    // Diff Hours
-    for (const h of (hours || [])) {
-      const desc = h.description || `${h.hours} hours logged`;
-      const existing = existingLabor.find(el => el.description === desc);
-      if (!existing) {
-        maxSortOrder++;
-        itemsToInsert.push({
-          invoice_id: invoice.id,
-          type: 'labor_detail',
-          description: desc,
-          sort_order: maxSortOrder
-        });
-      }
-    }
-
-    if (itemsToInsert.length > 0) {
-      const { error: itemsError } = await supabase.from('invoice_items').insert(itemsToInsert);
-      if (itemsError) throw itemsError;
-    }
-
-    // Recalculate totals and check rate structure changes
-    let laborAmount = 0;
-    if (job.rate_type === 'flat') {
-      laborAmount = job.flat_rate || 0;
-    } else {
-      const totalHours = (hours || []).reduce((sum, h) => sum + h.hours, 0);
-      laborAmount = totalHours * (job.hourly_rate || 0);
-    }
-
-    // Re-fetch items to get the actual total of materials (including custom ones added on invoice)
-    const { data: finalItems } = await supabase.from('invoice_items').select('*').eq('invoice_id', invoice.id);
-    const materialsAmount = finalItems.filter(i => i.type === 'material').reduce((sum, m) => sum + (m.total_price || 0), 0);
-    const totalAmount = laborAmount + materialsAmount;
-
-    const { error: updateError } = await supabase
-      .from('invoices')
-      .update({
-        labor_amount: laborAmount,
-        materials_amount: 0,
-        total_amount: invoiceData.labor_amount || 0,
-        property_id: job.property_id,
-        property_address: job.rental_properties?.address || ''
-      })
-      .eq('id', invoice.id);
-
-    if (updateError) throw updateError;
-
-    const logReason = `Synced from job: Updated labor ($${laborAmount.toFixed(2)}) and materials ($${materialsAmount.toFixed(2)}). Property set to ${job.rental_properties?.address || 'None'}.`;
-    
-    const { error: logError } = await supabase.from('invoice_logs').insert([{
-      invoice_id: invoice.id,
-      tenant_id: req.user.tenant_id,
-      user_id: req.user.id,
-      action: 'Synced',
-      reason: logReason
-    }]);
-
-    if (logError) throw logError;
-
-    res.json({ success: true });
-  } catch (err) {
-    next(err);
-  }
-});
-
-// PATCH update draft invoice
 router.patch('/:id', async (req, res, next) => {
   try {
     const result = invoiceSchema.safeParse(req.body);
@@ -382,32 +166,17 @@ router.patch('/:id', async (req, res, next) => {
     }
 
     const { due_date, ...invoiceData } = result.data;
-    delete invoiceData.job_id; // Prevent dangerous job swapping
+    delete invoiceData.job_id;
     const sanitizedDueDate = due_date === '' ? null : due_date;
-    const materialsAmount = materials.reduce((sum, m) => sum + m.cost, 0);
-    const totalAmount = (invoiceData.labor_amount || 0) + materialsAmount;
 
-    // Check if invoice is draft
-    const { data: existing, error: checkError } = await supabase
-      .from('invoices')
-      .select('status')
-      .eq('id', req.params.id)
-      .eq('tenant_id', req.user.tenant_id)
-      .single();
+    await enforceInvoiceEditability(req.params.id, req.user.tenant_id);
 
-    if (checkError) throw checkError;
-    if (existing.status !== 'draft') {
-      return res.status(403).json({ success: false, error: 'Only draft invoices can be edited' });
-    }
-
-    // Update invoice
     const { data: invoice, error: invoiceError } = await supabase
       .from('invoices')
       .update({
         ...invoiceData,
         due_date: sanitizedDueDate,
-        materials_amount: 0,
-        total_amount: totalAmount
+        total_amount: invoiceData.labor_amount || 0
       })
       .eq('id', req.params.id)
       .eq('tenant_id', req.user.tenant_id)
@@ -415,39 +184,6 @@ router.patch('/:id', async (req, res, next) => {
       .single();
 
     if (invoiceError) throw invoiceError;
-
-    // Replace items
-    await supabase.from('invoice_items').delete().eq('invoice_id', invoice.id);
-
-    const itemsToInsert = [];
-    let sortOrder = 0;
-    
-    for (const ld of labor_details) {
-      itemsToInsert.push({
-        invoice_id: invoice.id,
-        type: 'labor_detail',
-        description: ld.description,
-        sort_order: sortOrder++
-      });
-    }
-    
-    for (const m of materials) {
-      itemsToInsert.push({
-        invoice_id: invoice.id,
-        type: 'material',
-        description: m.description,
-        total_price: m.cost,
-        sort_order: sortOrder++
-      });
-    }
-
-    if (itemsToInsert.length > 0) {
-      const { error: itemsError } = await supabase
-        .from('invoice_items')
-        .insert(itemsToInsert);
-      
-      if (itemsError) throw itemsError;
-    }
 
     const { error: logError } = await supabase.from('invoice_logs').insert([{
       invoice_id: invoice.id,
@@ -465,8 +201,6 @@ router.patch('/:id', async (req, res, next) => {
   }
 });
 
-
-// POST /:id/items
 router.post('/:id/items', async (req, res, next) => {
   try {
     await enforceInvoiceEditability(req.params.id, req.user.tenant_id);
@@ -491,7 +225,6 @@ router.post('/:id/items', async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
-// PATCH /:id/items/:itemId
 router.patch('/:id/items/:itemId', async (req, res, next) => {
   try {
     await enforceInvoiceEditability(req.params.id, req.user.tenant_id);
@@ -511,7 +244,6 @@ router.patch('/:id/items/:itemId', async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
-// DELETE /:id/items/:itemId
 router.delete('/:id/items/:itemId', async (req, res, next) => {
   try {
     await enforceInvoiceEditability(req.params.id, req.user.tenant_id);
@@ -521,7 +253,6 @@ router.delete('/:id/items/:itemId', async (req, res, next) => {
     await supabase.from('invoice_line_items').delete().eq('id', req.params.itemId).eq('invoice_id', req.params.id);
 
     if (item.source_id && item.source_type !== 'ad_hoc') {
-      // Multi-draft check
       const { data: drafts } = await supabase
         .from('invoice_line_items')
         .select('invoices!inner(status)')
@@ -537,79 +268,6 @@ router.delete('/:id/items/:itemId', async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
-
-// POST /:id/items
-router.post('/:id/items', async (req, res, next) => {
-  try {
-    await enforceInvoiceEditability(req.params.id, req.user.tenant_id);
-    const result = lineItemSchema.safeParse(req.body);
-    if (!result.success) return res.status(400).json({ success: false, error: result.error.errors[0].message });
-    
-    const { source_type, source_id, description, amount, sort_order } = result.data;
-
-    const { data: item, error: itemError } = await supabase
-      .from('invoice_line_items')
-      .insert([{ invoice_id: req.params.id, source_type, source_id, description, amount, sort_order }])
-      .select()
-      .single();
-    if (itemError) throw itemError;
-
-    if (source_id && source_type !== 'ad_hoc') {
-      const table = source_type === 'labor' ? 'job_hours' : 'job_materials';
-      await supabase.from(table).update({ billing_status: 'on_draft' }).eq('id', source_id);
-    }
-    
-    res.json({ success: true, data: item });
-  } catch (err) { next(err); }
-});
-
-// PATCH /:id/items/:itemId
-router.patch('/:id/items/:itemId', async (req, res, next) => {
-  try {
-    await enforceInvoiceEditability(req.params.id, req.user.tenant_id);
-    const result = lineItemUpdateSchema.safeParse(req.body);
-    if (!result.success) return res.status(400).json({ success: false, error: result.error.errors[0].message });
-
-    const { data: item, error: itemError } = await supabase
-      .from('invoice_line_items')
-      .update(result.data)
-      .eq('id', req.params.itemId)
-      .eq('invoice_id', req.params.id)
-      .select()
-      .single();
-    if (itemError) throw itemError;
-
-    res.json({ success: true, data: item });
-  } catch (err) { next(err); }
-});
-
-// DELETE /:id/items/:itemId
-router.delete('/:id/items/:itemId', async (req, res, next) => {
-  try {
-    await enforceInvoiceEditability(req.params.id, req.user.tenant_id);
-    const { data: item } = await supabase.from('invoice_line_items').select('source_id, source_type').eq('id', req.params.itemId).single();
-    if (!item) return res.status(404).json({ success: false, error: 'Item not found' });
-
-    await supabase.from('invoice_line_items').delete().eq('id', req.params.itemId).eq('invoice_id', req.params.id);
-
-    if (item.source_id && item.source_type !== 'ad_hoc') {
-      // Multi-draft check
-      const { data: drafts } = await supabase
-        .from('invoice_line_items')
-        .select('invoices!inner(status)')
-        .eq('source_id', item.source_id)
-        .in('invoices.status', ['draft', 'ready_to_send']);
-      
-      if (!drafts || drafts.length === 0) {
-        const table = item.source_type === 'labor' ? 'job_hours' : 'job_materials';
-        await supabase.from(table).update({ billing_status: 'unbilled' }).eq('id', item.source_id);
-      }
-    }
-    res.json({ success: true });
-  } catch (err) { next(err); }
-});
-
-// PATCH status
 router.patch('/:id/status', async (req, res, next) => {
   try {
     const result = statusSchema.safeParse(req.body);
@@ -653,27 +311,26 @@ router.patch('/:id/status', async (req, res, next) => {
 
     if (error) throw error;
 
-    // Transition linked items
     if (status === 'sent') {
-      await supabase.from('job_materials')
-        .update({ billing_status: 'billed' })
-        .in('id', (await supabase.from('invoice_line_items').select('source_id').eq('invoice_id', req.params.id).eq('source_type', 'material')).data.map(i => i.source_id));
-      await supabase.from('job_hours')
-        .update({ billing_status: 'billed' })
-        .in('id', (await supabase.from('invoice_line_items').select('source_id').eq('invoice_id', req.params.id).eq('source_type', 'labor')).data.map(i => i.source_id));
+      const { data: lines } = await supabase.from('invoice_line_items').select('source_id, source_type').eq('invoice_id', req.params.id);
+      if (lines) {
+        const matIds = lines.filter(i => i.source_type === 'material' && i.source_id).map(i => i.source_id);
+        const labIds = lines.filter(i => i.source_type === 'labor' && i.source_id).map(i => i.source_id);
+        if (matIds.length) await supabase.from('job_materials').update({ billing_status: 'billed' }).in('id', matIds);
+        if (labIds.length) await supabase.from('job_hours').update({ billing_status: 'billed' }).in('id', labIds);
+      }
     }
+    
     if (status === 'voided') {
-      // Simple revert to unbilled. Multi-draft check omitted here for brevity as it's complex in bulk, 
-      // but ideally we'd check if they exist on other drafts.
-      await supabase.from('job_materials')
-        .update({ billing_status: 'unbilled' })
-        .in('id', (await supabase.from('invoice_line_items').select('source_id').eq('invoice_id', req.params.id).eq('source_type', 'material')).data.map(i => i.source_id));
-      await supabase.from('job_hours')
-        .update({ billing_status: 'unbilled' })
-        .in('id', (await supabase.from('invoice_line_items').select('source_id').eq('invoice_id', req.params.id).eq('source_type', 'labor')).data.map(i => i.source_id));
+      const { data: lines } = await supabase.from('invoice_line_items').select('source_id, source_type').eq('invoice_id', req.params.id);
+      if (lines) {
+        const matIds = lines.filter(i => i.source_type === 'material' && i.source_id).map(i => i.source_id);
+        const labIds = lines.filter(i => i.source_type === 'labor' && i.source_id).map(i => i.source_id);
+        if (matIds.length) await supabase.from('job_materials').update({ billing_status: 'unbilled' }).in('id', matIds);
+        if (labIds.length) await supabase.from('job_hours').update({ billing_status: 'unbilled' }).in('id', labIds);
+      }
     }
 
-    // Auto-complete job on send
     if (status === 'sent' && data.job_id) {
       const { data: job } = await supabase.from('jobs').select('status').eq('id', data.job_id).single();
       if (job && job.status !== 'completed') {
@@ -695,7 +352,6 @@ router.patch('/:id/status', async (req, res, next) => {
   }
 });
 
-// PATCH internal notes
 router.patch('/:id/internal-notes', async (req, res, next) => {
   try {
     const { internal_notes } = req.body;
@@ -715,10 +371,8 @@ router.patch('/:id/internal-notes', async (req, res, next) => {
   }
 });
 
-// DELETE draft invoice
 router.delete('/:id', async (req, res, next) => {
   try {
-    // Check if draft
     const { data: existing, error: checkError } = await supabase
       .from('invoices')
       .select('status')
@@ -744,7 +398,6 @@ router.delete('/:id', async (req, res, next) => {
   }
 });
 
-// GET prepopulate from job
 router.get('/from-job/:jobId', async (req, res, next) => {
   try {
     const { data: job, error: jobError } = await supabase
@@ -760,9 +413,6 @@ router.get('/from-job/:jobId', async (req, res, next) => {
 
     if (jobError) throw jobError;
 
-    const { data: hours } = await supabase.from('job_hours').select('hours, description').eq('job_id', job.id).is('invoice_id', null);
-    const { data: materials } = await supabase.from('job_materials').select('description, cost').eq('job_id', job.id).is('invoice_id', null);
-    
     const payload = {
       client_id: job.client_id,
       job_id: job.id,
@@ -776,7 +426,6 @@ router.get('/from-job/:jobId', async (req, res, next) => {
   }
 });
 
-// GET invoice logs
 router.get('/:id/logs', async (req, res, next) => {
   try {
     const { data, error } = await supabase

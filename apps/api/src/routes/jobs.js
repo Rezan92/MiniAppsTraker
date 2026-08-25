@@ -29,8 +29,7 @@ const materialSchema = z.object({
   is_from_stock: z.boolean().optional().default(false),
   store: z.string().optional(),
   purchase_date: z.string().optional(),
-  notes: z.string().optional(),
-  invoice_id: z.string().uuid().optional().nullable()
+  notes: z.string().optional()
 });
 
 const jobHoursSchema = z.object({
@@ -38,36 +37,8 @@ const jobHoursSchema = z.object({
   hours: z.number().min(0, "Hours must be positive"),
   start_time: z.string().optional(),
   end_time: z.string().optional(),
-  description: z.string().min(1, "Description is required"),
-  invoice_id: z.string().uuid().optional().nullable()
+  description: z.string().min(1, "Description is required")
 });
-
- else {
-      itemsToInsert.push({
-        invoice_id: invoice.id,
-        type: 'labor_detail',
-        description: `${job.title} - Labor`,
-        sort_order: sortOrder++
-      });
-    }
-    
-    for (const m of (materials || [])) {
-      itemsToInsert.push({
-        invoice_id: invoice.id,
-        type: 'material',
-        description: m.description,
-        total_price: m.cost,
-        sort_order: sortOrder++
-      });
-    }
-
-    if (itemsToInsert.length > 0) {
-      await supabase.from('invoice_items').insert(itemsToInsert);
-    }
-  } catch (err) {
-    console.error('Failed to sync job to draft invoice:', err);
-  }
-}
 
 router.get('/', async (req, res, next) => {
   try {
@@ -99,9 +70,7 @@ router.get('/:id', async (req, res, next) => {
       .single();
 
     if (error) {
-      if (error.code === 'PGRST116') {
-        return res.status(404).json({ success: false, error: 'Job not found' });
-      }
+      if (error.code === 'PGRST116') return res.status(404).json({ success: false, error: 'Job not found' });
       throw error;
     }
     res.json({ success: true, data });
@@ -113,9 +82,7 @@ router.get('/:id', async (req, res, next) => {
 router.post('/', async (req, res, next) => {
   try {
     const result = jobSchema.safeParse(req.body);
-    if (!result.success) {
-      return res.status(400).json({ success: false, error: result.error.issues[0].message });
-    }
+    if (!result.success) return res.status(400).json({ success: false, error: result.error.issues[0].message });
 
     const { data, error } = await supabase
       .from('jobs')
@@ -133,9 +100,7 @@ router.post('/', async (req, res, next) => {
 router.put('/:id', async (req, res, next) => {
   try {
     const result = jobSchema.safeParse(req.body);
-    if (!result.success) {
-      return res.status(400).json({ success: false, error: result.error.issues[0].message });
-    }
+    if (!result.success) return res.status(400).json({ success: false, error: result.error.issues[0].message });
 
     const { data, error } = await supabase
       .from('jobs')
@@ -155,9 +120,7 @@ router.put('/:id', async (req, res, next) => {
 router.patch('/:id/status', async (req, res, next) => {
   try {
     const result = statusSchema.safeParse(req.body);
-    if (!result.success) {
-      return res.status(400).json({ success: false, error: result.error.issues[0].message });
-    }
+    if (!result.success) return res.status(400).json({ success: false, error: result.error.issues[0].message });
 
     const { data, error } = await supabase
       .from('jobs')
@@ -174,131 +137,72 @@ router.patch('/:id/status', async (req, res, next) => {
   }
 });
 
-// Materials sub-routes
 router.post('/:id/materials', async (req, res, next) => {
   try {
     const result = materialSchema.safeParse(req.body);
-    if (!result.success) {
-      return res.status(400).json({ success: false, error: result.error.errors[0].message });
-    }
+    if (!result.success) return res.status(400).json({ success: false, error: result.error.errors[0].message });
 
-    const { data: job, error: jobError } = await supabase
-      .from('jobs')
-      .select('id')
-      .eq('id', req.params.id)
-      .eq('tenant_id', req.user.tenant_id)
-      .single();
-
-    if (jobError || !job) {
-      return res.status(404).json({ success: false, error: 'Job not found' });
-    }
+    const { data: job, error: jobError } = await supabase.from('jobs').select('id').eq('id', req.params.id).eq('tenant_id', req.user.tenant_id).single();
+    if (jobError || !job) return res.status(404).json({ success: false, error: 'Job not found' });
 
     const payload = { ...result.data, job_id: job.id };
-     // Force unbilled for new items
-
-    const { data, error } = await supabase
-      .from('job_materials')
-      .insert([payload])
-      .select()
-      .single();
-
+    
+    const { data, error } = await supabase.from('job_materials').insert([payload]).select().single();
     if (error) throw error;
-
     res.json({ success: true, data });
-  } catch (err) {
-    next(err);
-  }
+  } catch (err) { next(err); }
 });
 
 router.get('/:id/materials', async (req, res, next) => {
   try {
     const { data: job, error: jobError } = await supabase.from('jobs').select('id').eq('id', req.params.id).eq('tenant_id', req.user.tenant_id).single();
     if (jobError || !job) return res.status(404).json({ success: false, error: 'Job not found' });
+
     let query = supabase.from('job_materials').select('*').eq('job_id', job.id);
     if (req.query.billing_status) {
       query = query.in('billing_status', req.query.billing_status.split(','));
     }
     const { data, error } = await query;
-
     if (error) throw error;
     res.json({ success: true, data });
-  } catch (err) {
-    next(err);
-  }
+  } catch (err) { next(err); }
 });
 
 router.patch('/:id/materials/:materialId', async (req, res, next) => {
   try {
     const result = materialSchema.safeParse(req.body);
-    if (!result.success) {
-      return res.status(400).json({ success: false, error: result.error.errors[0].message });
+    if (!result.success) return res.status(400).json({ success: false, error: result.error.errors[0].message });
+
+    const { data: job, error: jobError } = await supabase.from('jobs').select('id').eq('id', req.params.id).eq('tenant_id', req.user.tenant_id).single();
+    if (jobError || !job) return res.status(404).json({ success: false, error: 'Job not found' });
+
+    const { data: existing } = await supabase.from('job_materials').select('billing_status').eq('id', req.params.materialId).single();
+    if (existing && existing.billing_status === 'billed') {
+      return res.status(403).json({ success: false, error: 'Cannot modify items that have already been billed.' });
     }
 
-    const { data: job, error: jobError } = await supabase
-      .from('jobs')
-      .select('id')
-      .eq('id', req.params.id)
-      .eq('tenant_id', req.user.tenant_id)
-      .single();
-
-    if (jobError || !job) {
-      return res.status(404).json({ success: false, error: 'Job not found' });
-    }
-
-    const { data: existing } = await supabase.from('job_materials').select('invoice_id').eq('id', req.params.materialId).single();
-    if (existing && !(await verifyItemEditability(existing.invoice_id))) {
-      return res.status(403).json({ success: false, error: 'Cannot modify items linked to a sent, in_progress, paid, or voided invoice.' });
-    }
-
-    const { data, error } = await supabase
-      .from('job_materials')
-      .update(result.data)
-      .eq('id', req.params.materialId)
-      .eq('job_id', job.id)
-      .select()
-      .single();
-
+    const { data, error } = await supabase.from('job_materials').update(result.data).eq('id', req.params.materialId).eq('job_id', job.id).select().single();
     if (error) throw error;
-
     res.json({ success: true, data });
-  } catch (err) {
-    next(err);
-  }
+  } catch (err) { next(err); }
 });
 
 router.delete('/:id/materials/:materialId', async (req, res, next) => {
   try {
-    const { data: job, error: jobError } = await supabase
-      .from('jobs')
-      .select('id')
-      .eq('id', req.params.id)
-      .eq('tenant_id', req.user.tenant_id)
-      .single();
+    const { data: job, error: jobError } = await supabase.from('jobs').select('id').eq('id', req.params.id).eq('tenant_id', req.user.tenant_id).single();
+    if (jobError || !job) return res.status(404).json({ success: false, error: 'Job not found' });
 
-    if (jobError || !job) {
-      return res.status(404).json({ success: false, error: 'Job not found' });
+    const { data: existing } = await supabase.from('job_materials').select('billing_status').eq('id', req.params.materialId).single();
+    if (existing && existing.billing_status === 'billed') {
+      return res.status(403).json({ success: false, error: 'Cannot modify items that have already been billed.' });
     }
 
-    const { data: existing } = await supabase.from('job_materials').select('invoice_id').eq('id', req.params.materialId).single();
-    if (existing && !(await verifyItemEditability(existing.invoice_id))) {
-      return res.status(403).json({ success: false, error: 'Cannot modify items linked to a sent, in_progress, paid, or voided invoice.' });
-    }
-
-    const { error } = await supabase
-      .from('job_materials')
-      .delete()
-      .eq('id', req.params.materialId)
-      .eq('job_id', job.id);
-
+    const { error } = await supabase.from('job_materials').delete().eq('id', req.params.materialId).eq('job_id', job.id);
     if (error) throw error;
-    
     res.json({ success: true });
-  } catch (err) {
-    next(err);
-  }
+  } catch (err) { next(err); }
 });
 
-// Job Hours sub-routes
 router.post('/:id/hours', async (req, res, next) => {
   try {
     const result = jobHoursSchema.safeParse(req.body);
@@ -309,49 +213,30 @@ router.post('/:id/hours', async (req, res, next) => {
       return next(err);
     }
 
-    const { data: job, error: jobError } = await supabase
-      .from('jobs')
-      .select('id')
-      .eq('id', req.params.id)
-      .eq('tenant_id', req.user.tenant_id)
-      .single();
-
-    if (jobError || !job) {
-      return res.status(404).json({ success: false, error: 'Job not found' });
-    }
+    const { data: job, error: jobError } = await supabase.from('jobs').select('id').eq('id', req.params.id).eq('tenant_id', req.user.tenant_id).single();
+    if (jobError || !job) return res.status(404).json({ success: false, error: 'Job not found' });
 
     const payload = { ...result.data, job_id: job.id };
-     // Force unbilled for new items
 
-    const { data, error } = await supabase
-      .from('job_hours')
-      .insert([payload])
-      .select()
-      .single();
-
+    const { data, error } = await supabase.from('job_hours').insert([payload]).select().single();
     if (error) throw error;
-
     res.json({ success: true, data });
-  } catch (err) {
-    next(err);
-  }
+  } catch (err) { next(err); }
 });
 
 router.get('/:id/hours', async (req, res, next) => {
   try {
     const { data: job, error: jobError } = await supabase.from('jobs').select('id').eq('id', req.params.id).eq('tenant_id', req.user.tenant_id).single();
     if (jobError || !job) return res.status(404).json({ success: false, error: 'Job not found' });
+
     let query = supabase.from('job_hours').select('*').eq('job_id', job.id).order('date', { ascending: false });
     if (req.query.billing_status) {
       query = query.in('billing_status', req.query.billing_status.split(','));
     }
     const { data, error } = await query;
-
     if (error) throw error;
     res.json({ success: true, data });
-  } catch (err) {
-    next(err);
-  }
+  } catch (err) { next(err); }
 });
 
 router.patch('/:id/hours/:hourId', async (req, res, next) => {
@@ -364,93 +249,46 @@ router.patch('/:id/hours/:hourId', async (req, res, next) => {
       return next(err);
     }
 
-    const { data: job, error: jobError } = await supabase
-      .from('jobs')
-      .select('id')
-      .eq('id', req.params.id)
-      .eq('tenant_id', req.user.tenant_id)
-      .single();
+    const { data: job, error: jobError } = await supabase.from('jobs').select('id').eq('id', req.params.id).eq('tenant_id', req.user.tenant_id).single();
+    if (jobError || !job) return res.status(404).json({ success: false, error: 'Job not found' });
 
-    if (jobError || !job) {
-      return res.status(404).json({ success: false, error: 'Job not found' });
+    const { data: existing } = await supabase.from('job_hours').select('billing_status').eq('id', req.params.hourId).single();
+    if (existing && existing.billing_status === 'billed') {
+      return res.status(403).json({ success: false, error: 'Cannot modify items that have already been billed.' });
     }
 
-    const { data: existing } = await supabase.from('job_hours').select('invoice_id').eq('id', req.params.hourId).single();
-    if (existing && !(await verifyItemEditability(existing.invoice_id))) {
-      return res.status(403).json({ success: false, error: 'Cannot modify items linked to a sent, in_progress, paid, or voided invoice.' });
-    }
-
-    const { data, error } = await supabase
-      .from('job_hours')
-      .update(result.data)
-      .eq('id', req.params.hourId)
-      .eq('job_id', job.id)
-      .select()
-      .single();
-
+    const { data, error } = await supabase.from('job_hours').update(result.data).eq('id', req.params.hourId).eq('job_id', job.id).select().single();
     if (error) throw error;
-    
     res.json({ success: true, data });
-  } catch (err) {
-    next(err);
-  }
+  } catch (err) { next(err); }
 });
 
 router.delete('/:id/hours/:hourId', async (req, res, next) => {
   try {
-    const { data: job, error: jobError } = await supabase
-      .from('jobs')
-      .select('id')
-      .eq('id', req.params.id)
-      .eq('tenant_id', req.user.tenant_id)
-      .single();
+    const { data: job, error: jobError } = await supabase.from('jobs').select('id').eq('id', req.params.id).eq('tenant_id', req.user.tenant_id).single();
+    if (jobError || !job) return res.status(404).json({ success: false, error: 'Job not found' });
 
-    if (jobError || !job) {
-      return res.status(404).json({ success: false, error: 'Job not found' });
+    const { data: existing } = await supabase.from('job_hours').select('billing_status').eq('id', req.params.hourId).single();
+    if (existing && existing.billing_status === 'billed') {
+      return res.status(403).json({ success: false, error: 'Cannot modify items that have already been billed.' });
     }
 
-    const { data: existing } = await supabase.from('job_hours').select('invoice_id').eq('id', req.params.hourId).single();
-    if (existing && !(await verifyItemEditability(existing.invoice_id))) {
-      return res.status(403).json({ success: false, error: 'Cannot modify items linked to a sent, in_progress, paid, or voided invoice.' });
-    }
-
-    const { error } = await supabase
-      .from('job_hours')
-      .delete()
-      .eq('id', req.params.hourId)
-      .eq('job_id', job.id);
-
+    const { error } = await supabase.from('job_hours').delete().eq('id', req.params.hourId).eq('job_id', job.id);
     if (error) throw error;
-    
     res.json({ success: true });
-  } catch (err) {
-    next(err);
-  }
+  } catch (err) { next(err); }
 });
 
 router.delete('/:id', async (req, res, next) => {
   try {
-    const { data: invoices } = await supabase
-      .from('invoices')
-      .select('status')
-      .eq('job_id', req.params.id)
-      .eq('tenant_id', req.user.tenant_id);
-      
+    const { data: invoices } = await supabase.from('invoices').select('status').eq('job_id', req.params.id).eq('tenant_id', req.user.tenant_id);
     if (invoices && invoices.some(inv => inv.status === 'paid' || inv.status === 'in_progress')) {
       return res.status(403).json({ success: false, error: 'Cannot delete a job that has paid or in-progress invoices.' });
     }
-
-    const { error } = await supabase
-      .from('jobs')
-      .delete()
-      .eq('id', req.params.id)
-      .eq('tenant_id', req.user.tenant_id);
-
+    const { error } = await supabase.from('jobs').delete().eq('id', req.params.id).eq('tenant_id', req.user.tenant_id);
     if (error) throw error;
     res.json({ success: true });
-  } catch (err) {
-    next(err);
-  }
+  } catch (err) { next(err); }
 });
 
 export default router;
