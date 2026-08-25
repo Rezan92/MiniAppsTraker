@@ -58,16 +58,7 @@ export const InvoiceDetails = () => {
     enabled: !!session && !!id
   });
 
-        const json = await res.json();
-      if (!res.ok || !json.success) throw new Error(json.error);
-      return json;
-    },
-    enabled: !!session && !!id && invoice?.status === 'draft',
-    refetchOnMount: 'always',
-    refetchOnWindowFocus: true
-  });
 
-  
 
   const statusMutation = useMutation({
     mutationFn: async ({ status, reason }) => {
@@ -248,20 +239,6 @@ export const InvoiceDetails = () => {
         </div>
       </div>
 
-      {syncStatus?.outOfSync && (
-        <div className="mb-8 bg-yellow-50 border-l-4 border-yellow-400 p-4 rounded-r-md shadow-sm">
-          <div className="flex">
-            <div className="flex-shrink-0">
-              <span className="material-symbols-outlined text-yellow-400">warning</span>
-            </div>
-            <div className="ml-3">
-              <p className="text-sm text-yellow-700 font-medium">
-                Warning: This invoice is out of sync with its job. Click 'Edit Draft' to sync new changes.
-              </p>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Audit Logs Section */}
       {logs.length > 0 && (

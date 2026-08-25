@@ -20,7 +20,7 @@ export const InvoiceBuilder = () => {
   const presetClientId = searchParams.get('client_id');
   const presetPropertyId = searchParams.get('property_id');
   const presetJobId = searchParams.get('job_id');
-  const [syncConfirmOpen, setSyncConfirmOpen] = useState(false);
+
 
   const [formData, setFormData] = useState({
     client_id: presetClientId || '',
@@ -38,46 +38,7 @@ export const InvoiceBuilder = () => {
     property_id: presetPropertyId || ''
   });
 
-  // Fetch sync status if editing a draft linked to a job
-  const { data: syncStatus, refetch: refetchSyncStatus } = useQuery({
-    queryKey: ['syncStatus', id],
-    queryFn: async () => {
-      const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:4000'}/api/invoices/${id}/sync-status`, {
-        headers: { 'Authorization': `Bearer ${session.access_token}` }
-      });
-      const json = await res.json();
-      return json;
-    },
-    enabled: !!session && isEditing && !!formData.job_id,
-    refetchOnMount: 'always',
-    refetchOnWindowFocus: true
-  });
 
-  useEffect(() => {
-    if (isEditing && formData.job_id) {
-      refetchSyncStatus();
-    }
-  }, [isEditing, formData.job_id, refetchSyncStatus]);
-
-  const syncMutation = useMutation({
-    mutationFn: async () => {
-      const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:4000'}/api/invoices/${id}/sync`, {
-        method: 'POST',
-        headers: { 'Authorization': `Bearer ${session.access_token}` }
-      });
-      const json = await res.json();
-      if (!res.ok || !json.success) throw new Error(json.error || 'Sync failed');
-      return json;
-    },
-    onSuccess: () => {
-      showSuccess('Invoice synced with job data');
-      queryClient.invalidateQueries(['invoice', id]);
-      refetchSyncStatus();
-    },
-    onError: (err) => {
-      showError(err.message);
-    }
-  });
 
   const [hasAutoPopulatedJob, setHasAutoPopulatedJob] = useState(false);
 
@@ -697,15 +658,7 @@ export const InvoiceBuilder = () => {
         </div>
       </div>
 
-      <ConfirmModal
-        open={syncConfirmOpen}
-        onClose={() => setSyncConfirmOpen(false)}
-        onConfirm={() => syncMutation.mutate()}
-        title="Sync Draft Invoice?"
-        message="Warning: Syncing will immediately update the saved draft in the database. This action cannot be undone by clicking Cancel. Do you want to proceed?"
-        confirmText="Sync Now"
-        confirmColor="amber"
-      />
+
 
     </div>
   );
