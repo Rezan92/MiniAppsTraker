@@ -6,8 +6,7 @@ import { useToast } from '../../contexts/ToastContext';
 import { translateApiError } from '../../utils/errorTranslator';
 import { DatePicker } from '../common/DatePicker';
 import { Tooltip } from '../common/Tooltip';
-import { ConfirmModal } from '../common/ConfirmModal';
-// Modals removed for UX standardization
+import { SmartDropdown } from './SmartDropdown';
 
 export const InvoiceBuilder = () => {
   const { id } = useParams();
@@ -21,7 +20,6 @@ export const InvoiceBuilder = () => {
   const presetPropertyId = searchParams.get('property_id');
   const presetJobId = searchParams.get('job_id');
 
-
   const [formData, setFormData] = useState({
     client_id: presetClientId || '',
     job_id: presetJobId || '',
@@ -31,14 +29,10 @@ export const InvoiceBuilder = () => {
     labor_title: 'Labor',
     labor_notes: '',
     labor_amount: 0,
-    labor_details: [{ id: Date.now(), description: '' }],
-    materials: [],
     bill_to_type: 'client_name',
     billed_to_name: '',
     property_id: presetPropertyId || ''
   });
-
-
 
   const [hasAutoPopulatedJob, setHasAutoPopulatedJob] = useState(false);
 
@@ -58,8 +52,6 @@ export const InvoiceBuilder = () => {
             client_id: prev.client_id || payload.client_id,
             labor_title: payload.labor_title || 'Labor',
             labor_amount: payload.labor_amount || 0,
-            labor_details: payload.labor_details.map((d, i) => ({ id: Date.now() + i, description: d.description })),
-            materials: payload.materials.map((m, i) => ({ id: Date.now() + 1000 + i, description: m.description, cost: m.cost })),
             property_id: payload.property_id || '',
             property_address: payload.property_address || prev.property_address
           }));
@@ -95,7 +87,6 @@ export const InvoiceBuilder = () => {
       });
       const json = await res.json();
       if (!res.ok || !json.success) throw new Error(json.error);
-      // Jobs can have multiple invoices (Progress Billing)
       return json.data;
     },
     enabled: !!session && !!formData.client_id
@@ -147,26 +138,15 @@ export const InvoiceBuilder = () => {
         property_id: existingInvoice.property_id || '',
         labor_title: existingInvoice.labor_title || '',
         labor_notes: existingInvoice.labor_notes || '',
-        labor_amount: existingInvoice.labor_amount || 0,
-        labor_details: (existingInvoice.invoice_items || [])
-          .filter(i => i.type === 'labor_detail')
-          .sort((a,b) => a.sort_order - b.sort_order)
-          .map(i => ({ id: i.id, description: i.description })),
-        materials: (existingInvoice.invoice_items || [])
-          .filter(i => i.type === 'material')
-          .sort((a,b) => a.sort_order - b.sort_order)
-          .map(i => ({ id: i.id, description: i.description, cost: i.total_price }))
+        labor_amount: existingInvoice.labor_amount || 0
       });
     }
-  }, [existingInvoice, id, navigate, showError]);
+  }, [existingInvoice, navigate, showError]);
 
-  // Auto-populate from URL params when data loads
   useEffect(() => {
-    if (presetClientId && presetPropertyId && clients.length > 0 && properties.length > 0 && !isEditing) {
-      const client = clients.find(c => c.id === presetClientId);
-      const prop = properties.find(p => p.id === presetPropertyId);
-      
-      // Only auto-populate if it hasn't been set yet (initial load)
+    if (!isEditing && formData.client_id && !formData.billed_to_name) {
+      const client = clients?.find(c => c.id === formData.client_id);
+      const prop = properties?.find(p => p.id === formData.property_id) || (clients?.find(c => c.id === formData.client_id && c.address) ? {address: clients.find(c => c.id === formData.client_id).address} : null);
       if (client && prop && !formData.billed_to_name) {
         const type = client.company_name ? 'company_name' : 'client_name';
         const billedToName = client.company_name || client.name;
@@ -198,8 +178,6 @@ export const InvoiceBuilder = () => {
         ...prev,
         labor_title: payload.labor_title || 'Labor',
         labor_amount: payload.labor_amount || 0,
-        labor_details: payload.labor_details.map((d, i) => ({ id: Date.now() + i, description: d.description })),
-        materials: payload.materials.map((m, i) => ({ id: Date.now() + 1000 + i, description: m.description, cost: m.cost })),
         property_address: payload.property_address || prev.property_address
       }));
       showSuccess("Auto-populated from job");
@@ -207,53 +185,6 @@ export const InvoiceBuilder = () => {
       showError(translateApiError(err));
     }
   };
-
-  const handleLaborDetailChange = (index, value) => {
-    let parsedValue = value;
-    if (/^\d+$/.test(value)) {
-      const hours = parseInt(value, 10);
-      if (hours > 0 && hours <= 24) {
-        const endHour = (9 + hours).toString().padStart(2, '0');
-        parsedValue = `09:00 - ${endHour}:00 - Labor`;
-      }
-    }
-    const newList = [...formData.labor_details];
-    newList[index].description = parsedValue;
-    setFormData(prev => ({ ...prev, labor_details: newList }));
-  };
-
-  const addLaborDetail = () => {
-    setFormData(prev => ({
-      ...prev,
-      labor_details: [...prev.labor_details, { id: Date.now(), description: '' }]
-    }));
-  };
-
-  const removeLaborDetail = (index) => {
-    const newList = formData.labor_details.filter((_, i) => i !== index);
-    setFormData(prev => ({ ...prev, labor_details: newList }));
-  };
-
-  const handleMaterialChange = (index, field, value) => {
-    const newList = [...formData.materials];
-    newList[index][field] = field === 'cost' ? (value === '' ? '' : parseFloat(value)) : value;
-    setFormData(prev => ({ ...prev, materials: newList }));
-  };
-
-  const addMaterial = () => {
-    setFormData(prev => ({
-      ...prev,
-      materials: [...prev.materials, { id: Date.now(), description: '', cost: 0 }]
-    }));
-  };
-
-  const removeMaterial = (index) => {
-    const newList = formData.materials.filter((_, i) => i !== index);
-    setFormData(prev => ({ ...prev, materials: newList }));
-  };
-
-  const materialsSubtotal = formData.materials.reduce((sum, m) => sum + (Number(m.cost) || 0), 0);
-  const totalDue = (Number(formData.labor_amount) || 0) + materialsSubtotal;
 
   const saveMutation = useMutation({
     mutationFn: async () => {
@@ -278,9 +209,7 @@ export const InvoiceBuilder = () => {
         job_id: formData.job_id || null,
         property_id: formData.property_id || null,
         billed_to_name: finalBilledToName,
-        labor_amount: Number(formData.labor_amount) || 0,
-        labor_details: formData.labor_details.filter(d => d.description.trim()),
-        materials: formData.materials.filter(m => m.description.trim()).map(m => ({ ...m, cost: Number(m.cost) || 0 }))
+        labor_amount: Number(formData.labor_amount) || 0
       };
       
       const url = `${import.meta.env.VITE_API_URL || 'http://localhost:4000'}/api/invoices${isEditing ? `/${id}` : ''}`;
@@ -301,12 +230,70 @@ export const InvoiceBuilder = () => {
     onSuccess: (data) => {
       showSuccess(`Invoice ${isEditing ? 'updated' : 'created'} successfully`);
       queryClient.invalidateQueries(['invoices']);
-      navigate(`/invoices/${data.id}`);
+      if (!isEditing) {
+        navigate(`/invoices/${data.id}/edit`);
+      } else {
+        queryClient.invalidateQueries(['invoice', id]);
+      }
     },
     onError: (err) => {
       showError(translateApiError(err));
     }
   });
+
+  // LINE ITEM MUTATIONS
+  const addItemMutation = useMutation({
+    mutationFn: async (items) => {
+      for (const item of items) {
+        const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:4000'}/api/invoices/${id}/items`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session.access_token}` },
+          body: JSON.stringify(item)
+        });
+        const json = await res.json();
+        if (!res.ok) throw new Error(json.error);
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries(['invoice', id]);
+      showSuccess('Items added to draft');
+    },
+    onError: (err) => showError(err.message)
+  });
+
+  const updateItemMutation = useMutation({
+    mutationFn: async ({ itemId, updates }) => {
+      const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:4000'}/api/invoices/${id}/items/${itemId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session.access_token}` },
+        body: JSON.stringify(updates)
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error);
+    },
+    onSuccess: () => queryClient.invalidateQueries(['invoice', id]),
+    onError: (err) => showError(err.message)
+  });
+
+  const deleteItemMutation = useMutation({
+    mutationFn: async (itemId) => {
+      const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:4000'}/api/invoices/${id}/items/${itemId}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${session.access_token}` }
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries(['invoice', id]);
+      showSuccess('Item removed');
+    },
+    onError: (err) => showError(err.message)
+  });
+
+  const lineItems = existingInvoice?.invoice_line_items?.sort((a,b) => a.sort_order - b.sort_order) || [];
+  const lineItemsSubtotal = lineItems.reduce((sum, item) => sum + Number(item.amount || 0), 0);
+  const totalDue = (Number(formData.labor_amount) || 0) + lineItemsSubtotal;
 
   return (
     <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -317,7 +304,7 @@ export const InvoiceBuilder = () => {
             Back to Invoices
           </button>
           <h1 className="text-headline-md font-bold text-gray-900">
-            {isEditing ? `Edit Invoice` : 'Create Invoice'}
+            {isEditing ? `Edit Draft Invoice` : 'Create New Invoice'}
           </h1>
         </div>
         <div className="flex gap-4">
@@ -333,12 +320,12 @@ export const InvoiceBuilder = () => {
             disabled={saveMutation.isLoading || !formData.client_id}
             className="px-6 py-2 bg-primary text-black rounded-lg font-title-sm hover:opacity-90 disabled:opacity-50"
           >
-            {saveMutation.isLoading ? 'Saving...' : 'Save as Draft'}
+            {saveMutation.isLoading ? 'Saving...' : (isEditing ? 'Save Details' : 'Create Draft Invoice')}
           </button>
         </div>
       </div>
 
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden mb-8">
         <div className="p-8 space-y-8">
           
           {/* Header Info */}
@@ -381,8 +368,6 @@ export const InvoiceBuilder = () => {
                       const client = clients.find(c => c.id === formData.client_id);
                       let billedToName = client?.name || '';
                       if (type === 'company_name' && client?.company_name) billedToName = client.company_name;
-                      
-                      // CRITICAL: We only update the bill_to entity. We never erase the physical property address here.
                       setFormData({...formData, bill_to_type: type, billed_to_name: billedToName});
                     }}
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary bg-white mb-3"
@@ -458,7 +443,7 @@ export const InvoiceBuilder = () => {
               
               <div>
                 <label className="block text-label-md text-gray-700 mb-1 flex justify-between">
-                  <span>Auto-populate from Job (Optional)</span>
+                  <span>Linked Job (Optional)</span>
                   {formData.job_id && <span className="text-green-600 text-xs font-bold">Linked</span>}
                 </label>
                 <Tooltip text={isEditing ? "An invoice is permanently linked to its parent job. To bill a different job, delete this draft and create a new one." : ""} position="top">
@@ -476,7 +461,6 @@ export const InvoiceBuilder = () => {
                     </select>
                   </div>
                 </Tooltip>
-                <p className="text-xs text-gray-500 mt-1">This will overwrite the labor and materials below.</p>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
@@ -501,9 +485,9 @@ export const InvoiceBuilder = () => {
             </div>
           </div>
 
-          {/* Labor Section */}
-          <div className="border-b border-gray-100 pb-8">
-            <h3 className="font-title-lg font-bold text-gray-900 border-b border-gray-200 pb-2 mb-4">Labor & Services</h3>
+          {/* Labor Base Section */}
+          <div className="pb-4">
+            <h3 className="font-title-lg font-bold text-gray-900 border-b border-gray-200 pb-2 mb-4">Base Labor (Optional)</h3>
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
               <div className="md:col-span-3">
                 <label className="block text-label-md text-gray-700 mb-1">Labor Title</label>
@@ -516,7 +500,7 @@ export const InvoiceBuilder = () => {
                 />
               </div>
               <div>
-                <label className="block text-label-md text-gray-700 mb-1">Labor Amount ($)</label>
+                <label className="block text-label-md text-gray-700 mb-1">Base Labor Amount ($)</label>
                 <input 
                   type="number" 
                   min="0"
@@ -527,139 +511,117 @@ export const InvoiceBuilder = () => {
                 />
               </div>
             </div>
-
-            <div className="flex flex-col md:flex-row gap-4 mb-4">
-              <div className="flex-1">
-                <label className="block text-label-md text-gray-700 mb-1">Labor Notes (Optional)</label>
-                <input 
-                  type="text" 
-                  value={formData.labor_notes}
-                  onChange={(e) => setFormData({...formData, labor_notes: e.target.value})}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary italic text-sm"
-                  placeholder="e.g. Minimum 1-hour service charge applied"
-                />
-              </div>
-              <div className="flex items-center pt-6">
-                <label className="flex items-center gap-2 cursor-pointer text-gray-700 font-medium select-none">
-                  <input
-                    type="checkbox"
-                    className="w-4 h-4 text-primary focus:ring-primary rounded border-gray-300 cursor-pointer"
-                    onChange={(e) => {
-                      const amount = Number(formData.labor_amount || 0);
-                      setFormData(prev => ({
-                        ...prev,
-                        labor_amount: e.target.checked ? amount + 30 : amount - 30
-                      }));
-                    }}
-                  />
-                  <span>Add $30 Service Fee</span>
-                </label>
-              </div>
-            </div>
-
-            <div className="space-y-3">
-              <label className="block text-label-md text-gray-700">Detailed Descriptions (Bullet Points)</label>
-              {formData.labor_details.map((item, index) => (
-                <div key={item.id} className="flex gap-2 items-center">
-                  <span className="material-symbols-outlined text-gray-400 text-sm">fiber_manual_record</span>
-                  <input 
-                    type="text" 
-                    value={item.description}
-                    onChange={(e) => handleLaborDetailChange(index, e.target.value)}
-                    className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary"
-                    placeholder="Describe work performed..."
-                  />
-                  <button 
-                    onClick={() => removeLaborDetail(index)}
-                    className="p-2 text-gray-400 hover:text-red-600 rounded-full hover:bg-gray-100 transition-colors"
-                  >
-                    <span className="material-symbols-outlined">close</span>
-                  </button>
-                </div>
-              ))}
-              <div className="flex gap-4 mt-2">
-                <button 
-                  onClick={addLaborDetail}
-                  className="inline-flex items-center gap-1 text-sm font-medium text-primary hover:underline"
-                >
-                  <span className="material-symbols-outlined text-[18px]">add</span>
-                  Add Bullet Point
-                </button>
-              </div>
+            <div>
+              <label className="block text-label-md text-gray-700 mb-1">Labor Notes (Optional)</label>
+              <input 
+                type="text" 
+                value={formData.labor_notes}
+                onChange={(e) => setFormData({...formData, labor_notes: e.target.value})}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary italic text-sm"
+                placeholder="e.g. Minimum 1-hour service charge applied"
+              />
             </div>
           </div>
+        </div>
+      </div>
 
-          {/* Materials Section */}
-          <div className="border-b border-gray-100 pb-8">
-            <h3 className="font-title-lg font-bold text-gray-900 border-b border-gray-200 pb-2 mb-4">Materials</h3>
+      {isEditing ? (
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden mb-8">
+          <div className="p-8">
+            <h3 className="font-title-lg font-bold text-gray-900 border-b border-gray-200 pb-2 mb-6">Itemized Line Items</h3>
             
-            <div className="space-y-3">
-              {formData.materials.map((item, index) => (
-                <div key={item.id} className="flex gap-4 items-center">
+            <SmartDropdown 
+              jobId={formData.job_id} 
+              session={session} 
+              onAddItems={(items) => addItemMutation.mutate(items)} 
+            />
+
+            <div className="space-y-3 mt-6">
+              {lineItems.map((item) => (
+                <div key={item.id} className="flex gap-4 items-start bg-gray-50 p-4 rounded-lg border border-gray-100 relative group">
                   <div className="flex-1">
-                    <input 
-                      type="text" 
-                      value={item.description}
-                      onChange={(e) => handleMaterialChange(index, 'description', e.target.value)}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary"
-                      placeholder="Material description..."
+                    <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">
+                      {item.source_type} {item.source_id ? '(Linked)' : '(Ad Hoc)'}
+                    </label>
+                    <textarea 
+                      defaultValue={item.description}
+                      onBlur={(e) => updateItemMutation.mutate({ itemId: item.id, updates: { description: e.target.value } })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-primary focus:border-primary text-sm"
+                      rows="2"
                     />
                   </div>
-                  <div className="w-32 relative">
-                    <span className="absolute left-3 top-2.5 text-gray-500">$</span>
+                  <div className="w-32">
+                    <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Amount ($)</label>
                     <input 
                       type="number" 
                       min="0"
                       step="0.01"
-                      value={item.cost}
-                      onChange={(e) => handleMaterialChange(index, 'cost', e.target.value)}
-                      className="w-full pl-7 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary text-right"
+                      defaultValue={item.amount}
+                      onBlur={(e) => updateItemMutation.mutate({ itemId: item.id, updates: { amount: Number(e.target.value) } })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-primary focus:border-primary text-right font-medium text-sm"
                     />
                   </div>
                   <button 
-                    onClick={() => removeMaterial(index)}
-                    className="p-2 text-gray-400 hover:text-red-600 rounded-full hover:bg-gray-100 transition-colors"
+                    onClick={() => {
+                      if (window.confirm('Remove this item from the invoice?')) {
+                        deleteItemMutation.mutate(item.id);
+                      }
+                    }}
+                    className="mt-6 text-gray-400 hover:text-red-600 transition-colors"
+                    title="Remove Item"
                   >
-                    <span className="material-symbols-outlined">close</span>
+                    <span className="material-symbols-outlined text-[20px]">delete</span>
                   </button>
                 </div>
               ))}
-              
-              <div className="flex gap-4 mt-2">
-                <button 
-                  onClick={addMaterial}
-                  className="inline-flex items-center gap-1 text-sm font-medium text-primary hover:underline"
+
+              {lineItems.length === 0 && (
+                <div className="text-center py-8 bg-gray-50 rounded-lg border border-gray-200 border-dashed">
+                  <p className="text-gray-500 font-medium">No itemized lines added yet.</p>
+                  <p className="text-sm text-gray-400 mt-1">Use the dropdown above to add items from the job, or add custom charges.</p>
+                </div>
+              )}
+
+              <div className="pt-4 border-t border-gray-200 mt-6">
+                <button
+                  type="button"
+                  onClick={() => addItemMutation.mutate([{ source_type: 'ad_hoc', description: 'Custom Charge', amount: 0 }])}
+                  className="text-primary font-bold text-sm hover:text-primary-dark flex items-center gap-1"
                 >
                   <span className="material-symbols-outlined text-[18px]">add</span>
-                  Add Material Line
+                  Add Custom Ad-Hoc Charge
                 </button>
               </div>
             </div>
-          </div>
 
-          {/* Summary */}
-          <div className="flex justify-end">
-            <div className="w-72 space-y-3">
-              <div className="flex justify-between text-gray-600 text-sm">
-                <span>Labor Subtotal:</span>
-                <span>${Number(formData.labor_amount || 0).toFixed(2)}</span>
-              </div>
-              <div className="flex justify-between text-gray-600 text-sm">
-                <span>Materials Subtotal:</span>
-                <span>${materialsSubtotal.toFixed(2)}</span>
-              </div>
-              <div className="flex justify-between font-bold text-gray-900 text-xl border-t border-gray-200 pt-3">
-                <span>Total Due:</span>
-                <span>${totalDue.toFixed(2)}</span>
+            {/* Totals Section */}
+            <div className="mt-8 flex justify-end">
+              <div className="w-72 bg-gray-50 p-6 rounded-xl border border-gray-200 shadow-inner">
+                <div className="space-y-3 mb-4 text-sm">
+                  <div className="flex justify-between text-gray-600">
+                    <span>Base Labor:</span>
+                    <span>${(Number(formData.labor_amount) || 0).toFixed(2)}</span>
+                  </div>
+                  <div className="flex justify-between text-gray-600">
+                    <span>Itemized Line Items:</span>
+                    <span>${lineItemsSubtotal.toFixed(2)}</span>
+                  </div>
+                </div>
+                <div className="flex justify-between font-bold text-gray-900 text-xl border-t border-gray-200 pt-3">
+                  <span>Total Due:</span>
+                  <span>${totalDue.toFixed(2)}</span>
+                </div>
               </div>
             </div>
           </div>
-
         </div>
-      </div>
-
-
-
+      ) : (
+        <div className="bg-blue-50 border border-blue-200 p-6 rounded-xl text-blue-800 text-center shadow-sm">
+          <span className="material-symbols-outlined text-[32px] mb-2 text-blue-500">info</span>
+          <h3 className="font-bold text-lg mb-1">Almost there!</h3>
+          <p>Please click <strong>"Create Draft Invoice"</strong> in the top right. Once the draft is saved, you will be able to add itemized charges from the job.</p>
+        </div>
+      )}
     </div>
   );
 };
