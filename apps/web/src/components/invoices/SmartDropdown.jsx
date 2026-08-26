@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 
-export const SmartDropdown = ({ jobId, session, onAddItems }) => {
+export const SmartDropdown = ({ jobId, session, onAddItems, filterType, existingItems = [] }) => {
   const [showBilled, setShowBilled] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
 
@@ -9,7 +9,7 @@ export const SmartDropdown = ({ jobId, session, onAddItems }) => {
   const { data: materials = [], isLoading: loadingMaterials } = useQuery({
     queryKey: ['job_materials', jobId, showBilled],
     queryFn: async () => {
-      const statusList = showBilled ? 'unbilled,billed' : 'unbilled';
+      const statusList = showBilled ? 'unbilled,on_draft,billed' : 'unbilled';
       const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:4000'}/api/jobs/${jobId}/materials?billing_status=${statusList}`, {
         headers: { 'Authorization': `Bearer ${session.access_token}` }
       });
@@ -17,13 +17,13 @@ export const SmartDropdown = ({ jobId, session, onAddItems }) => {
       if (!res.ok) throw new Error(json.error);
       return json.data;
     },
-    enabled: !!session && !!jobId && isOpen
+    enabled: !!session && !!jobId && isOpen && (!filterType || filterType === 'material')
   });
 
   const { data: hours = [], isLoading: loadingHours } = useQuery({
     queryKey: ['job_hours', jobId, showBilled],
     queryFn: async () => {
-      const statusList = showBilled ? 'unbilled,billed' : 'unbilled';
+      const statusList = showBilled ? 'unbilled,on_draft,billed' : 'unbilled';
       const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:4000'}/api/jobs/${jobId}/hours?billing_status=${statusList}`, {
         headers: { 'Authorization': `Bearer ${session.access_token}` }
       });
@@ -31,7 +31,7 @@ export const SmartDropdown = ({ jobId, session, onAddItems }) => {
       if (!res.ok) throw new Error(json.error);
       return json.data;
     },
-    enabled: !!session && !!jobId && isOpen
+    enabled: !!session && !!jobId && isOpen && (!filterType || filterType === 'labor')
   });
 
   const handleAddItem = (item, type) => {
@@ -41,7 +41,6 @@ export const SmartDropdown = ({ jobId, session, onAddItems }) => {
       description: item.description || (type === 'labor' ? `${item.hours} hours logged` : 'Material'),
       amount: item.cost || 0
     }]);
-    setIsOpen(false);
   };
 
   const handleAddAll = () => {
@@ -61,13 +60,16 @@ export const SmartDropdown = ({ jobId, session, onAddItems }) => {
     ];
     if (items.length > 0) {
       onAddItems(items);
-      setIsOpen(false);
     }
   };
 
   if (!jobId) return null;
 
   const totalItems = materials.length + hours.length;
+
+  const isItemAdded = (id, type) => {
+    return existingItems.some(i => i.source_id === id && i.source_type === type);
+  };
 
   return (
     <div className="relative inline-block text-left w-full mb-4">
@@ -79,7 +81,7 @@ export const SmartDropdown = ({ jobId, session, onAddItems }) => {
         >
           <div className="flex items-center gap-2">
             <span className="material-symbols-outlined text-[20px]">add_circle</span>
-            Add items from Job
+            {filterType === 'labor' ? 'Add Labor from Job' : filterType === 'material' ? 'Add Materials from Job' : 'Add items from Job'}
           </div>
           <span className="material-symbols-outlined text-[20px]">
             {isOpen ? 'expand_less' : 'expand_more'}
@@ -119,20 +121,36 @@ export const SmartDropdown = ({ jobId, session, onAddItems }) => {
                   <div>
                     <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2 border-b pb-1">Materials</h4>
                     <ul className="space-y-1">
-                      {materials.map(m => (
-                        <li key={m.id} className="flex justify-between items-center text-sm p-2 hover:bg-gray-50 rounded group cursor-pointer transition-colors" onClick={() => handleAddItem(m, 'material')}>
-                          <div className="flex items-center">
-                            <span className="material-symbols-outlined text-gray-400 mr-2 text-[18px] group-hover:text-primary">add</span>
-                            <span className="font-medium text-gray-900">{m.description}</span>
-                            {m.billing_status === 'billed' && (
-                              <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-yellow-100 text-yellow-800 uppercase tracking-wide">
-                                Billed
-                              </span>
-                            )}
-                          </div>
-                          <span className="font-medium text-gray-700">${m.cost?.toFixed(2)}</span>
-                        </li>
-                      ))}
+                      {materials.map(m => {
+                        const added = isItemAdded(m.id, 'material');
+                        return (
+                          <li 
+                            key={m.id} 
+                            className={`flex justify-between items-center text-sm p-2 rounded transition-colors ${added ? 'opacity-50 cursor-not-allowed bg-gray-50' : 'hover:bg-gray-50 group cursor-pointer'}`}
+                            onClick={() => !added && handleAddItem(m, 'material')}
+                          >
+                            <div className="flex items-center">
+                              {added ? (
+                                <span className="material-symbols-outlined text-green-500 mr-2 text-[18px]">check_circle</span>
+                              ) : (
+                                <span className="material-symbols-outlined text-gray-400 mr-2 text-[18px] group-hover:text-primary">add</span>
+                              )}
+                              <span className="font-medium text-gray-900">{m.description}</span>
+                              {m.billing_status === 'billed' && !added && (
+                                <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-yellow-100 text-yellow-800 uppercase tracking-wide">
+                                  Billed
+                                </span>
+                              )}
+                              {added && (
+                                <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-green-100 text-green-800 uppercase tracking-wide">
+                                  Added
+                                </span>
+                              )}
+                            </div>
+                            <span className="font-medium text-gray-700">${m.cost?.toFixed(2)}</span>
+                          </li>
+                        );
+                      })}
                     </ul>
                   </div>
                 )}
@@ -141,25 +159,50 @@ export const SmartDropdown = ({ jobId, session, onAddItems }) => {
                   <div>
                     <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2 border-b pb-1">Labor / Hours</h4>
                     <ul className="space-y-1">
-                      {hours.map(h => (
-                        <li key={h.id} className="flex justify-between items-center text-sm p-2 hover:bg-gray-50 rounded group cursor-pointer transition-colors" onClick={() => handleAddItem(h, 'labor')}>
-                          <div className="flex items-center">
-                            <span className="material-symbols-outlined text-gray-400 mr-2 text-[18px] group-hover:text-primary">add</span>
-                            <span className="font-medium text-gray-900">{h.description || `${h.hours} hrs on ${h.date}`}</span>
-                            {h.billing_status === 'billed' && (
-                              <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-yellow-100 text-yellow-800 uppercase tracking-wide">
-                                Billed
-                              </span>
-                            )}
-                          </div>
-                          <span className="text-gray-500">{h.hours} hrs</span>
-                        </li>
-                      ))}
+                      {hours.map(h => {
+                        const added = isItemAdded(h.id, 'labor');
+                        return (
+                          <li 
+                            key={h.id} 
+                            className={`flex justify-between items-center text-sm p-2 rounded transition-colors ${added ? 'opacity-50 cursor-not-allowed bg-gray-50' : 'hover:bg-gray-50 group cursor-pointer'}`}
+                            onClick={() => !added && handleAddItem(h, 'labor')}
+                          >
+                            <div className="flex items-center">
+                              {added ? (
+                                <span className="material-symbols-outlined text-green-500 mr-2 text-[18px]">check_circle</span>
+                              ) : (
+                                <span className="material-symbols-outlined text-gray-400 mr-2 text-[18px] group-hover:text-primary">add</span>
+                              )}
+                              <span className="font-medium text-gray-900">{h.description || `${h.hours} hrs on ${h.date}`}</span>
+                              {h.billing_status === 'billed' && !added && (
+                                <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-yellow-100 text-yellow-800 uppercase tracking-wide">
+                                  Billed
+                                </span>
+                              )}
+                              {added && (
+                                <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-green-100 text-green-800 uppercase tracking-wide">
+                                  Added
+                                </span>
+                              )}
+                            </div>
+                            <span className="text-gray-500">{h.hours} hrs</span>
+                          </li>
+                        );
+                      })}
                     </ul>
                   </div>
                 )}
               </div>
             )}
+          </div>
+          
+          <div className="mt-4 pt-3 border-t border-gray-100 flex justify-end">
+            <button 
+              onClick={() => setIsOpen(false)}
+              className="text-sm font-medium text-gray-500 hover:text-gray-800 transition-colors"
+            >
+              Close Menu
+            </button>
           </div>
         </div>
       )}

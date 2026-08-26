@@ -541,11 +541,22 @@ export const InvoiceBuilder = () => {
           <div className="p-8">
             <h3 className="font-title-lg font-bold text-gray-900 border-b border-gray-200 pb-2 mb-6">Itemized Line Items</h3>
             
-            <SmartDropdown 
-              jobId={formData.job_id} 
-              session={session} 
-              onAddItems={(items) => addItemMutation.mutate(items)} 
-            />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <SmartDropdown 
+                jobId={formData.job_id} 
+                session={session} 
+                filterType="labor"
+                existingItems={lineItems}
+                onAddItems={(items) => addItemMutation.mutate(items)} 
+              />
+              <SmartDropdown 
+                jobId={formData.job_id} 
+                session={session} 
+                filterType="material"
+                existingItems={lineItems}
+                onAddItems={(items) => addItemMutation.mutate(items)} 
+              />
+            </div>
 
             <div className="space-y-3 mt-6">
               {lineItems.map((item) => (
