@@ -338,7 +338,7 @@ export const InvoiceBuilder = () => {
         </div>
       </div>
 
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden mb-8">
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200 mb-8">
         <div className="p-8 space-y-8">
           
           {/* Header Info */}
@@ -539,14 +539,14 @@ export const InvoiceBuilder = () => {
       </div>
 
       {isEditing ? (
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden mb-8">
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 mb-8">
           <div className="p-8">
             <h3 className="font-title-lg font-bold text-gray-900 border-b border-gray-200 pb-2 mb-6">Itemized Billing</h3>
             
             <div className="space-y-8 mt-6">
               {/* Labor Section */}
-              <div className="border border-gray-200 rounded-xl overflow-hidden bg-white">
-                <div className="bg-gray-50 border-b border-gray-200 p-4 flex justify-between items-center">
+              <div className="border border-gray-200 rounded-xl bg-white">
+                <div className="bg-gray-50 border-b border-gray-200 p-4 rounded-t-xl flex justify-between items-center">
                   <h4 className="font-bold text-gray-900 text-lg">Labor & Services</h4>
                   <div className="w-1/2 max-w-sm">
                     <SmartDropdown 
@@ -611,8 +611,8 @@ export const InvoiceBuilder = () => {
               </div>
 
               {/* Materials Section */}
-              <div className="border border-gray-200 rounded-xl overflow-hidden bg-white">
-                <div className="bg-gray-50 border-b border-gray-200 p-4 flex justify-between items-center">
+              <div className="border border-gray-200 rounded-xl bg-white">
+                <div className="bg-gray-50 border-b border-gray-200 p-4 rounded-t-xl flex justify-between items-center">
                   <h4 className="font-bold text-gray-900 text-lg">Materials & Parts</h4>
                   <div className="w-1/2 max-w-sm">
                     <SmartDropdown 

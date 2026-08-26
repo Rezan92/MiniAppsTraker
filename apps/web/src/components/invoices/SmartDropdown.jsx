@@ -83,7 +83,7 @@ export const SmartDropdown = ({ jobId, session, onAddItems, filterType, existing
   };
 
   return (
-    <div className="relative inline-block text-left w-full mb-4" ref={dropdownRef}>
+    <div className="relative inline-block text-left w-full" ref={dropdownRef}>
       <div>
         <button
           type="button"
