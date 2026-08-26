@@ -7,6 +7,7 @@ import { translateApiError } from '../../utils/errorTranslator';
 import { DatePicker } from '../common/DatePicker';
 import { Tooltip } from '../common/Tooltip';
 import { SmartDropdown } from './SmartDropdown';
+import { ConfirmModal } from '../common/ConfirmModal';
 
 export const InvoiceBuilder = () => {
   const { id } = useParams();
@@ -20,7 +21,7 @@ export const InvoiceBuilder = () => {
   const fromJobId = location.state?.fromJob;
   const presetClientId = searchParams.get('client_id');
   const presetPropertyId = searchParams.get('property_id');
-  const presetJobId = searchParams.get('job_id') || fromJobId;
+  const [deleteItemId, setDeleteItemId] = useState(null);
 
   const handleBackNavigation = () => {
     if (fromJobId) {
@@ -539,80 +540,139 @@ export const InvoiceBuilder = () => {
       {isEditing ? (
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden mb-8">
           <div className="p-8">
-            <h3 className="font-title-lg font-bold text-gray-900 border-b border-gray-200 pb-2 mb-6">Itemized Line Items</h3>
+            <h3 className="font-title-lg font-bold text-gray-900 border-b border-gray-200 pb-2 mb-6">Itemized Billing</h3>
             
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <SmartDropdown 
-                jobId={formData.job_id} 
-                session={session} 
-                filterType="labor"
-                existingItems={lineItems}
-                onAddItems={(items) => addItemMutation.mutate(items)} 
-              />
-              <SmartDropdown 
-                jobId={formData.job_id} 
-                session={session} 
-                filterType="material"
-                existingItems={lineItems}
-                onAddItems={(items) => addItemMutation.mutate(items)} 
-              />
-            </div>
-
-            <div className="space-y-3 mt-6">
-              {lineItems.map((item) => (
-                <div key={item.id} className="flex gap-4 items-start bg-gray-50 p-4 rounded-lg border border-gray-100 relative group">
-                  <div className="flex-1">
-                    <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">
-                      {item.source_type} {item.source_id ? '(Linked)' : '(Ad Hoc)'}
-                    </label>
-                    <textarea 
-                      defaultValue={item.description}
-                      onBlur={(e) => updateItemMutation.mutate({ itemId: item.id, updates: { description: e.target.value } })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-primary focus:border-primary text-sm"
-                      rows="2"
+            <div className="space-y-8 mt-6">
+              {/* Labor Section */}
+              <div className="border border-gray-200 rounded-xl overflow-hidden bg-white">
+                <div className="bg-gray-50 border-b border-gray-200 p-4 flex justify-between items-center">
+                  <h4 className="font-bold text-gray-900 text-lg">Labor & Services</h4>
+                  <div className="w-1/2 max-w-sm">
+                    <SmartDropdown 
+                      jobId={formData.job_id} 
+                      session={session} 
+                      filterType="labor"
+                      existingItems={lineItems}
+                      onAddItems={(items) => addItemMutation.mutate(items)} 
                     />
                   </div>
-                  <div className="w-32">
-                    <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Amount ($)</label>
-                    <input 
-                      type="number" 
-                      min="0"
-                      step="0.01"
-                      defaultValue={item.amount}
-                      onBlur={(e) => updateItemMutation.mutate({ itemId: item.id, updates: { amount: Number(e.target.value) } })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-primary focus:border-primary text-right font-medium text-sm"
+                </div>
+                <div className="p-4 space-y-3">
+                  {lineItems.filter(i => i.source_type === 'labor' || i.source_type === 'ad_hoc').map(item => (
+                    <div key={item.id} className="flex gap-4 items-start bg-gray-50 p-4 rounded-lg border border-gray-100 relative group">
+                      <div className="flex-1">
+                        <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">
+                          {item.source_type === 'ad_hoc' ? 'Custom Labor' : (item.source_id ? 'Logged Hours' : 'Labor')}
+                        </label>
+                        <textarea 
+                          defaultValue={item.description}
+                          onBlur={(e) => updateItemMutation.mutate({ itemId: item.id, updates: { description: e.target.value } })}
+                          className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-primary focus:border-primary text-sm"
+                          rows="2"
+                        />
+                      </div>
+                      <div className="w-32">
+                        <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Amount ($)</label>
+                        <input 
+                          type="number" 
+                          min="0"
+                          step="0.01"
+                          defaultValue={item.amount}
+                          onBlur={(e) => updateItemMutation.mutate({ itemId: item.id, updates: { amount: Number(e.target.value) } })}
+                          className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-primary focus:border-primary text-right font-medium text-sm"
+                        />
+                      </div>
+                      <button 
+                        onClick={() => setDeleteItemId(item.id)}
+                        className="mt-6 text-gray-400 hover:text-red-600 transition-colors"
+                        title="Remove Item"
+                      >
+                        <span className="material-symbols-outlined text-[20px]">delete</span>
+                      </button>
+                    </div>
+                  ))}
+                  {lineItems.filter(i => i.source_type === 'labor' || i.source_type === 'ad_hoc').length === 0 && (
+                    <div className="text-center py-6 bg-gray-50 rounded-lg border border-gray-200 border-dashed">
+                      <p className="text-gray-500 font-medium">No labor items added.</p>
+                    </div>
+                  )}
+                  <div className="pt-2">
+                    <button
+                      type="button"
+                      onClick={() => addItemMutation.mutate([{ source_type: 'labor', description: 'Custom Labor Charge', amount: 0 }])}
+                      className="text-primary font-bold text-sm hover:text-primary-dark flex items-center gap-1"
+                    >
+                      <span className="material-symbols-outlined text-[18px]">add</span>
+                      Add Custom Labor
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Materials Section */}
+              <div className="border border-gray-200 rounded-xl overflow-hidden bg-white">
+                <div className="bg-gray-50 border-b border-gray-200 p-4 flex justify-between items-center">
+                  <h4 className="font-bold text-gray-900 text-lg">Materials & Parts</h4>
+                  <div className="w-1/2 max-w-sm">
+                    <SmartDropdown 
+                      jobId={formData.job_id} 
+                      session={session} 
+                      filterType="material"
+                      existingItems={lineItems}
+                      onAddItems={(items) => addItemMutation.mutate(items)} 
                     />
                   </div>
-                  <button 
-                    onClick={() => {
-                      if (window.confirm('Remove this item from the invoice?')) {
-                        deleteItemMutation.mutate(item.id);
-                      }
-                    }}
-                    className="mt-6 text-gray-400 hover:text-red-600 transition-colors"
-                    title="Remove Item"
-                  >
-                    <span className="material-symbols-outlined text-[20px]">delete</span>
-                  </button>
                 </div>
-              ))}
-
-              {lineItems.length === 0 && (
-                <div className="text-center py-8 bg-gray-50 rounded-lg border border-gray-200 border-dashed">
-                  <p className="text-gray-500 font-medium">No itemized lines added yet.</p>
-                  <p className="text-sm text-gray-400 mt-1">Use the dropdown above to add items from the job, or add custom charges.</p>
+                <div className="p-4 space-y-3">
+                  {lineItems.filter(i => i.source_type === 'material').map(item => (
+                    <div key={item.id} className="flex gap-4 items-start bg-gray-50 p-4 rounded-lg border border-gray-100 relative group">
+                      <div className="flex-1">
+                        <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">
+                          {item.source_id ? 'Material (Linked)' : 'Material (Custom)'}
+                        </label>
+                        <textarea 
+                          defaultValue={item.description}
+                          onBlur={(e) => updateItemMutation.mutate({ itemId: item.id, updates: { description: e.target.value } })}
+                          className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-primary focus:border-primary text-sm"
+                          rows="2"
+                        />
+                      </div>
+                      <div className="w-32">
+                        <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Amount ($)</label>
+                        <input 
+                          type="number" 
+                          min="0"
+                          step="0.01"
+                          defaultValue={item.amount}
+                          onBlur={(e) => updateItemMutation.mutate({ itemId: item.id, updates: { amount: Number(e.target.value) } })}
+                          className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-primary focus:border-primary text-right font-medium text-sm"
+                        />
+                      </div>
+                      <button 
+                        onClick={() => setDeleteItemId(item.id)}
+                        className="mt-6 text-gray-400 hover:text-red-600 transition-colors"
+                        title="Remove Item"
+                      >
+                        <span className="material-symbols-outlined text-[20px]">delete</span>
+                      </button>
+                    </div>
+                  ))}
+                  {lineItems.filter(i => i.source_type === 'material').length === 0 && (
+                    <div className="text-center py-6 bg-gray-50 rounded-lg border border-gray-200 border-dashed">
+                      <p className="text-gray-500 font-medium">No materials added.</p>
+                    </div>
+                  )}
+                  <div className="pt-2">
+                    <button
+                      type="button"
+                      onClick={() => addItemMutation.mutate([{ source_type: 'material', description: 'Custom Material Charge', amount: 0 }])}
+                      className="text-primary font-bold text-sm hover:text-primary-dark flex items-center gap-1"
+                    >
+                      <span className="material-symbols-outlined text-[18px]">add</span>
+                      Add Custom Material
+                    </button>
+                  </div>
                 </div>
-              )}
-
-              <div className="pt-4 border-t border-gray-200 mt-6">
-                <button
-                  type="button"
-                  onClick={() => addItemMutation.mutate([{ source_type: 'ad_hoc', description: 'Custom Charge', amount: 0 }])}
-                  className="text-primary font-bold text-sm hover:text-primary-dark flex items-center gap-1"
-                >
-                  <span className="material-symbols-outlined text-[18px]">add</span>
-                  Add Custom Ad-Hoc Charge
-                </button>
               </div>
             </div>
 
@@ -644,6 +704,18 @@ export const InvoiceBuilder = () => {
           <p>Please click <strong>"Create Draft Invoice"</strong> in the top right. Once the draft is saved, you will be able to add itemized charges from the job.</p>
         </div>
       )}
+
+      <ConfirmModal 
+        open={!!deleteItemId}
+        onClose={() => setDeleteItemId(null)}
+        onConfirm={() => {
+          if (deleteItemId) deleteItemMutation.mutate(deleteItemId);
+        }}
+        title="Delete Item"
+        message="Are you sure you want to remove this item from the invoice? This cannot be undone."
+        confirmText="Remove Item"
+        confirmColor="red"
+      />
     </div>
   );
 };

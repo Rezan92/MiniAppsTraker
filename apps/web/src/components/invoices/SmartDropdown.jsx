@@ -1,9 +1,20 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 
 export const SmartDropdown = ({ jobId, session, onAddItems, filterType, existingItems = [] }) => {
   const [showBilled, setShowBilled] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
+  const dropdownRef = useRef(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setIsOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   // Fetch unbilled/billed items
   const { data: materials = [], isLoading: loadingMaterials } = useQuery({
@@ -72,7 +83,7 @@ export const SmartDropdown = ({ jobId, session, onAddItems, filterType, existing
   };
 
   return (
-    <div className="relative inline-block text-left w-full mb-4">
+    <div className="relative inline-block text-left w-full mb-4" ref={dropdownRef}>
       <div>
         <button
           type="button"
@@ -117,7 +128,7 @@ export const SmartDropdown = ({ jobId, session, onAddItems, filterType, existing
               <p className="text-sm text-gray-500 text-center py-4">No unbilled items found for this job.</p>
             ) : (
               <div className="space-y-6">
-                {materials.length > 0 && (
+                {materials.length > 0 && (!filterType || filterType === 'material') && (
                   <div>
                     <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2 border-b pb-1">Materials</h4>
                     <ul className="space-y-1">
@@ -155,7 +166,7 @@ export const SmartDropdown = ({ jobId, session, onAddItems, filterType, existing
                   </div>
                 )}
                 
-                {hours.length > 0 && (
+                {hours.length > 0 && (!filterType || filterType === 'labor') && (
                   <div>
                     <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2 border-b pb-1">Labor / Hours</h4>
                     <ul className="space-y-1">
