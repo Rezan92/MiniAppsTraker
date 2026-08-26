@@ -21,6 +21,7 @@ export const InvoiceBuilder = () => {
   const fromJobId = location.state?.fromJob;
   const presetClientId = searchParams.get('client_id');
   const presetPropertyId = searchParams.get('property_id');
+  const presetJobId = searchParams.get('job_id') || fromJobId;
   const [deleteItemId, setDeleteItemId] = useState(null);
 
   const handleBackNavigation = () => {
