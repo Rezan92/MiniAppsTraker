@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams, useLocation } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../../contexts/AuthContext';
 import { useToast } from '../../contexts/ToastContext';
@@ -16,9 +16,19 @@ export const InvoiceBuilder = () => {
   const { showSuccess, showError } = useToast();
   const queryClient = useQueryClient();
   const [searchParams] = useSearchParams();
+  const location = useLocation();
+  const fromJobId = location.state?.fromJob;
   const presetClientId = searchParams.get('client_id');
   const presetPropertyId = searchParams.get('property_id');
-  const presetJobId = searchParams.get('job_id');
+  const presetJobId = searchParams.get('job_id') || fromJobId;
+
+  const handleBackNavigation = () => {
+    if (fromJobId) {
+      navigate(`/jobs/${fromJobId}`);
+    } else {
+      navigate('/invoices');
+    }
+  };
 
   const [formData, setFormData] = useState({
     client_id: presetClientId || '',
@@ -231,9 +241,10 @@ export const InvoiceBuilder = () => {
       showSuccess(`Invoice ${isEditing ? 'updated' : 'created'} successfully`);
       queryClient.invalidateQueries(['invoices']);
       if (!isEditing) {
-        navigate(`/invoices/${data.id}/edit`);
+        navigate(`/invoices/${data.id}/edit`, { state: { fromJob: fromJobId } });
       } else {
         queryClient.invalidateQueries(['invoice', id]);
+        navigate(`/invoices/${id}`, { state: { fromJob: fromJobId } });
       }
     },
     onError: (err) => {
@@ -299,9 +310,9 @@ export const InvoiceBuilder = () => {
     <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <div className="flex justify-between items-center mb-8">
         <div>
-          <button onClick={() => navigate('/invoices')} className="text-sm font-medium text-gray-500 hover:text-gray-700 flex items-center gap-1 mb-2">
+          <button onClick={handleBackNavigation} className="text-sm font-medium text-gray-500 hover:text-gray-700 flex items-center gap-1 mb-2">
             <span className="material-symbols-outlined text-[18px]">arrow_back</span>
-            Back to Invoices
+            {fromJobId ? 'Back to Job' : 'Back to Invoices'}
           </button>
           <h1 className="text-headline-md font-bold text-gray-900">
             {isEditing ? `Edit Draft Invoice` : 'Create New Invoice'}
@@ -310,7 +321,7 @@ export const InvoiceBuilder = () => {
         <div className="flex gap-4">
           <button 
             type="button" 
-            onClick={() => navigate('/invoices')}
+            onClick={handleBackNavigation}
             className="px-6 py-2 border border-gray-300 rounded-lg font-title-sm text-gray-700 hover:bg-gray-50"
           >
             Cancel

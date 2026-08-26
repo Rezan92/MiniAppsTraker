@@ -211,6 +211,39 @@ export const JobDetails = () => {
     }
   };
 
+  const generateInvoiceMutation = useMutation({
+    mutationFn: async () => {
+      const payload = {
+        client_id: job.client_id,
+        job_id: job.id,
+        labor_title: job.title,
+        property_id: job.property_id || null,
+        property_address: job.rental_properties?.address || null,
+        labor_amount: 0,
+        invoice_date: new Date().toISOString().split('T')[0]
+      };
+      
+      const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:4000'}/api/invoices`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session?.access_token}`
+        },
+        body: JSON.stringify(payload)
+      });
+      const json = await res.json();
+      if (!res.ok || !json.success) throw new Error(json.error?.message || json.error || 'Failed to create draft');
+      return json.data;
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries(['jobs', id]);
+      navigate(`/invoices/${data.id}/edit`, { state: { fromJob: id } });
+    },
+    onError: (err) => {
+      showError(translateApiError(err));
+    }
+  });
+
   if (loadingJob) {
     return <div className="p-8 text-center text-gray-500">Loading job details...</div>;
   }
@@ -283,7 +316,7 @@ export const JobDetails = () => {
 
           {draftInvoice ? (
             <button 
-              onClick={() => navigate(`/invoices/${draftInvoice.id}`)}
+              onClick={() => navigate(`/invoices/${draftInvoice.id}`, { state: { fromJob: id } })}
               className="px-4 py-2 bg-primary text-black rounded font-body-md font-bold hover:bg-opacity-90 transition-colors flex items-center gap-2 shadow-sm"
             >
               <span className="material-symbols-outlined text-[18px]">receipt</span>
@@ -291,11 +324,12 @@ export const JobDetails = () => {
             </button>
           ) : (
             <button 
-              onClick={() => navigate(`/invoices/new?job_id=${job.id}&client_id=${job.client_id}`)}
-              className="px-4 py-2 bg-primary text-black rounded font-body-md font-bold hover:bg-opacity-90 transition-colors flex items-center gap-2 shadow-sm"
+              onClick={() => generateInvoiceMutation.mutate()}
+              disabled={generateInvoiceMutation.isPending}
+              className="px-4 py-2 bg-primary text-black rounded font-body-md font-bold hover:bg-opacity-90 transition-colors flex items-center gap-2 shadow-sm disabled:opacity-50"
             >
               <span className="material-symbols-outlined text-[18px]">add_circle</span>
-              Generate Invoice
+              {generateInvoiceMutation.isPending ? 'Generating...' : 'Generate Invoice'}
             </button>
           )}
         </div>

@@ -1,5 +1,5 @@
 import React, { useRef, useState, useEffect } from 'react';
-import { useParams, useNavigate, Link } from 'react-router-dom';
+import { useParams, useNavigate, Link, useLocation } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useReactToPrint } from 'react-to-print';
 import { useAuth } from '../../contexts/AuthContext';
@@ -23,6 +23,8 @@ export const InvoiceDetails = () => {
   const { session } = useAuth();
   const { showSuccess, showError } = useToast();
   const queryClient = useQueryClient();
+  const location = useLocation();
+  const fromJobId = location.state?.fromJob;
   const componentRef = useRef();
 
   const [isEditingNotes, setIsEditingNotes] = useState(false);
@@ -158,7 +160,7 @@ export const InvoiceDetails = () => {
       {/* Action Bar */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4 bg-white p-4 rounded-xl shadow-sm border border-gray-200">
         <div className="flex items-center gap-4">
-          <button onClick={() => navigate('/invoices')} className="text-gray-500 hover:text-gray-700 p-2 rounded-full hover:bg-gray-100 transition-colors cursor-pointer">
+          <button onClick={() => navigate(fromJobId ? `/jobs/${fromJobId}` : '/invoices')} className="text-gray-500 hover:text-gray-700 p-2 rounded-full hover:bg-gray-100 transition-colors cursor-pointer" title={fromJobId ? "Back to Job" : "Back to Invoices"}>
             <span className="material-symbols-outlined">arrow_back</span>
           </button>
           <div>
@@ -173,6 +175,7 @@ export const InvoiceDetails = () => {
           {isDraft && (
             <Link 
               to={`/invoices/${id}/edit`}
+              state={{ fromJob: fromJobId }}
               className="inline-flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 cursor-pointer"
             >
               <span className="material-symbols-outlined text-[18px]">edit</span>
