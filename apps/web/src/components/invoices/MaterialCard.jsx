@@ -48,13 +48,22 @@ export const MaterialCard = ({
                 className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-primary focus:border-primary text-right font-medium text-sm"
               />
             </div>
-            <button 
-              onClick={() => setDeleteItemId(item.id)}
-              className="mt-6 text-gray-400 hover:text-red-600 transition-colors"
-              title="Remove Item"
-            >
-              <span className="material-symbols-outlined text-[20px]">delete</span>
-            </button>
+            <div className="flex gap-2 shrink-0 items-center mt-6">
+              <button 
+                onClick={() => updateItemMutation.mutate({ itemId: item.id, updates: { is_hidden: !item.is_hidden } })}
+                className={`transition-colors ${item.is_hidden ? 'text-gray-400' : 'text-primary'}`}
+                title={item.is_hidden ? "Hidden from Invoice PDF" : "Visible on Invoice PDF"}
+              >
+                <span className="material-symbols-outlined text-[20px]">{item.is_hidden ? 'visibility_off' : 'visibility'}</span>
+              </button>
+              <button 
+                onClick={() => setDeleteItemId(item.id)}
+                className="text-gray-400 hover:text-red-600 transition-colors"
+                title="Remove Item"
+              >
+                <span className="material-symbols-outlined text-[20px]">delete</span>
+              </button>
+            </div>
           </div>
         ))}
         {lineItems.filter(i => i.source_type === 'material').length === 0 && (

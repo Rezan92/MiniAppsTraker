@@ -41,7 +41,7 @@ export const LaborCard = ({
                 rows="2"
               />
             </div>
-            {!isFlatRate && (
+            {(!isFlatRate || item.source_type === 'ad_hoc') && (
               <div className="w-32">
                 <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Amount ($)</label>
                 <input 
@@ -54,13 +54,22 @@ export const LaborCard = ({
                 />
               </div>
             )}
-            <button 
-              onClick={() => setDeleteItemId(item.id)}
-              className="mt-6 text-gray-400 hover:text-red-600 transition-colors"
-              title="Remove Item"
-            >
-              <span className="material-symbols-outlined text-[20px]">delete</span>
-            </button>
+            <div className="flex gap-2 shrink-0 items-center mt-6">
+              <button 
+                onClick={() => updateItemMutation.mutate({ itemId: item.id, updates: { is_hidden: !item.is_hidden } })}
+                className={`transition-colors ${item.is_hidden ? 'text-gray-400' : 'text-primary'}`}
+                title={item.is_hidden ? "Hidden from Invoice PDF" : "Visible on Invoice PDF"}
+              >
+                <span className="material-symbols-outlined text-[20px]">{item.is_hidden ? 'visibility_off' : 'visibility'}</span>
+              </button>
+              <button 
+                onClick={() => setDeleteItemId(item.id)}
+                className="text-gray-400 hover:text-red-600 transition-colors"
+                title="Remove Item"
+              >
+                <span className="material-symbols-outlined text-[20px]">delete</span>
+              </button>
+            </div>
           </div>
         ))}
         {lineItems.filter(i => i.source_type === 'labor' || i.source_type === 'ad_hoc').length === 0 && (

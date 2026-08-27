@@ -30,13 +30,15 @@ const lineItemSchema = z.object({
   source_id: z.string().uuid().optional().nullable(),
   description: z.string().min(1),
   amount: z.number().default(0),
-  sort_order: z.number().default(0)
+  sort_order: z.number().default(0),
+  is_hidden: z.boolean().optional().default(false)
 });
 
 const lineItemUpdateSchema = z.object({
   description: z.string().optional(),
   amount: z.number().optional(),
-  sort_order: z.number().optional()
+  sort_order: z.number().optional(),
+  is_hidden: z.boolean().optional()
 });
 
 async function enforceInvoiceEditability(invoiceId, tenantId) {
