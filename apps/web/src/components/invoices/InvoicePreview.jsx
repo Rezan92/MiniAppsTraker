@@ -5,15 +5,21 @@ import './InvoicePreview.css';
 export const InvoicePreview = forwardRef(({ invoice, tenant }, ref) => {
   if (!invoice || !tenant) return null;
 
-  const laborAmount = Number(invoice.labor_amount) || 0;
+  const baseLaborAmount = Number(invoice.labor_amount) || 0;
   
-  const laborItems = invoice.invoice_line_items?.filter(i => i.source_type === 'labor') || [];
+  // Merge ad_hoc into laborItems for logical grouping
+  const laborItems = invoice.invoice_line_items?.filter(i => i.source_type === 'labor' || i.source_type === 'ad_hoc') || [];
   const materialItems = invoice.invoice_line_items?.filter(i => i.source_type === 'material') || [];
-  const adHocItems = invoice.invoice_line_items?.filter(i => i.source_type === 'ad_hoc') || [];
 
+  const laborLineItemsAmount = laborItems.reduce((sum, i) => sum + (Number(i.amount) || 0), 0);
   const materialsAmount = materialItems.reduce((sum, i) => sum + (Number(i.amount) || 0), 0);
-  const adHocAmount = adHocItems.reduce((sum, i) => sum + (Number(i.amount) || 0), 0);
-  const totalDue = laborAmount + materialsAmount + adHocAmount;
+  
+  const laborAmount = baseLaborAmount + laborLineItemsAmount;
+  const totalDue = laborAmount + materialsAmount;
+
+  // Filter out hidden items for display purposes only
+  const visibleLaborItems = laborItems.filter(i => !i.is_hidden);
+  const visibleMaterialItems = materialItems.filter(i => !i.is_hidden);
 
   return (
     <div className="invoice-preview-container">
@@ -88,9 +94,9 @@ export const InvoicePreview = forwardRef(({ invoice, tenant }, ref) => {
                       ({invoice.labor_notes})
                     </div>
                   )}
-                  {laborItems.length > 0 && (
+                  {visibleLaborItems.length > 0 && (
                     <ul className="bullet-list">
-                      {laborItems.sort((a,b)=>a.sort_order - b.sort_order).map(item => {
+                      {visibleLaborItems.sort((a,b)=>a.sort_order - b.sort_order).map(item => {
                         const sentences = item.description 
                           ? item.description.split('.').map(s => s.trim()).filter(s => s.length > 0).map(s => s + '.')
                           : [];
@@ -106,11 +112,11 @@ export const InvoicePreview = forwardRef(({ invoice, tenant }, ref) => {
               <tr>
                 <td>
                   <div className="item-name">Materials</div>
-                  {materialItems.length > 0 ? (
+                  {visibleMaterialItems.length > 0 ? (
                     <ul className="bullet-list">
-                      {materialItems.sort((a,b)=>a.sort_order - b.sort_order).map(item => (
+                      {visibleMaterialItems.sort((a,b)=>a.sort_order - b.sort_order).map(item => (
                         <li key={item.id}>
-                          {item.description} &mdash; {formatCurrency(item.amount)}
+                          {item.description}
                         </li>
                       ))}
                     </ul>
@@ -121,26 +127,9 @@ export const InvoicePreview = forwardRef(({ invoice, tenant }, ref) => {
                   )}
                 </td>
                 <td className="amount-val">
-                  {formatCurrency(materialItems.reduce((sum, i) => sum + (Number(i.amount) || 0), 0))}
+                  {formatCurrency(materialsAmount)}
                 </td>
               </tr>
-              {adHocItems.length > 0 && (
-                <tr>
-                  <td>
-                    <div className="item-name">Additional Charges</div>
-                    <ul className="bullet-list">
-                      {adHocItems.sort((a,b)=>a.sort_order - b.sort_order).map(item => (
-                        <li key={item.id}>
-                          {item.description} &mdash; {formatCurrency(item.amount)}
-                        </li>
-                      ))}
-                    </ul>
-                  </td>
-                  <td className="amount-val">
-                    {formatCurrency(adHocItems.reduce((sum, i) => sum + (Number(i.amount) || 0), 0))}
-                  </td>
-                </tr>
-              )}
             </tbody>
           </table>
 
@@ -169,12 +158,6 @@ export const InvoicePreview = forwardRef(({ invoice, tenant }, ref) => {
                         <td className="label">Materials Subtotal:</td>
                         <td className="value">{formatCurrency(materialsAmount)}</td>
                       </tr>
-                      {adHocAmount > 0 && (
-                        <tr>
-                          <td className="label">Additional Charges:</td>
-                          <td className="value">{formatCurrency(adHocAmount)}</td>
-                        </tr>
-                      )}
                       <tr className="grand-total">
                         <td className="label">Total Due:</td>
                         <td className="value">{formatCurrency(totalDue)}</td>

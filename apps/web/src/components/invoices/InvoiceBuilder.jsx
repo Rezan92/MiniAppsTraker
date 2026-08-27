@@ -306,8 +306,12 @@ export const InvoiceBuilder = () => {
   });
 
   const lineItems = existingInvoice?.invoice_line_items?.sort((a,b) => a.sort_order - b.sort_order) || [];
-  const lineItemsSubtotal = lineItems.reduce((sum, item) => sum + Number(item.amount || 0), 0);
-  const totalDue = (Number(formData.labor_amount) || 0) + lineItemsSubtotal;
+  
+  const laborLineItemsSubtotal = lineItems.filter(i => i.source_type === 'labor' || i.source_type === 'ad_hoc').reduce((sum, item) => sum + Number(item.amount || 0), 0);
+  const materialsSubtotal = lineItems.filter(i => i.source_type === 'material').reduce((sum, item) => sum + Number(item.amount || 0), 0);
+  
+  const laborTotal = (Number(formData.labor_amount) || 0) + laborLineItemsSubtotal;
+  const totalDue = laborTotal + materialsSubtotal;
 
   const selectedJob = availableJobs.find(j => j.id === formData.job_id);
 
@@ -440,12 +444,12 @@ export const InvoiceBuilder = () => {
               <div className="w-72 bg-gray-50 p-6 rounded-xl border border-gray-200 shadow-inner">
                 <div className="space-y-3 mb-4 text-sm">
                   <div className="flex justify-between text-gray-600">
-                    <span>Base Labor:</span>
-                    <span>${(Number(formData.labor_amount) || 0).toFixed(2)}</span>
+                    <span>Labor Subtotal:</span>
+                    <span>${laborTotal.toFixed(2)}</span>
                   </div>
                   <div className="flex justify-between text-gray-600">
-                    <span>Itemized Line Items:</span>
-                    <span>${lineItemsSubtotal.toFixed(2)}</span>
+                    <span>Materials Subtotal:</span>
+                    <span>${materialsSubtotal.toFixed(2)}</span>
                   </div>
                 </div>
                 <div className="flex justify-between font-bold text-gray-900 text-xl border-t border-gray-200 pt-3">
