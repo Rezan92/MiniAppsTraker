@@ -546,9 +546,9 @@ export const InvoiceBuilder = () => {
             <div className="space-y-8 mt-6">
               {/* Labor Section */}
               <div className="border border-gray-200 rounded-xl bg-white">
-                <div className="bg-gray-50 border-b border-gray-200 p-4 rounded-t-xl flex justify-between items-center">
-                  <h4 className="font-bold text-gray-900 text-lg">Labor & Services</h4>
-                  <div className="w-1/2 max-w-sm">
+                <div className="bg-gray-50 border-b border-gray-200 p-4 rounded-t-xl flex justify-between items-center gap-4">
+                  <h4 className="font-bold text-gray-900 text-lg whitespace-nowrap">Labor & Services</h4>
+                  <div className="w-auto flex-shrink-0 relative whitespace-nowrap">
                     <SmartDropdown 
                       jobId={formData.job_id} 
                       session={session} 
@@ -612,9 +612,9 @@ export const InvoiceBuilder = () => {
 
               {/* Materials Section */}
               <div className="border border-gray-200 rounded-xl bg-white">
-                <div className="bg-gray-50 border-b border-gray-200 p-4 rounded-t-xl flex justify-between items-center">
-                  <h4 className="font-bold text-gray-900 text-lg">Materials & Parts</h4>
-                  <div className="w-1/2 max-w-sm">
+                <div className="bg-gray-50 border-b border-gray-200 p-4 rounded-t-xl flex justify-between items-center gap-4">
+                  <h4 className="font-bold text-gray-900 text-lg whitespace-nowrap">Materials & Parts</h4>
+                  <div className="w-auto flex-shrink-0 relative whitespace-nowrap">
                     <SmartDropdown 
                       jobId={formData.job_id} 
                       session={session} 

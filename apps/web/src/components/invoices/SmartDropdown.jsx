@@ -88,7 +88,7 @@ export const SmartDropdown = ({ jobId, session, onAddItems, filterType, existing
         <button
           type="button"
           onClick={() => setIsOpen(!isOpen)}
-          className="inline-flex justify-between w-full rounded-lg border border-primary shadow-sm px-4 py-3 bg-primary/5 text-sm font-bold text-primary hover:bg-primary/10 transition-colors focus:outline-none"
+          className="inline-flex justify-between items-center w-full rounded-lg border border-primary shadow-sm px-4 py-3 bg-primary/5 text-sm font-bold text-primary hover:bg-primary/10 transition-colors focus:outline-none whitespace-nowrap gap-4"
         >
           <div className="flex items-center gap-2">
             <span className="material-symbols-outlined text-[20px]">add_circle</span>
@@ -101,7 +101,7 @@ export const SmartDropdown = ({ jobId, session, onAddItems, filterType, existing
       </div>
 
       {isOpen && (
-        <div className="origin-top-right absolute right-0 mt-2 w-full rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 z-10 p-4 border border-gray-200">
+        <div className="origin-top-right absolute right-0 mt-2 w-[400px] max-w-[90vw] rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 z-50 p-4 border border-gray-200">
           <div className="flex justify-between items-center mb-4 border-b pb-2">
             <label className="flex items-center text-sm text-gray-700 cursor-pointer">
               <input
