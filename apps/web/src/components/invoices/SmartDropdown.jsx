@@ -101,7 +101,7 @@ export const SmartDropdown = ({ jobId, session, onAddItems, filterType, existing
       </div>
 
       {isOpen && (
-        <div className="origin-top-right absolute right-0 mt-2 w-[400px] max-w-[90vw] rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 z-50 p-4 border border-gray-200">
+        <div className="origin-top-right absolute right-0 mt-2 w-[90vw] sm:w-[500px] rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 z-50 p-4 border border-gray-200">
           <div className="flex justify-between items-center mb-4 border-b pb-2">
             <label className="flex items-center text-sm text-gray-700 cursor-pointer">
               <input
@@ -137,28 +137,32 @@ export const SmartDropdown = ({ jobId, session, onAddItems, filterType, existing
                         return (
                           <li 
                             key={m.id} 
-                            className={`flex justify-between items-center text-sm p-2 rounded transition-colors ${added ? 'opacity-50 cursor-not-allowed bg-gray-50' : 'hover:bg-gray-50 group cursor-pointer'}`}
+                            className={`flex justify-between items-start text-sm p-2 rounded transition-colors ${added ? 'opacity-50 cursor-not-allowed bg-gray-50' : 'hover:bg-gray-50 group cursor-pointer'}`}
                             onClick={() => !added && handleAddItem(m, 'material')}
                           >
-                            <div className="flex items-center">
+                            <div className="flex items-start flex-1 min-w-0 pr-3">
                               {added ? (
-                                <span className="material-symbols-outlined text-green-500 mr-2 text-[18px]">check_circle</span>
+                                <span className="material-symbols-outlined text-green-500 mr-2 text-[18px] shrink-0 mt-0.5">check_circle</span>
                               ) : (
-                                <span className="material-symbols-outlined text-gray-400 mr-2 text-[18px] group-hover:text-primary">add</span>
+                                <span className="material-symbols-outlined text-gray-400 mr-2 text-[18px] group-hover:text-primary shrink-0 mt-0.5">add</span>
                               )}
-                              <span className="font-medium text-gray-900">{m.description}</span>
-                              {m.billing_status === 'billed' && !added && (
-                                <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-yellow-100 text-yellow-800 uppercase tracking-wide">
-                                  Billed
-                                </span>
-                              )}
-                              {added && (
-                                <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-green-100 text-green-800 uppercase tracking-wide">
-                                  Added
-                                </span>
-                              )}
+                              <div className="flex flex-col sm:flex-row sm:items-center flex-1 min-w-0">
+                                <span className="font-medium text-gray-900 break-words whitespace-normal">{m.description}</span>
+                                <div className="shrink-0 mt-1 sm:mt-0 flex flex-wrap gap-1">
+                                  {m.billing_status === 'billed' && !added && (
+                                    <span className="sm:ml-2 inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-yellow-100 text-yellow-800 uppercase tracking-wide">
+                                      Billed
+                                    </span>
+                                  )}
+                                  {added && (
+                                    <span className="sm:ml-2 inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-green-100 text-green-800 uppercase tracking-wide">
+                                      Added
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
                             </div>
-                            <span className="font-medium text-gray-700">${m.cost?.toFixed(2)}</span>
+                            <span className="font-medium text-gray-700 shrink-0 mt-0.5">${m.cost?.toFixed(2)}</span>
                           </li>
                         );
                       })}
@@ -175,28 +179,32 @@ export const SmartDropdown = ({ jobId, session, onAddItems, filterType, existing
                         return (
                           <li 
                             key={h.id} 
-                            className={`flex justify-between items-center text-sm p-2 rounded transition-colors ${added ? 'opacity-50 cursor-not-allowed bg-gray-50' : 'hover:bg-gray-50 group cursor-pointer'}`}
+                            className={`flex justify-between items-start text-sm p-2 rounded transition-colors ${added ? 'opacity-50 cursor-not-allowed bg-gray-50' : 'hover:bg-gray-50 group cursor-pointer'}`}
                             onClick={() => !added && handleAddItem(h, 'labor')}
                           >
-                            <div className="flex items-center">
+                            <div className="flex items-start flex-1 min-w-0 pr-3">
                               {added ? (
-                                <span className="material-symbols-outlined text-green-500 mr-2 text-[18px]">check_circle</span>
+                                <span className="material-symbols-outlined text-green-500 mr-2 text-[18px] shrink-0 mt-0.5">check_circle</span>
                               ) : (
-                                <span className="material-symbols-outlined text-gray-400 mr-2 text-[18px] group-hover:text-primary">add</span>
+                                <span className="material-symbols-outlined text-gray-400 mr-2 text-[18px] group-hover:text-primary shrink-0 mt-0.5">add</span>
                               )}
-                              <span className="font-medium text-gray-900">{h.description || `${h.hours} hrs on ${h.date}`}</span>
-                              {h.billing_status === 'billed' && !added && (
-                                <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-yellow-100 text-yellow-800 uppercase tracking-wide">
-                                  Billed
-                                </span>
-                              )}
-                              {added && (
-                                <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-green-100 text-green-800 uppercase tracking-wide">
-                                  Added
-                                </span>
-                              )}
+                              <div className="flex flex-col sm:flex-row sm:items-center flex-1 min-w-0">
+                                <span className="font-medium text-gray-900 break-words whitespace-normal">{h.description || `${h.hours} hrs on ${h.date}`}</span>
+                                <div className="shrink-0 mt-1 sm:mt-0 flex flex-wrap gap-1">
+                                  {h.billing_status === 'billed' && !added && (
+                                    <span className="sm:ml-2 inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-yellow-100 text-yellow-800 uppercase tracking-wide">
+                                      Billed
+                                    </span>
+                                  )}
+                                  {added && (
+                                    <span className="sm:ml-2 inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-green-100 text-green-800 uppercase tracking-wide">
+                                      Added
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
                             </div>
-                            <span className="text-gray-500">{h.hours} hrs</span>
+                            <span className="text-gray-500 shrink-0 mt-0.5">{h.hours} hrs</span>
                           </li>
                         );
                       })}
