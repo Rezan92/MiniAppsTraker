@@ -7,8 +7,11 @@ export const LaborCard = ({
   session,
   addItemMutation,
   updateItemMutation,
-  setDeleteItemId
+  setDeleteItemId,
+  selectedJob
 }) => {
+  const isFlatRate = selectedJob?.rate_type === 'flat';
+
   return (
     <div className="border border-gray-200 rounded-xl bg-white">
       <div className="bg-gray-50 border-b border-gray-200 p-4 rounded-t-xl flex justify-between items-center gap-4">
@@ -20,6 +23,7 @@ export const LaborCard = ({
             filterType="labor"
             existingItems={lineItems}
             onAddItems={(items) => addItemMutation.mutate(items)} 
+            selectedJob={selectedJob}
           />
         </div>
       </div>
@@ -37,17 +41,19 @@ export const LaborCard = ({
                 rows="2"
               />
             </div>
-            <div className="w-32">
-              <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Amount ($)</label>
-              <input 
-                type="number" 
-                min="0"
-                step="0.01"
-                defaultValue={item.amount}
-                onBlur={(e) => updateItemMutation.mutate({ itemId: item.id, updates: { amount: Number(e.target.value) } })}
-                className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-primary focus:border-primary text-right font-medium text-sm"
-              />
-            </div>
+            {!isFlatRate && (
+              <div className="w-32">
+                <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Amount ($)</label>
+                <input 
+                  type="number" 
+                  min="0"
+                  step="0.01"
+                  defaultValue={item.amount}
+                  onBlur={(e) => updateItemMutation.mutate({ itemId: item.id, updates: { amount: Number(e.target.value) } })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-primary focus:border-primary text-right font-medium text-sm"
+                />
+              </div>
+            )}
             <button 
               onClick={() => setDeleteItemId(item.id)}
               className="mt-6 text-gray-400 hover:text-red-600 transition-colors"

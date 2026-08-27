@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 
-export const SmartDropdown = ({ jobId, session, onAddItems, filterType, existingItems = [] }) => {
+export const SmartDropdown = ({ jobId, session, onAddItems, filterType, existingItems = [], selectedJob }) => {
   const [showBilled, setShowBilled] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef(null);
@@ -46,11 +46,16 @@ export const SmartDropdown = ({ jobId, session, onAddItems, filterType, existing
   });
 
   const handleAddItem = (item, type) => {
+    let amount = item.cost || 0;
+    if (type === 'labor' && selectedJob?.rate_type === 'hourly') {
+      amount = (item.hours || 0) * (selectedJob.hourly_rate || 0);
+    }
+
     onAddItems([{
       source_type: type,
       source_id: item.id,
       description: item.description || (type === 'labor' ? `${item.hours} hours logged` : 'Material'),
-      amount: item.cost || 0
+      amount: amount
     }]);
   };
 
@@ -66,7 +71,7 @@ export const SmartDropdown = ({ jobId, session, onAddItems, filterType, existing
         source_type: 'labor',
         source_id: h.id,
         description: h.description || `${h.hours} hours logged`,
-        amount: 0
+        amount: selectedJob?.rate_type === 'hourly' ? (h.hours || 0) * (selectedJob.hourly_rate || 0) : 0
       }))
     ];
     if (items.length > 0) {

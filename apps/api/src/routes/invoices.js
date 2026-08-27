@@ -417,7 +417,7 @@ router.get('/from-job/:jobId', async (req, res, next) => {
       client_id: job.client_id,
       job_id: job.id,
       labor_title: job.title,
-      labor_amount: 0,
+      labor_amount: job.rate_type === 'flat' ? (job.flat_rate || 0) : 0,
       property_address: job.rental_properties?.address || job.clients?.address || ''
     };
     res.json({ success: true, data: payload });

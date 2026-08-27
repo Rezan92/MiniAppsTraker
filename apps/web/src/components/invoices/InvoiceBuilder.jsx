@@ -552,6 +552,7 @@ export const InvoiceBuilder = () => {
                 addItemMutation={addItemMutation}
                 updateItemMutation={updateItemMutation}
                 setDeleteItemId={setDeleteItemId}
+                selectedJob={availableJobs.find(j => j.id === formData.job_id)}
               />
               
               <MaterialCard 
