@@ -309,6 +309,15 @@ export const InvoiceBuilder = () => {
   const lineItemsSubtotal = lineItems.reduce((sum, item) => sum + Number(item.amount || 0), 0);
   const totalDue = (Number(formData.labor_amount) || 0) + lineItemsSubtotal;
 
+  const selectedJob = availableJobs.find(j => j.id === formData.job_id);
+
+  // Auto-populate flat rate if it's 0 (fixes older drafts)
+  useEffect(() => {
+    if (selectedJob?.rate_type === 'flat' && selectedJob?.flat_rate && Number(formData.labor_amount) === 0) {
+      setFormData(prev => ({ ...prev, labor_amount: selectedJob.flat_rate }));
+    }
+  }, [selectedJob, formData.labor_amount]);
+
   return (
     <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <div className="flex justify-between items-center mb-8">
@@ -321,23 +330,23 @@ export const InvoiceBuilder = () => {
             {isEditing ? `Edit Draft Invoice` : 'Create New Invoice'}
           </h1>
         </div>
-        <div className="flex gap-4">
-          <button 
-            type="button" 
-            onClick={handleBackNavigation}
-            className="px-6 py-2 border border-gray-300 rounded-lg font-title-sm text-gray-700 hover:bg-gray-50 cursor-pointer"
-          >
-            Cancel
-          </button>
-          <button 
-            onClick={() => saveMutation.mutate()}
-            disabled={saveMutation.isLoading || !formData.client_id}
-            className="px-6 py-2 bg-primary text-black rounded-lg font-title-sm hover:opacity-90 disabled:opacity-50 cursor-pointer"
-          >
-            {saveMutation.isLoading ? 'Saving...' : (isEditing ? 'Save Details' : 'Create Draft Invoice')}
-          </button>
+          <div className="flex gap-4">
+            <button 
+              type="button" 
+              onClick={handleBackNavigation}
+              className="px-6 py-2 border border-gray-300 rounded-lg font-title-sm text-gray-700 hover:bg-gray-50 cursor-pointer"
+            >
+              Cancel
+            </button>
+            <button 
+              onClick={() => saveMutation.mutate()}
+              disabled={saveMutation.isLoading || !formData.client_id}
+              className="px-6 py-2 bg-primary text-black rounded-lg font-title-sm hover:opacity-90 disabled:opacity-50 cursor-pointer"
+            >
+              {saveMutation.isLoading ? 'Saving...' : (isEditing ? 'Save Details' : 'Create Draft Invoice')}
+            </button>
+          </div>
         </div>
-      </div>
 
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 mb-8">
         <div className="p-8 space-y-8">
@@ -357,8 +366,10 @@ export const InvoiceBuilder = () => {
           <div className="pb-4">
             <h3 className="font-title-lg font-bold text-gray-900 border-b border-gray-200 pb-2 mb-4 flex items-center gap-3">
               Base Labor (Optional)
-              {availableJobs.find(j => j.id === formData.job_id)?.rate_type === 'flat' && (
-                <span className="text-xs bg-blue-100 text-blue-800 px-2 py-0.5 rounded font-bold uppercase tracking-wider">Flat Rate Job</span>
+              {selectedJob?.rate_type === 'flat' && (
+                <span className="text-xs bg-blue-100 text-blue-800 px-2 py-0.5 rounded font-bold uppercase tracking-wider">
+                  Flat Rate Job (${Number(selectedJob.flat_rate || 0).toFixed(2)})
+                </span>
               )}
             </h3>
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
