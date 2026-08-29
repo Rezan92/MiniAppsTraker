@@ -9,50 +9,31 @@ import { AddJobHoursModal } from './AddJobHoursModal';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { translateApiError } from '../../utils/errorTranslator';
 import { PageHeader } from '../common/PageHeader';
+import { JOB_STATUSES } from '../../utils/constants';
+import { StatusBadgeDropdown } from '../shared/StatusBadgeDropdown';
 
 export const JobList = () => {
   const { session } = useAuth();
-  const { showSuccess, showError } = useToast();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
+  const { showSuccess, showError } = useToast();
   const queryClient = useQueryClient();
-  
   const [search, setSearch] = useState('');
+
   const [statusFilter, setStatusFilter] = useState('all');
 
   const [open, setOpen] = useState(false);
-  const [formData, setFormData] = useState({ client_id: '', property_id: '', title: '', rate_type: 'flat', hourly_rate: '', flat_rate: '', start_date: '', end_date: '', notes: '' });
+  const [formData, setFormData] = useState({ client_id: '', property_id: '', title: '', rate_type: 'flat', hourly_rate: '65.00', flat_rate: '', start_date: '', end_date: '', notes: '' });
 
   const [matOpen, setMatOpen] = useState(false);
   const [selectedJobId, setSelectedJobId] = useState('');
-  const [matData, setMatData] = useState({ description: '', cost: '', is_from_stock: false, store: '', purchase_date: '', notes: '' });
+  const [matData, setMatData] = useState({ description: '', cost: '20.00', is_from_stock: false, store: '', purchase_date: new Date().toISOString().split('T')[0], notes: '' });
 
   const [hoursOpen, setHoursOpen] = useState(false);
   const [hoursData, setHoursData] = useState({ date: new Date().toISOString().split('T')[0], hours: '' });
 
-  const [openMenuId, setOpenMenuId] = useState(null);
-  const [menuCoords, setMenuCoords] = useState({ top: 0, left: 0 });
-
-  useEffect(() => {
-    if (openMenuId) {
-      const handler = (e) => {
-        if (e.target.closest('.status-dropdown-menu')) return;
-        setOpenMenuId(null);
-      };
-      document.addEventListener('mousedown', handler, true);
-      return () => document.removeEventListener('mousedown', handler, true);
-    }
-  }, [openMenuId]);
-
-  const handleStatusClick = (e, id) => {
-    e.stopPropagation();
-    const rect = e.currentTarget.getBoundingClientRect();
-    setMenuCoords({
-      top: rect.bottom + window.scrollY + 4,
-      left: rect.left + window.scrollX
-    });
-    setOpenMenuId(openMenuId === id ? null : id);
-  };
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [jobToDelete, setJobToDelete] = useState(null);
 
   useEffect(() => {
     if (searchParams.get('add') === 'true') {
@@ -113,7 +94,7 @@ export const JobList = () => {
       if (res.ok) {
         queryClient.invalidateQueries({ queryKey: ['jobs'] });
         setOpen(false);
-        setFormData({ client_id: '', property_id: '', title: '', rate_type: 'flat', hourly_rate: '', flat_rate: '', start_date: '', end_date: '', notes: '' });
+        setFormData({ client_id: '', property_id: '', title: '', rate_type: 'flat', hourly_rate: '65.00', flat_rate: '', start_date: '', end_date: '', notes: '' });
         showSuccess(`Job successfully ${formData.id ? 'updated' : 'created'}!`);
       } else {
         const errorData = await res.json();
@@ -138,7 +119,7 @@ export const JobList = () => {
       });
       if (res.ok) {
         setMatOpen(false);
-        setMatData({ description: '', cost: '', is_from_stock: false, store: '', purchase_date: '', notes: '' });
+        setMatData({ description: '', cost: '20.00', is_from_stock: false, store: '', purchase_date: new Date().toISOString().split('T')[0], notes: '' });
         showSuccess('Material added successfully!');
       } else {
         const errorData = await res.json();
@@ -162,7 +143,6 @@ export const JobList = () => {
       });
       if (res.ok) {
         queryClient.invalidateQueries({ queryKey: ['jobs'] });
-        setOpenMenuId(null);
         showSuccess('Job status updated!');
       } else {
         const errorData = await res.json();
@@ -214,12 +194,7 @@ export const JobList = () => {
         actionButtonText="Add Job"
         actionButtonIcon="add"
         onActionClick={() => setOpen(true)}
-        tabs={[
-          { value: 'all', label: 'All Jobs' },
-          { value: 'open', label: 'Open' },
-          { value: 'in_progress', label: 'In Progress' },
-          { value: 'completed', label: 'Completed' }
-        ]}
+        tabs={JOB_STATUSES}
         activeTab={statusFilter}
         onTabChange={setStatusFilter}
         searchPlaceholder="Search jobs, clients..."
@@ -259,20 +234,11 @@ export const JobList = () => {
                     </div>
                   </td>
                     <td className="py-4 px-4 align-top">
-                      <div className="relative w-max cursor-pointer">
-                        <button 
-                          onClick={(e) => handleStatusClick(e, j.id)}
-                          className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium transition-colors ${
-                            j.status === 'open' ? 'bg-amber-100 text-amber-800 border border-amber-200 hover:bg-amber-200' :
-                            j.status === 'in_progress' ? 'bg-sky-100 text-sky-800 border border-sky-200 hover:bg-sky-200' :
-                            j.status === 'completed' ? 'bg-emerald-100 text-emerald-800 border border-emerald-200 hover:bg-emerald-200' :
-                            'bg-gray-100 text-gray-800 border border-gray-200 hover:bg-gray-200'
-                          }`}
-                        >
-                          <span className="capitalize">{j.status.replace('_', ' ')}</span>
-                          <span className="material-symbols-outlined" style={{ fontSize: '14px' }}>expand_more</span>
-                        </button>
-                      </div>
+                      <StatusBadgeDropdown
+                        currentStatus={j.status}
+                        statuses={JOB_STATUSES}
+                        onStatusChange={(newStatus) => handleUpdateStatus(j.id, newStatus)}
+                      />
                     </td>
                   <td className="py-4 px-4 align-top">
                     <div className="text-on-surface font-medium capitalize">{j.rate_type} Rate</div>
@@ -352,7 +318,7 @@ export const JobList = () => {
         open={open}
         onClose={() => {
           setOpen(false);
-          setFormData({ client_id: '', property_id: '', title: '', rate_type: 'flat', hourly_rate: '', flat_rate: '', start_date: '', end_date: '', notes: '' });
+          setFormData({ client_id: '', property_id: '', title: '', rate_type: 'flat', hourly_rate: '65.00', flat_rate: '', start_date: '', end_date: '', notes: '' });
         }}
         onSubmit={handleSaveJob}
         formData={formData}
@@ -374,31 +340,7 @@ export const JobList = () => {
           setHoursData={setHoursData} 
         />
       {/* Status Dropdown Portal */}
-      {openMenuId && createPortal(
-        <div 
-          className="status-dropdown-menu absolute bg-white border border-gray-200 rounded shadow-lg z-[9999] py-1 w-36"
-          style={{ top: menuCoords.top, left: menuCoords.left }}
-          onClick={e => e.stopPropagation()}
-        >
-          <button onClick={(e) => { e.stopPropagation(); handleUpdateStatus(openMenuId, 'open'); setOpenMenuId(null); }} className="w-full text-left px-3 py-1.5 text-xs font-medium text-amber-800 hover:bg-amber-50 flex items-center gap-2 cursor-pointer">
-            <span className="w-2 h-2 rounded-full bg-amber-500"></span>
-            Open
-          </button>
-          <button onClick={(e) => { e.stopPropagation(); handleUpdateStatus(openMenuId, 'in_progress'); setOpenMenuId(null); }} className="w-full text-left px-3 py-1.5 text-xs font-medium text-sky-800 hover:bg-sky-50 flex items-center gap-2 cursor-pointer">
-            <span className="w-2 h-2 rounded-full bg-sky-500"></span>
-            In Progress
-          </button>
-          <button onClick={(e) => { e.stopPropagation(); handleUpdateStatus(openMenuId, 'completed'); setOpenMenuId(null); }} className="w-full text-left px-3 py-1.5 text-xs font-medium text-emerald-800 hover:bg-emerald-50 flex items-center gap-2 cursor-pointer">
-            <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
-            Completed
-          </button>
-          <button onClick={(e) => { e.stopPropagation(); handleUpdateStatus(openMenuId, 'cancelled'); setOpenMenuId(null); }} className="w-full text-left px-3 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-50 flex items-center gap-2 cursor-pointer">
-            <span className="w-2 h-2 rounded-full bg-gray-400"></span>
-            Cancelled
-          </button>
-        </div>,
-        document.body
-      )}
+
     </div>
   );
 };
