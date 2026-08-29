@@ -14,11 +14,11 @@ export const CreateJobModal = ({ open, onClose }) => {
     property_id: '',
     title: '',
     rate_type: 'flat',
-    hourly_rate: '',
+    hourly_rate: '65.00',
     flat_rate: '',
     description: '',
-    start_date: '',
-    end_date: '',
+    start_date: new Date().toISOString().split('T')[0],
+    end_date: new Date().toISOString().split('T')[0],
     notes: ''
   };
   

@@ -67,13 +67,42 @@ export const AddMaterialModal = ({ open, onClose, onSubmit, matData, setMatData 
             {/* Store */}
             <div>
               <label className="block font-label-md text-label-md text-on-surface-variant mb-1">Store / Supplier</label>
-              <input 
-                className="w-full px-3 py-2 border border-outline-variant rounded-md bg-surface text-on-surface focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-shadow placeholder:text-on-surface-variant/50" 
-                placeholder="e.g. Home Depot" 
-                type="text" 
-                value={matData.store || ''}
-                onChange={e => setMatData({...matData, store: e.target.value})}
-              />
+              <div className="space-y-2">
+                <div className="relative">
+                  <select
+                    className="w-full px-3 py-2 border border-outline-variant rounded-md bg-surface text-on-surface focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-shadow appearance-none cursor-pointer"
+                    value={['Home Depot', "Lowe's", 'Menards', 'Ace Hardware', 'Amazon', 'Walmart'].includes(matData.store) ? matData.store : (matData.store ? 'Other' : '')}
+                    onChange={(e) => {
+                      if (e.target.value !== 'Other') {
+                        setMatData({...matData, store: e.target.value});
+                      } else {
+                        setMatData({...matData, store: 'Other_custom'}); // Temporarily set to something else to trigger input
+                      }
+                    }}
+                  >
+                    <option value="" disabled>Select Store</option>
+                    <option value="Home Depot">Home Depot</option>
+                    <option value="Lowe's">Lowe's</option>
+                    <option value="Menards">Menards</option>
+                    <option value="Ace Hardware">Ace Hardware</option>
+                    <option value="Amazon">Amazon</option>
+                    <option value="Walmart">Walmart</option>
+                    <option value="Other">Other</option>
+                  </select>
+                  <span className="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-on-surface-variant pointer-events-none">expand_more</span>
+                </div>
+                
+                {(!['Home Depot', "Lowe's", 'Menards', 'Ace Hardware', 'Amazon', 'Walmart', ''].includes(matData.store)) && (
+                  <input 
+                    className="w-full px-3 py-2 border border-outline-variant rounded-md bg-surface text-on-surface focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-shadow placeholder:text-on-surface-variant/50" 
+                    placeholder="Enter custom store name" 
+                    type="text" 
+                    value={matData.store === 'Other_custom' ? '' : (matData.store || '')}
+                    onChange={e => setMatData({...matData, store: e.target.value})}
+                    autoFocus
+                  />
+                )}
+              </div>
             </div>
 
             {/* Notes */}
