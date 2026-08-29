@@ -37,14 +37,15 @@ export const InvoiceBuilder = () => {
     client_id: presetClientId || '',
     job_id: presetJobId || '',
     invoice_date: new Date().toISOString().split('T')[0],
-    due_date: '',
+    due_date: new Date().toISOString().split('T')[0],
     property_address: '',
     labor_title: 'Labor',
     labor_notes: '',
     labor_amount: 0,
     bill_to_type: 'client_name',
     billed_to_name: '',
-    property_id: presetPropertyId || ''
+    property_id: presetPropertyId || '',
+    breakdown_by_days: false
   });
 
   const [hasAutoPopulatedJob, setHasAutoPopulatedJob] = useState(false);
@@ -151,7 +152,8 @@ export const InvoiceBuilder = () => {
         property_id: existingInvoice.property_id || '',
         labor_title: existingInvoice.labor_title || '',
         labor_notes: existingInvoice.labor_notes || '',
-        labor_amount: existingInvoice.labor_amount || 0
+        labor_amount: existingInvoice.labor_amount || 0,
+        breakdown_by_days: existingInvoice.breakdown_by_days || false
       });
     }
   }, [existingInvoice, navigate, showError]);
@@ -191,7 +193,8 @@ export const InvoiceBuilder = () => {
         ...prev,
         labor_title: payload.labor_title || 'Labor',
         labor_amount: payload.labor_amount || 0,
-        property_address: payload.property_address || prev.property_address
+        property_address: payload.property_address || prev.property_address,
+        property_id: payload.property_id || prev.property_id
       }));
       showSuccess("Auto-populated from job");
     } catch (err) {
@@ -408,6 +411,19 @@ export const InvoiceBuilder = () => {
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary italic text-sm"
                 placeholder="e.g. Minimum 1-hour service charge applied"
               />
+            </div>
+            
+            <div className="mt-4 pt-4 border-t border-gray-100">
+              <label className="flex items-center gap-2 cursor-pointer group">
+                <input
+                  type="checkbox"
+                  checked={formData.breakdown_by_days}
+                  onChange={(e) => setFormData({...formData, breakdown_by_days: e.target.checked})}
+                  className="w-5 h-5 text-primary border-gray-300 rounded focus:ring-primary focus:ring-2 cursor-pointer transition-colors"
+                />
+                <span className="font-bold text-gray-800 group-hover:text-primary transition-colors">Breakdown into days</span>
+                <Tooltip content="When checked, the final invoice PDF will group labor items by their specific service date instead of one continuous list." />
+              </label>
             </div>
           </div>
         </div>

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useToast } from '../../contexts/ToastContext';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -37,6 +37,15 @@ export const CreateJobModal = ({ open, onClose }) => {
     },
     enabled: open && !!session
   });
+
+  useEffect(() => {
+    if (formData.client_id && clientsData.length > 0) {
+      const selectedClient = clientsData.find(c => c.id === formData.client_id);
+      if (selectedClient?.properties?.length === 1 && !formData.property_id) {
+        setFormData(prev => ({ ...prev, property_id: selectedClient.properties[0].id }));
+      }
+    }
+  }, [formData.client_id, clientsData]);
 
   const handleSubmit = async () => {
     if (!formData.title.trim()) {

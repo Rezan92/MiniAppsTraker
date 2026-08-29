@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { useToast } from '../../contexts/ToastContext';
@@ -16,8 +16,17 @@ export const ClientDetails = () => {
   const queryClient = useQueryClient();
 
   const [jobModalOpen, setJobModalOpen] = useState(false);
-  const [jobFormData, setJobFormData] = useState({ client_id: '', property_id: '', title: '', rate_type: 'flat', hourly_rate: '', flat_rate: '', start_date: '', end_date: '', notes: '' });
-
+  const [jobFormData, setJobFormData] = useState({ 
+    client_id: id, 
+    property_id: '', 
+    title: '', 
+    rate_type: 'flat', 
+    hourly_rate: '65.00', 
+    flat_rate: '', 
+    start_date: new Date().toISOString().split('T')[0], 
+    end_date: new Date().toISOString().split('T')[0], 
+    notes: '' 
+  });
   const { data: client, isLoading: loadingClient, isError: errorClient } = useQuery({
     queryKey: ['clients', id],
     queryFn: async () => {
@@ -30,6 +39,12 @@ export const ClientDetails = () => {
     },
     enabled: !!session?.access_token && !!id
   });
+
+  useEffect(() => {
+    if (client?.properties?.length === 1 && !jobFormData.property_id) {
+      setJobFormData(prev => ({ ...prev, property_id: client.properties[0].id }));
+    }
+  }, [client]);
 
   const { data: jobs = [], isLoading: loadingJobs } = useQuery({
     queryKey: ['jobs', 'client', id],
