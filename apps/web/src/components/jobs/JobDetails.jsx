@@ -9,6 +9,7 @@ import { DeleteJobItemModal } from './DeleteJobItemModal';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { NotFound } from '../errors/NotFound';
 import { translateApiError } from '../../utils/errorTranslator';
+import { STATUS_COLORS } from '../../utils/constants';
 
 export const JobDetails = () => {
   const { id } = useParams();
@@ -22,7 +23,7 @@ export const JobDetails = () => {
 
   // Modals state
   const [matOpen, setMatOpen] = useState(false);
-  const [matData, setMatData] = useState({ description: '', cost: '', is_from_stock: false, store: '', purchase_date: '', notes: '' });
+  const [matData, setMatData] = useState({ description: '', cost: '20.00', is_from_stock: false, store: '', purchase_date: new Date().toISOString().split('T')[0], notes: '' });
   
   const [hoursOpen, setHoursOpen] = useState(false);
   const [hoursData, setHoursData] = useState({ date: new Date().toISOString().split('T')[0], hours: '', description: '', start_time: '', end_time: '' });
@@ -107,7 +108,7 @@ export const JobDetails = () => {
       });
       if (res.ok) {
         setMatOpen(false);
-        setMatData({ description: '', cost: '', is_from_stock: false, store: '', purchase_date: '', notes: '' });
+        setMatData({ description: '', cost: '20.00', is_from_stock: false, store: '', purchase_date: new Date().toISOString().split('T')[0], notes: '' });
         showSuccess(`Material ${matData.id ? 'updated' : 'added'} successfully!`);
         queryClient.invalidateQueries({ queryKey: ['materials', 'job', id] });
       } else {
@@ -276,18 +277,8 @@ export const JobDetails = () => {
               <span className="material-symbols-outlined text-[18px]">domain</span>
               {job.clients?.name || 'Unknown Client'}
             </Link>
-            <div className={`flex items-center gap-2 px-3 py-1 rounded-full font-label-caps text-[10px] uppercase font-bold border ${
-              job.status === 'open' ? 'bg-amber-100 text-amber-800 border-amber-200' :
-              job.status === 'in_progress' ? 'bg-sky-100 text-sky-800 border-sky-200' :
-              job.status === 'completed' ? 'bg-emerald-100 text-emerald-800 border-emerald-200' :
-              'bg-gray-100 text-gray-800 border-gray-200'
-            }`}>
-              <span className={`w-2 h-2 rounded-full ${
-                job.status === 'open' ? 'bg-amber-500 animate-pulse' :
-                job.status === 'in_progress' ? 'bg-sky-500 animate-pulse' :
-                job.status === 'completed' ? 'bg-emerald-500' : 'bg-gray-500'
-              }`}></span>
-              {job.status.replace('_', ' ')}
+            <div className={`flex items-center gap-2 px-3 py-1 rounded-full font-label-caps text-[10px] uppercase font-bold border ${STATUS_COLORS[job.status] || STATUS_COLORS.open}`}>
+              {job.status.replace(/_/g, ' ')}
             </div>
           </div>
         </div>
@@ -389,14 +380,8 @@ export const JobDetails = () => {
                   <Link to={`/invoices/${inv.id}`} className="font-body-md font-bold text-gray-900 hover:text-primary transition-colors">
                     #{inv.invoice_number}
                   </Link>
-                  <span className={`px-2 py-0.5 rounded text-xs font-bold uppercase tracking-wider ${
-                    inv.status === 'draft' ? 'bg-gray-200 text-gray-700' :
-                    inv.status === 'sent' ? 'bg-blue-100 text-blue-700' :
-                    inv.status === 'paid' ? 'bg-emerald-100 text-emerald-700' :
-                    inv.status === 'voided' ? 'bg-red-100 text-red-700' :
-                    'bg-amber-100 text-amber-700'
-                  }`}>
-                    {inv.status}
+                  <span className={`px-2 py-0.5 rounded text-xs font-bold uppercase tracking-wider ${STATUS_COLORS[inv.status] || STATUS_COLORS.draft}`}>
+                    {inv.status.replace(/_/g, ' ')}
                   </span>
                 </div>
               ))
@@ -455,8 +440,7 @@ export const JobDetails = () => {
                   </tr>
                 ) : (
                   hours.map(h => {
-                    const isLocked = h.invoice_id && invoices.find(i => i.id === h.invoice_id && ['sent', 'in_progress', 'paid', 'voided'].includes(i.status));
-                    const linkedInvoice = h.invoice_id ? invoices.find(i => i.id === h.invoice_id) : null;
+                    const isLocked = h.billing_status === 'billed' || h.billing_status === 'on_draft';
                     return (
                     <tr key={h.id} className="border-b border-gray-100 hover:bg-gray-50 transition-colors group">
                       <td className="p-3 font-medium">{new Date(h.date).toLocaleDateString()}</td>
@@ -467,9 +451,13 @@ export const JobDetails = () => {
                         <div>{h.description || '-'}</div>
                       </td>
                       <td className="p-3 text-center">
-                        {h.invoice_id ? (
+                        {h.billing_status === 'billed' ? (
                           <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                            🟢 Billed {linkedInvoice ? `in #${linkedInvoice.invoice_number}` : ''}
+                            🟢 Billed
+                          </span>
+                        ) : h.billing_status === 'on_draft' ? (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-bold bg-blue-50 text-blue-700 border border-blue-200">
+                            🔵 On Draft
                           </span>
                         ) : (
                           <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-bold bg-red-50 text-red-700 border border-red-200">
@@ -477,7 +465,7 @@ export const JobDetails = () => {
                           </span>
                         )}
                       </td>
-                      <td className="p-3 text-right font-medium">{h.hours} hrs</td>
+                      <td className="p-3 text-right font-medium">{Number(h.hours).toFixed(2)} hrs</td>
                       <td className="p-3 text-right">
                         <div className="flex justify-end gap-2">
                           <button 
@@ -507,7 +495,7 @@ export const JobDetails = () => {
           </div>
           <div className="flex justify-between items-center pt-3 mt-auto border-t border-gray-100">
             <span className="font-label-md text-xs font-bold text-gray-500 uppercase tracking-widest">Total Hours</span>
-            <span className="font-headline-sm text-lg font-bold text-gray-900">{totalHours} hrs</span>
+            <span className="font-headline-sm text-lg font-bold text-gray-900">{Number(totalHours).toFixed(2)} hrs</span>
           </div>
         </div>
 
@@ -518,7 +506,7 @@ export const JobDetails = () => {
               <span className="material-symbols-outlined text-[18px]">shopping_cart</span>
               Materials & Expenses
             </h3>
-            <button onClick={() => { setMatData({ description: '', cost: '', is_from_stock: false, store: '', purchase_date: '', notes: '' }); setMatOpen(true); }} className="px-3 py-1.5 bg-primary text-black font-body-md font-bold rounded cursor-pointer hover:bg-opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-sm flex items-center gap-1">
+            <button onClick={() => { setMatData({ description: '', cost: '20.00', is_from_stock: false, store: '', purchase_date: new Date().toISOString().split('T')[0], notes: '' }); setMatOpen(true); }} className="px-3 py-1.5 bg-primary text-black font-body-md font-bold rounded cursor-pointer hover:bg-opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-sm flex items-center gap-1">
               <span className="material-symbols-outlined text-[16px]">add</span>
               Add Material
             </button>
@@ -545,8 +533,7 @@ export const JobDetails = () => {
                   </tr>
                 ) : (
                   materials.map(m => {
-                    const isLocked = m.invoice_id && invoices.find(i => i.id === m.invoice_id && ['sent', 'in_progress', 'paid', 'voided'].includes(i.status));
-                    const linkedInvoice = m.invoice_id ? invoices.find(i => i.id === m.invoice_id) : null;
+                    const isLocked = m.billing_status === 'billed' || m.billing_status === 'on_draft';
                     return (
                     <tr key={m.id} className="border-b border-gray-100 hover:bg-gray-50 transition-colors group">
                       <td className="p-3">
@@ -564,9 +551,13 @@ export const JobDetails = () => {
                         )}
                       </td>
                       <td className="p-3 text-center">
-                        {m.invoice_id ? (
+                        {m.billing_status === 'billed' ? (
                           <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                            🟢 Billed {linkedInvoice ? `in #${linkedInvoice.invoice_number}` : ''}
+                            🟢 Billed
+                          </span>
+                        ) : m.billing_status === 'on_draft' ? (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-bold bg-blue-50 text-blue-700 border border-blue-200">
+                            🔵 On Draft
                           </span>
                         ) : (
                           <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-bold bg-red-50 text-red-700 border border-red-200">

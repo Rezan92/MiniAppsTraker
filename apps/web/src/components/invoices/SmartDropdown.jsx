@@ -55,7 +55,8 @@ export const SmartDropdown = ({ jobId, session, onAddItems, filterType, existing
       source_type: type,
       source_id: item.id,
       description: item.description || (type === 'labor' ? `${item.hours} hours logged` : 'Material'),
-      amount: amount
+      amount: amount,
+      service_date: type === 'labor' ? item.date : null
     }]);
   };
 
@@ -65,13 +66,15 @@ export const SmartDropdown = ({ jobId, session, onAddItems, filterType, existing
         source_type: 'material',
         source_id: m.id,
         description: m.description,
-        amount: m.cost || 0
+        amount: m.cost || 0,
+        service_date: null
       })),
       ...hours.map(h => ({
         source_type: 'labor',
         source_id: h.id,
         description: h.description || `${h.hours} hours logged`,
-        amount: selectedJob?.rate_type === 'hourly' ? (h.hours || 0) * (selectedJob.hourly_rate || 0) : 0
+        amount: selectedJob?.rate_type === 'hourly' ? (h.hours || 0) * (selectedJob.hourly_rate || 0) : 0,
+        service_date: h.date
       }))
     ];
     if (items.length > 0) {
@@ -209,7 +212,7 @@ export const SmartDropdown = ({ jobId, session, onAddItems, filterType, existing
                                 </div>
                               </div>
                             </div>
-                            <span className="text-gray-500 shrink-0 mt-0.5">{h.hours} hrs</span>
+                            <span className="text-gray-500 shrink-0 mt-0.5">{Number(h.hours).toFixed(2)} hrs</span>
                           </li>
                         );
                       })}
