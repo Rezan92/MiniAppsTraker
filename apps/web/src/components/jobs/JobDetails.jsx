@@ -9,7 +9,8 @@ import { DeleteJobItemModal } from './DeleteJobItemModal';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { NotFound } from '../errors/NotFound';
 import { translateApiError } from '../../utils/errorTranslator';
-import { STATUS_COLORS } from '../../utils/constants';
+import { STATUS_COLORS, JOB_STATUSES } from '../../utils/constants';
+import { StatusBadgeDropdown } from '../shared/StatusBadgeDropdown';
 
 export const JobDetails = () => {
   const { id } = useParams();
@@ -156,6 +157,29 @@ export const JobDetails = () => {
     }
   };
 
+  const handleUpdateStatus = async (newStatus) => {
+    try {
+      const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:4000'}/api/jobs/${id}/status`, {
+        method: 'PATCH',
+        headers: { 
+          'Authorization': `Bearer ${session?.access_token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ status: newStatus })
+      });
+      if (res.ok) {
+        queryClient.invalidateQueries({ queryKey: ['job', id] });
+        showSuccess('Job status updated!');
+      } else {
+        const errorData = await res.json();
+        showError(errorData.error?.message || 'Failed to update status');
+      }
+    } catch (err) {
+      console.error(err);
+      showError('An unexpected error occurred.');
+    }
+  };
+
   const confirmDelete = async () => {
     if (!itemToDelete) return;
     const { id: itemId, type } = itemToDelete;
@@ -277,9 +301,11 @@ export const JobDetails = () => {
               <span className="material-symbols-outlined text-[18px]">domain</span>
               {job.clients?.name || 'Unknown Client'}
             </Link>
-            <div className={`flex items-center gap-2 px-3 py-1 rounded-full font-label-caps text-[10px] uppercase font-bold border ${STATUS_COLORS[job.status] || STATUS_COLORS.open}`}>
-              {job.status.replace(/_/g, ' ')}
-            </div>
+            <StatusBadgeDropdown
+              currentStatus={job.status}
+              statuses={JOB_STATUSES}
+              onStatusChange={(newStatus) => handleUpdateStatus(newStatus)}
+            />
           </div>
         </div>
         <div className="flex gap-3">
@@ -390,7 +416,7 @@ export const JobDetails = () => {
         </div>
 
         {/* Job Notes */}
-        <div className="xl:col-span-5 bg-white border border-gray-200 rounded-lg p-6 hover:shadow-sm transition-shadow flex flex-col">
+        <div className="xl:col-span-4 bg-white border border-gray-200 rounded-lg p-6 hover:shadow-sm transition-shadow flex flex-col">
           <div className="flex justify-between items-center mb-4 border-b border-gray-100 pb-2">
             <h3 className="font-label-caps text-xs tracking-wider text-gray-500 uppercase flex items-center gap-2 font-bold">
               <span className="material-symbols-outlined text-[18px]">note_alt</span>

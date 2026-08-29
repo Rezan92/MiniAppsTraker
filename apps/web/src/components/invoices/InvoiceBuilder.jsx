@@ -338,6 +338,16 @@ export const InvoiceBuilder = () => {
           </h1>
         </div>
           <div className="flex gap-4">
+            {formData.job_id && (
+              <button 
+                type="button" 
+                onClick={() => navigate(`/jobs/${formData.job_id}`)}
+                className="px-6 py-2 border border-gray-300 rounded-lg font-title-sm text-gray-700 hover:bg-gray-50 cursor-pointer flex items-center gap-2"
+              >
+                <span className="material-symbols-outlined text-[18px]">work</span>
+                View Job
+              </button>
+            )}
             <button 
               type="button" 
               onClick={handleBackNavigation}
