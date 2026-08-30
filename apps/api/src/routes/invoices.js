@@ -60,7 +60,7 @@ router.get('/', async (req, res, next) => {
     
     let query = supabase
       .from('invoices')
-      .select('*, clients(name, email, phone)')
+      .select('*, clients(name, email, phone), invoice_line_items(amount, source_type)')
       .eq('tenant_id', req.user.tenant_id)
       .order('created_at', { ascending: false });
 
@@ -74,7 +74,25 @@ router.get('/', async (req, res, next) => {
     const { data, error } = await query;
     if (error) throw error;
 
-    res.json({ success: true, data });
+    // Calculate totals on the fly
+    const computedData = data.map(inv => {
+      const items = inv.invoice_line_items || [];
+      const lineLabor = items.filter(i => i.source_type === 'labor' || i.source_type === 'ad_hoc').reduce((sum, i) => sum + Number(i.amount || 0), 0);
+      const lineMaterials = items.filter(i => i.source_type === 'material').reduce((sum, i) => sum + Number(i.amount || 0), 0);
+      
+      const totalLabor = Number(inv.labor_amount || 0) + lineLabor;
+      const totalMaterials = lineMaterials;
+      
+      return {
+        ...inv,
+        labor_amount: totalLabor,
+        materials_amount: totalMaterials,
+        total_amount: totalLabor + totalMaterials,
+        invoice_line_items: undefined // remove it from payload to keep it light
+      };
+    });
+
+    res.json({ success: true, data: computedData });
   } catch (err) {
     next(err);
   }
