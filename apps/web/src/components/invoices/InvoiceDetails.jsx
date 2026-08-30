@@ -8,14 +8,7 @@ import { translateApiError } from '../../utils/errorTranslator';
 import { InvoicePreview } from './InvoicePreview';
 import { DeleteInvoiceModal } from './DeleteInvoiceModal';
 import { formatDate } from '../../utils/formatters';
-
-const STATUS_COLORS = {
-  draft: 'bg-gray-100 text-gray-800',
-  sent: 'bg-blue-100 text-blue-800',
-  in_progress: 'bg-yellow-100 text-yellow-800',
-  paid: 'bg-green-100 text-green-800',
-  overdue: 'bg-red-100 text-red-800'
-};
+import { STATUS_COLORS } from '../../utils/constants';
 
 export const InvoiceDetails = () => {
   const { id } = useParams();
@@ -130,6 +123,26 @@ export const InvoiceDetails = () => {
     }
   });
 
+  const generateFileName = () => {
+    if (!invoice) return 'Invoice';
+    const clientName = invoice.clients?.name || 'Client';
+    const address = invoice.property_address || 'Address';
+    const invNumber = invoice.invoice_number || 'Draft';
+    const now = new Date();
+    const date = now.toISOString().split('T')[0];
+    const time = now.toTimeString().split(' ')[0].replace(/:/g, '-');
+    
+    // Replace non-alphanumeric chars with underscores to ensure safe filename
+    const sanitize = (str) => str.replace(/[^a-zA-Z0-9-]/g, '_').replace(/_+/g, '_').replace(/^_|_$/g, '');
+    
+    return `${sanitize(clientName)}_${sanitize(address)}_${sanitize(invNumber)}_${date}_${time}`;
+  };
+
+  const handlePrint = useReactToPrint({
+    contentRef: componentRef,
+    documentTitle: generateFileName(),
+  });
+
   const handleEditNotes = () => {
     setDraftNotes(invoice?.internal_notes || '');
     setIsEditingNotes(true);
@@ -193,6 +206,16 @@ export const InvoiceDetails = () => {
 
           {isDraft && (
             <button 
+              onClick={() => statusMutation.mutate({ status: 'ready_to_send' })}
+              className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 cursor-pointer"
+            >
+              <span className="material-symbols-outlined text-[18px]">check_circle</span>
+              Mark as Ready to Send
+            </button>
+          )}
+
+          {invoice.status === 'ready_to_send' && (
+            <button 
               onClick={() => statusMutation.mutate({ status: 'sent' })}
               className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 cursor-pointer"
             >
@@ -201,7 +224,7 @@ export const InvoiceDetails = () => {
             </button>
           )}
           
-          {(invoice.status === 'sent' || invoice.status === 'overdue' || invoice.status === 'in_progress') && (
+          {(invoice.status === 'ready_to_send' || invoice.status === 'sent' || invoice.status === 'overdue' || invoice.status === 'in_progress') && (
             <>
               <button 
                 onClick={() => { setReasonAction('draft'); setReasonText(''); setReasonModalOpen(true); }}
@@ -210,17 +233,19 @@ export const InvoiceDetails = () => {
                 <span className="material-symbols-outlined text-[18px]">undo</span>
                 Revert to Draft
               </button>
-              <button 
-                onClick={() => statusMutation.mutate({ status: 'paid' })}
-                className="inline-flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg text-sm font-medium hover:bg-green-700 cursor-pointer"
-              >
-                <span className="material-symbols-outlined text-[18px]">check_circle</span>
-                Mark as Paid
-              </button>
+              {(invoice.status !== 'ready_to_send') && (
+                <button 
+                  onClick={() => statusMutation.mutate({ status: 'paid' })}
+                  className="inline-flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg text-sm font-medium hover:bg-green-700 cursor-pointer"
+                >
+                  <span className="material-symbols-outlined text-[18px]">check_circle</span>
+                  Mark as Paid
+                </button>
+              )}
             </>
           )}
 
-          {['sent', 'in_progress', 'paid', 'overdue'].includes(invoice.status) && invoice.status !== 'voided' && (
+          {['ready_to_send', 'sent', 'in_progress', 'paid', 'overdue'].includes(invoice.status) && invoice.status !== 'voided' && (
             <button 
               onClick={() => { setReasonAction('voided'); setReasonText(''); setReasonModalOpen(true); }}
               className="inline-flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg text-sm font-medium hover:bg-red-700 cursor-pointer"

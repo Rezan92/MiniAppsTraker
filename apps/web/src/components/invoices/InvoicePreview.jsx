@@ -94,18 +94,66 @@ export const InvoicePreview = forwardRef(({ invoice, tenant }, ref) => {
                       ({invoice.labor_notes})
                     </div>
                   )}
-                  {visibleLaborItems.length > 0 && (
-                    <ul className="bullet-list">
-                      {visibleLaborItems.sort((a,b)=>a.sort_order - b.sort_order).map(item => {
-                        const sentences = item.description 
-                          ? item.description.split('.').map(s => s.trim()).filter(s => s.length > 0).map(s => s + '.')
-                          : [];
-                        return sentences.map((sentence, idx) => (
-                          <li key={`${item.id}-${idx}`}>{sentence}</li>
-                        ));
-                      })}
-                    </ul>
-                  )}
+                  {(() => {
+                    if (invoice.breakdown_by_days && visibleLaborItems.length > 0) {
+                      const grouped = {};
+                      visibleLaborItems.forEach(item => {
+                        const dateKey = item.service_date ? item.service_date.split('T')[0] : 'Unspecified Date';
+                        if (!grouped[dateKey]) grouped[dateKey] = [];
+                        grouped[dateKey].push(item);
+                      });
+                      
+                      const sortedDates = Object.keys(grouped).sort((a, b) => {
+                        if (a === 'Unspecified Date') return 1;
+                        if (b === 'Unspecified Date') return -1;
+                        return new Date(a) - new Date(b);
+                      });
+
+                      return sortedDates.map(date => {
+                        const dayItems = grouped[date].sort((a,b)=>a.sort_order - b.sort_order);
+                        const dayAmount = dayItems.reduce((sum, i) => sum + Number(i.amount || 0), 0);
+                        let formattedDate = date;
+                        if (date !== 'Unspecified Date') {
+                          // Using a UTC parse approach to avoid off-by-one timezone issues with raw yyyy-mm-dd
+                          const [y, m, d] = date.split('-');
+                          formattedDate = new Date(y, m - 1, d).toLocaleDateString(undefined, { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' });
+                        }
+                        
+                        return (
+                          <div key={date} style={{ marginTop: '10px', marginBottom: '6px' }}>
+                            <div style={{ fontWeight: 'bold', fontSize: '10pt', color: '#2d3748', borderBottom: '1px solid #e2e8f0', paddingBottom: '2px', marginBottom: '4px', display: 'flex', justifyContent: 'space-between' }}>
+                              <span>{formattedDate}</span>
+                              <span style={{ fontSize: '9pt', color: '#718096', fontWeight: 'normal' }}>{formatCurrency(dayAmount)}</span>
+                            </div>
+                            <ul className="bullet-list" style={{ marginTop: '4px', marginBottom: '0' }}>
+                              {dayItems.map(item => {
+                                const sentences = item.description 
+                                  ? item.description.split('.').map(s => s.trim()).filter(s => s.length > 0).map(s => s + '.')
+                                  : [];
+                                return sentences.map((sentence, idx) => (
+                                  <li key={`${item.id}-${idx}`}>{sentence}</li>
+                                ));
+                              })}
+                            </ul>
+                          </div>
+                        );
+                      });
+                    } else if (visibleLaborItems.length > 0) {
+                      return (
+                        <ul className="bullet-list">
+                          {visibleLaborItems.sort((a,b)=>a.sort_order - b.sort_order).map(item => {
+                            const sentences = item.description 
+                              ? item.description.split('.').map(s => s.trim()).filter(s => s.length > 0).map(s => s + '.')
+                              : [];
+                            return sentences.map((sentence, idx) => (
+                              <li key={`${item.id}-${idx}`}>{sentence}</li>
+                            ));
+                          })}
+                        </ul>
+                      );
+                    }
+                    return null;
+                  })()}
                 </td>
                 <td className="amount-val">{formatCurrency(laborAmount)}</td>
               </tr>
@@ -116,7 +164,10 @@ export const InvoicePreview = forwardRef(({ invoice, tenant }, ref) => {
                     <ul className="bullet-list">
                       {visibleMaterialItems.sort((a,b)=>a.sort_order - b.sort_order).map(item => (
                         <li key={item.id}>
-                          {item.description}
+                          <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%' }}>
+                            <span style={{ paddingRight: '15px' }}>{item.description}</span>
+                            <span style={{ color: '#718096', whiteSpace: 'nowrap' }}>{formatCurrency(item.amount)}</span>
+                          </div>
                         </li>
                       ))}
                     </ul>

@@ -1,28 +1,76 @@
 import React, { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
+import { useToast } from '../../contexts/ToastContext';
 import { formatCurrency, formatDate } from '../../utils/formatters';
 import { PageHeader } from '../common/PageHeader';
 import { DateRangeFilter } from '../common/DateRangeFilter';
-
-const STATUS_COLORS = {
-  draft: 'bg-gray-100 text-gray-800',
-  sent: 'bg-blue-100 text-blue-800',
-  in_progress: 'bg-yellow-100 text-yellow-800',
-  paid: 'bg-green-100 text-green-800',
-  overdue: 'bg-red-100 text-red-800'
-};
+import { INVOICE_STATUSES, STATUS_COLORS } from '../../utils/constants';
+import { translateApiError } from '../../utils/errorTranslator';
+import { StatusBadgeDropdown } from '../shared/StatusBadgeDropdown';
 
 export const InvoiceList = () => {
   const { session } = useAuth();
   const navigate = useNavigate();
+  const { showSuccess, showError } = useToast();
+  const queryClient = useQueryClient();
   const [filter, setFilter] = useState('all');
   const [search, setSearch] = useState('');
   const [dateRange, setDateRange] = useState({
     startDate: null,
     endDate: null
   });
+
+  const [reasonModalOpen, setReasonModalOpen] = useState(false);
+  const [reasonAction, setReasonAction] = useState('');
+  const [reasonText, setReasonText] = useState('');
+  const [selectedInvoiceId, setSelectedInvoiceId] = useState(null);
+
+  const statusMutation = useMutation({
+    mutationFn: async ({ id, status, reason }) => {
+      const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:4000'}/api/invoices/${id}/status`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`
+        },
+        body: JSON.stringify({ status, reason })
+      });
+      const json = await res.json();
+      if (!res.ok || !json.success) throw new Error(json.error);
+      return json.data;
+    },
+    onSuccess: () => {
+      showSuccess("Status updated successfully");
+      queryClient.invalidateQueries(['invoices']);
+      setReasonModalOpen(false);
+      setReasonText('');
+      setSelectedInvoiceId(null);
+    },
+    onError: (err) => {
+      showError(translateApiError(err));
+    }
+  });
+
+  const handleStatusChange = (invoiceId, newStatus) => {
+    if (['draft', 'voided', 'disputed'].includes(newStatus)) {
+      setSelectedInvoiceId(invoiceId);
+      setReasonAction(newStatus);
+      setReasonText('');
+      setReasonModalOpen(true);
+    } else {
+      statusMutation.mutate({ id: invoiceId, status: newStatus });
+    }
+  };
+
+  const submitReasonAction = () => {
+    if (!reasonText.trim()) {
+      showError("A reason is required");
+      return;
+    }
+    statusMutation.mutate({ id: selectedInvoiceId, status: reasonAction, reason: reasonText.trim() });
+  };
 
   const { data: invoices = [], isLoading } = useQuery({
     queryKey: ['invoices'],
@@ -75,13 +123,7 @@ export const InvoiceList = () => {
         actionButtonText="Create Invoice"
         actionButtonIcon="add"
         actionLinkTo="/invoices/new"
-        tabs={[
-          { value: 'all', label: 'All Invoices' },
-          { value: 'draft', label: 'Draft' },
-          { value: 'sent', label: 'Sent' },
-          { value: 'paid', label: 'Paid' },
-          { value: 'overdue', label: 'Overdue' }
-        ]}
+        tabs={INVOICE_STATUSES}
         activeTab={filter}
         onTabChange={setFilter}
         searchPlaceholder="Search invoices, clients..."
@@ -163,9 +205,11 @@ export const InvoiceList = () => {
                       {formatCurrency(invoice.total_amount)}
                     </td>
                     <td className="px-4 py-4 text-right">
-                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-label-sm font-medium capitalize ${STATUS_COLORS[invoice.status] || 'bg-gray-100 text-gray-800'}`}>
-                        {invoice.status.replace('_', ' ')}
-                      </span>
+                      <StatusBadgeDropdown
+                        currentStatus={invoice.status}
+                        statuses={INVOICE_STATUSES}
+                        onStatusChange={(newStatus) => handleStatusChange(invoice.id, newStatus)}
+                      />
                     </td>
                   </tr>
                 ))}
@@ -173,7 +217,7 @@ export const InvoiceList = () => {
               <tfoot className="sticky bottom-0 z-10">
                 <tr className="bg-[#1F2937]">
                   <td colSpan="4" className="px-4 py-3.5 text-right font-label-caps text-label-caps text-gray-300 tracking-wider">
-                    Totals · {filter === 'all' ? 'All Invoices' : filter.charAt(0).toUpperCase() + filter.slice(1)}
+                    Totals · {filter === 'all' ? 'All Invoices' : filter.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
                   </td>
                   <td className="px-4 py-3.5 text-right font-title-sm text-amber-400">{formatCurrency(laborTotal)}</td>
                   <td className="px-4 py-3.5 text-right font-title-sm text-amber-400">{formatCurrency(materialTotal)}</td>
@@ -185,6 +229,47 @@ export const InvoiceList = () => {
           </div>
         )}
       </div>
+
+      {/* Reason Modal */}
+      {reasonModalOpen && (
+        <div className="fixed inset-0 bg-on-background/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl shadow-lg w-full max-w-md overflow-hidden">
+            <div className="px-6 py-4 border-b border-gray-200">
+              <h3 className="text-lg font-bold text-gray-900">
+                Reason for {reasonAction.replace(/_/g, ' ')}
+              </h3>
+            </div>
+            <div className="p-6">
+              <p className="text-sm text-gray-600 mb-4">
+                Please provide a reason for changing the invoice status to {reasonAction.replace(/_/g, ' ')}. This will be saved in the logs.
+              </p>
+              <textarea
+                className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary resize-none"
+                rows="4"
+                placeholder="Enter reason..."
+                value={reasonText}
+                onChange={(e) => setReasonText(e.target.value)}
+                autoFocus
+              ></textarea>
+            </div>
+            <div className="px-6 py-4 bg-gray-50 border-t border-gray-200 flex justify-end gap-3">
+              <button
+                onClick={() => setReasonModalOpen(false)}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={submitReasonAction}
+                disabled={statusMutation.isLoading || !reasonText.trim()}
+                className="px-4 py-2 text-sm font-medium text-white bg-primary rounded-lg hover:bg-opacity-90 disabled:opacity-50"
+              >
+                Confirm
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

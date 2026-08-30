@@ -30,15 +30,13 @@ const lineItemSchema = z.object({
   source_id: z.string().uuid().optional().nullable(),
   description: z.string().min(1),
   amount: z.number().default(0),
-  sort_order: z.number().default(0),
-  is_hidden: z.boolean().optional().default(false)
+  sort_order: z.number().default(0)
 });
 
 const lineItemUpdateSchema = z.object({
   description: z.string().optional(),
   amount: z.number().optional(),
-  sort_order: z.number().optional(),
-  is_hidden: z.boolean().optional()
+  sort_order: z.number().optional()
 });
 
 async function enforceInvoiceEditability(invoiceId, tenantId) {
@@ -419,7 +417,7 @@ router.get('/from-job/:jobId', async (req, res, next) => {
       client_id: job.client_id,
       job_id: job.id,
       labor_title: job.title,
-      labor_amount: job.rate_type === 'flat' ? (job.flat_rate || 0) : 0,
+      labor_amount: 0,
       property_address: job.rental_properties?.address || job.clients?.address || ''
     };
     res.json({ success: true, data: payload });

@@ -55,7 +55,7 @@ export const PageHeader = ({
               <button 
                 key={tab.value}
                 onClick={() => onTabChange(tab.value)}
-                className={`px-4 py-1.5 text-sm font-medium rounded-md whitespace-nowrap transition-colors ${activeTab === tab.value ? 'bg-white text-gray-900 shadow-sm border border-gray-200' : 'text-gray-600 hover:text-gray-900 hover:bg-white/50 border border-transparent'}`}
+                className={`px-4 py-1.5 text-sm font-medium rounded-md whitespace-nowrap transition-colors cursor-pointer ${activeTab === tab.value ? 'bg-white text-gray-900 shadow-sm border border-gray-200' : 'text-gray-600 hover:text-gray-900 hover:bg-white/50 border border-transparent'}`}
               >
                 {tab.label}
               </button>

@@ -31,9 +31,20 @@ export const LaborCard = ({
         {lineItems.filter(i => i.source_type === 'labor' || i.source_type === 'ad_hoc').map(item => (
           <div key={item.id} className="flex gap-4 items-start bg-gray-50 p-4 rounded-lg border border-gray-100 relative group">
             <div className="flex-1">
-              <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">
-                {item.source_type === 'ad_hoc' ? 'Custom Labor' : (item.source_id ? 'Logged Hours' : 'Labor')}
-              </label>
+              <div className="flex justify-between mb-1">
+                <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">
+                  {item.source_type === 'ad_hoc' ? 'Custom Labor' : (item.source_id ? 'Logged Hours' : 'Labor')}
+                </label>
+                <div className="flex items-center gap-2">
+                  <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Date:</label>
+                  <input
+                    type="date"
+                    defaultValue={item.service_date ? item.service_date.split('T')[0] : ''}
+                    onBlur={(e) => updateItemMutation.mutate({ itemId: item.id, updates: { service_date: e.target.value || null } })}
+                    className="text-xs px-2 py-0.5 border border-gray-300 rounded focus:ring-1 focus:ring-primary focus:border-primary"
+                  />
+                </div>
+              </div>
               <textarea 
                 defaultValue={item.description}
                 onBlur={(e) => updateItemMutation.mutate({ itemId: item.id, updates: { description: e.target.value } })}
