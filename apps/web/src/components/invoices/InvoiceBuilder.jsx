@@ -152,7 +152,7 @@ export const InvoiceBuilder = () => {
         property_id: existingInvoice.property_id || '',
         labor_title: existingInvoice.labor_title || '',
         labor_notes: existingInvoice.labor_notes || '',
-        labor_amount: existingInvoice.labor_amount || 0,
+        labor_amount: existingInvoice.base_labor_amount || 0,
         breakdown_by_days: existingInvoice.breakdown_by_days || false
       });
     }
@@ -225,7 +225,7 @@ export const InvoiceBuilder = () => {
         job_id: formData.job_id || null,
         property_id: formData.property_id || null,
         billed_to_name: finalBilledToName,
-        labor_amount: Number(formData.labor_amount) || 0
+        base_labor_amount: Number(formData.labor_amount) || 0
       };
       
       const url = `${import.meta.env.VITE_API_URL || 'http://localhost:4000'}/api/invoices${isEditing ? `/${id}` : ''}`;
