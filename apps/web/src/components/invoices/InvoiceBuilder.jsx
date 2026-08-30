@@ -312,6 +312,7 @@ export const InvoiceBuilder = () => {
     onError: (err) => showError(err.message)
   });
 
+  const selectedJob = availableJobs.find(j => j.id === formData.job_id);
   const lineItems = existingInvoice?.invoice_line_items?.sort((a,b) => a.sort_order - b.sort_order) || [];
   const isFlatRate = selectedJob?.rate_type === 'flat';
   
@@ -325,8 +326,6 @@ export const InvoiceBuilder = () => {
   
   const laborTotal = (Number(formData.labor_amount) || 0) + laborLineItemsSubtotal;
   const totalDue = laborTotal + materialsSubtotal;
-
-  const selectedJob = availableJobs.find(j => j.id === formData.job_id);
 
   // Auto-populate flat rate if it's 0 (fixes older drafts)
   useEffect(() => {
