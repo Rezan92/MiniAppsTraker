@@ -411,6 +411,24 @@ router.delete('/:id', async (req, res, next) => {
       return res.status(403).json({ success: false, error: 'Only draft invoices can be deleted' });
     }
 
+    const { data: items } = await supabase
+      .from('invoice_line_items')
+      .select('source_type, source_id')
+      .eq('invoice_id', req.params.id)
+      .not('source_id', 'is', null);
+
+    if (items && items.length > 0) {
+      const laborIds = items.filter(i => i.source_type === 'labor').map(i => i.source_id);
+      const materialIds = items.filter(i => i.source_type === 'material').map(i => i.source_id);
+
+      if (laborIds.length > 0) {
+        await supabase.from('job_hours').update({ billing_status: 'unbilled' }).in('id', laborIds);
+      }
+      if (materialIds.length > 0) {
+        await supabase.from('job_materials').update({ billing_status: 'unbilled' }).in('id', materialIds);
+      }
+    }
+
     const { error } = await supabase
       .from('invoices')
       .delete()

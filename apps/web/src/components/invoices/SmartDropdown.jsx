@@ -65,24 +65,34 @@ export const SmartDropdown = ({ jobId, session, onAddItems, filterType, existing
 
   const handleAddAll = () => {
     const isFlatRate = selectedJob?.rate_type === 'flat';
-    const items = [
-      ...materials.map(m => ({
+    
+    const includeMaterials = !filterType || filterType === 'material';
+    const includeHours = !filterType || filterType === 'labor';
+    
+    const items = [];
+    
+    if (includeMaterials) {
+      items.push(...materials.map(m => ({
         source_type: 'material',
         source_id: m.id,
         description: m.description || m.item_name || 'Material Item',
         amount: m.cost || 0,
         service_date: null,
         is_billable: !isFlatRate
-      })),
-      ...hours.map(h => ({
+      })));
+    }
+    
+    if (includeHours) {
+      items.push(...hours.map(h => ({
         source_type: 'labor',
         source_id: h.id,
         description: h.description || `${h.hours} hours logged`,
         amount: selectedJob?.rate_type === 'hourly' ? (h.hours || 0) * (selectedJob.hourly_rate || 0) : 0,
         service_date: h.date,
         is_billable: !isFlatRate
-      }))
-    ];
+      })));
+    }
+    
     if (items.length > 0) {
       onAddItems(items);
     }
@@ -90,7 +100,9 @@ export const SmartDropdown = ({ jobId, session, onAddItems, filterType, existing
 
   if (!jobId) return null;
 
-  const totalItems = materials.length + hours.length;
+  const includeMaterials = !filterType || filterType === 'material';
+  const includeHours = !filterType || filterType === 'labor';
+  const totalItems = (includeMaterials ? materials.length : 0) + (includeHours ? hours.length : 0);
 
   const isItemAdded = (id, type) => {
     return existingItems.some(i => i.source_id === id && i.source_type === type);
