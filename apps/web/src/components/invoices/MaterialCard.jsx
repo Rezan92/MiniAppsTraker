@@ -7,7 +7,8 @@ export const MaterialCard = ({
   session,
   addItemMutation,
   updateItemMutation,
-  setDeleteItemId
+  setDeleteItemId,
+  selectedJob
 }) => {
   return (
     <div className="border border-gray-200 rounded-xl bg-white">
@@ -20,6 +21,7 @@ export const MaterialCard = ({
             filterType="material"
             existingItems={lineItems}
             onAddItems={(items) => addItemMutation.mutate(items)} 
+            selectedJob={selectedJob}
           />
         </div>
       </div>

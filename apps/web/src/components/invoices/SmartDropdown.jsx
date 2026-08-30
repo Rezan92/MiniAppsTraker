@@ -69,7 +69,7 @@ export const SmartDropdown = ({ jobId, session, onAddItems, filterType, existing
       ...materials.map(m => ({
         source_type: 'material',
         source_id: m.id,
-        description: m.item_name || 'Material Item',
+        description: m.description || m.item_name || 'Material Item',
         amount: m.cost || 0,
         service_date: null,
         is_billable: !isFlatRate

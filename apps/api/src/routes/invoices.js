@@ -193,8 +193,8 @@ router.patch('/:id', async (req, res, next) => {
     const { data: items } = await supabase.from('invoice_line_items').select('amount, source_type, is_billable').eq('invoice_id', req.params.id);
     const lineItems = items || [];
     
-    const lineLabor = lineItems.filter(i => i.is_billable && (i.source_type === 'labor' || i.source_type === 'ad_hoc')).reduce((sum, i) => sum + Number(i.amount || 0), 0);
-    const lineMaterials = lineItems.filter(i => i.is_billable && i.source_type === 'material').reduce((sum, i) => sum + Number(i.amount || 0), 0);
+    const lineLabor = lineItems.filter(i => i.is_billable !== false && (i.source_type === 'labor' || i.source_type === 'ad_hoc')).reduce((sum, i) => sum + Number(i.amount || 0), 0);
+    const lineMaterials = lineItems.filter(i => i.is_billable !== false && i.source_type === 'material').reduce((sum, i) => sum + Number(i.amount || 0), 0);
     
     const totalLabor = Number(invoiceData.labor_amount || 0) + lineLabor;
     const totalAmount = totalLabor + lineMaterials;
@@ -230,11 +230,11 @@ router.post('/:id/items', async (req, res, next) => {
     const result = lineItemSchema.safeParse(req.body);
     if (!result.success) return res.status(400).json({ success: false, error: result.error.errors[0].message });
     
-    const { source_type, source_id, description, amount, sort_order } = result.data;
+    const { source_type, source_id, description, amount, sort_order, is_billable } = result.data;
 
     const { data: item, error: itemError } = await supabase
       .from('invoice_line_items')
-      .insert([{ invoice_id: req.params.id, source_type, source_id, description, amount, sort_order }])
+      .insert([{ invoice_id: req.params.id, source_type, source_id, description, amount, sort_order, is_billable }])
       .select()
       .single();
     if (itemError) throw itemError;

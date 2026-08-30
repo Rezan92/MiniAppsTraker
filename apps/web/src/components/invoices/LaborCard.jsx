@@ -52,19 +52,17 @@ export const LaborCard = ({
                 rows="2"
               />
             </div>
-            {(!isFlatRate || item.source_type === 'ad_hoc') && (
-              <div className="w-32">
-                <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Amount ($)</label>
-                <input 
-                  type="number" 
-                  min="0"
-                  step="0.01"
-                  defaultValue={item.amount}
-                  onBlur={(e) => updateItemMutation.mutate({ itemId: item.id, updates: { amount: Number(e.target.value) } })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-primary focus:border-primary text-right font-medium text-sm"
-                />
-              </div>
-            )}
+            <div className="w-32">
+              <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Amount ($)</label>
+              <input 
+                type="number" 
+                min="0"
+                step="0.01"
+                defaultValue={item.amount}
+                onBlur={(e) => updateItemMutation.mutate({ itemId: item.id, updates: { amount: Number(e.target.value) } })}
+                className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-primary focus:border-primary text-right font-medium text-sm"
+              />
+            </div>
             <div className="flex gap-2 shrink-0 items-center mt-6">
               <label className="flex items-center gap-1 cursor-pointer mr-2" title="Include in Invoice Total">
                 <input
