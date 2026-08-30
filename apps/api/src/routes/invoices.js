@@ -31,14 +31,16 @@ const lineItemSchema = z.object({
   description: z.string().min(1),
   amount: z.number().default(0),
   sort_order: z.number().default(0),
-  is_billable: z.boolean().default(true)
+  is_billable: z.boolean().default(true),
+  service_date: z.string().optional().nullable()
 });
 
 const lineItemUpdateSchema = z.object({
   description: z.string().optional(),
   amount: z.number().optional(),
   sort_order: z.number().optional(),
-  is_billable: z.boolean().optional()
+  is_billable: z.boolean().optional(),
+  service_date: z.string().optional().nullable()
 });
 
 async function enforceInvoiceEditability(invoiceId, tenantId) {
@@ -230,11 +232,11 @@ router.post('/:id/items', async (req, res, next) => {
     const result = lineItemSchema.safeParse(req.body);
     if (!result.success) return res.status(400).json({ success: false, error: result.error.errors[0].message });
     
-    const { source_type, source_id, description, amount, sort_order, is_billable } = result.data;
+    const { source_type, source_id, description, amount, sort_order, is_billable, service_date } = result.data;
 
     const { data: item, error: itemError } = await supabase
       .from('invoice_line_items')
-      .insert([{ invoice_id: req.params.id, source_type, source_id, description, amount, sort_order, is_billable }])
+      .insert([{ invoice_id: req.params.id, source_type, source_id, description, amount, sort_order, is_billable, service_date }])
       .select()
       .single();
     if (itemError) throw itemError;
