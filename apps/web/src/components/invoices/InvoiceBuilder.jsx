@@ -141,6 +141,10 @@ export const InvoiceBuilder = () => {
         navigate(`/invoices/${id}`);
         return;
       }
+      const lineItems = existingInvoice.invoice_line_items || [];
+      const billableLabor = lineItems.filter(i => (i.source_type === 'labor' || i.source_type === 'ad_hoc') && i.is_billable !== false).reduce((sum, i) => sum + Number(i.amount || 0), 0);
+      const flatRate = Math.max(0, Number(existingInvoice.labor_amount || 0) - billableLabor);
+
       setFormData({
         client_id: existingInvoice.client_id,
         job_id: existingInvoice.job_id || '',
@@ -152,7 +156,7 @@ export const InvoiceBuilder = () => {
         property_id: existingInvoice.property_id || '',
         labor_title: existingInvoice.labor_title || '',
         labor_notes: existingInvoice.labor_notes || '',
-        labor_amount: existingInvoice.base_labor_amount || 0,
+        labor_amount: flatRate,
         breakdown_by_days: existingInvoice.breakdown_by_days || false
       });
     }
@@ -225,7 +229,7 @@ export const InvoiceBuilder = () => {
         job_id: formData.job_id || null,
         property_id: formData.property_id || null,
         billed_to_name: finalBilledToName,
-        base_labor_amount: Number(formData.labor_amount) || 0
+        labor_amount: Number(formData.labor_amount) || 0
       };
       
       const url = `${import.meta.env.VITE_API_URL || 'http://localhost:4000'}/api/invoices${isEditing ? `/${id}` : ''}`;
@@ -309,9 +313,15 @@ export const InvoiceBuilder = () => {
   });
 
   const lineItems = existingInvoice?.invoice_line_items?.sort((a,b) => a.sort_order - b.sort_order) || [];
+  const isFlatRate = selectedJob?.rate_type === 'flat';
   
-  const laborLineItemsSubtotal = lineItems.filter(i => i.source_type === 'labor' || i.source_type === 'ad_hoc').reduce((sum, item) => sum + Number(item.amount || 0), 0);
-  const materialsSubtotal = lineItems.filter(i => i.source_type === 'material').reduce((sum, item) => sum + Number(item.amount || 0), 0);
+  const laborLineItemsSubtotal = lineItems
+    .filter(i => (i.source_type === 'labor' || i.source_type === 'ad_hoc') && i.is_billable !== false)
+    .reduce((sum, i) => sum + Number(i.amount || 0), 0);
+    
+  const materialsSubtotal = lineItems
+    .filter(i => i.source_type === 'material' && i.is_billable !== false)
+    .reduce((sum, i) => sum + Number(i.amount || 0), 0);
   
   const laborTotal = (Number(formData.labor_amount) || 0) + laborLineItemsSubtotal;
   const totalDue = laborTotal + materialsSubtotal;

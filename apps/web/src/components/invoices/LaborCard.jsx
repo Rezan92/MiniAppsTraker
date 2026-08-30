@@ -66,6 +66,15 @@ export const LaborCard = ({
               </div>
             )}
             <div className="flex gap-2 shrink-0 items-center mt-6">
+              <label className="flex items-center gap-1 cursor-pointer mr-2" title="Include in Invoice Total">
+                <input
+                  type="checkbox"
+                  checked={item.is_billable !== false}
+                  onChange={(e) => updateItemMutation.mutate({ itemId: item.id, updates: { is_billable: e.target.checked } })}
+                  className="w-4 h-4 text-primary border-gray-300 rounded focus:ring-primary cursor-pointer"
+                />
+                <span className="text-xs font-bold text-gray-500 uppercase">Charge</span>
+              </label>
               <button 
                 onClick={() => updateItemMutation.mutate({ itemId: item.id, updates: { is_hidden: !item.is_hidden } })}
                 className={`transition-colors ${item.is_hidden ? 'text-gray-400' : 'text-primary'}`}

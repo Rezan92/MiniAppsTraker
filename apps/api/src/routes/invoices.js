@@ -13,7 +13,7 @@ const invoiceSchema = z.object({
   due_date: z.string().optional().nullable(),
   labor_title: z.string().optional().nullable(),
   labor_notes: z.string().optional().nullable(),
-  base_labor_amount: z.number().optional().default(0),
+  labor_amount: z.number().optional().default(0),
   property_address: z.string().optional().nullable(),
   property_id: z.string().uuid().optional().nullable(),
   billed_to_name: z.string().optional().nullable(),
@@ -30,13 +30,15 @@ const lineItemSchema = z.object({
   source_id: z.string().uuid().optional().nullable(),
   description: z.string().min(1),
   amount: z.number().default(0),
-  sort_order: z.number().default(0)
+  sort_order: z.number().default(0),
+  is_billable: z.boolean().default(true)
 });
 
 const lineItemUpdateSchema = z.object({
   description: z.string().optional(),
   amount: z.number().optional(),
-  sort_order: z.number().optional()
+  sort_order: z.number().optional(),
+  is_billable: z.boolean().optional()
 });
 
 async function enforceInvoiceEditability(invoiceId, tenantId) {
@@ -52,26 +54,6 @@ async function enforceInvoiceEditability(invoiceId, tenantId) {
     err.status = 403;
     throw err;
   }
-}
-
-async function syncInvoiceTotals(invoiceId) {
-  const { data: inv } = await supabase.from('invoices').select('base_labor_amount').eq('id', invoiceId).single();
-  if (!inv) return;
-
-  const { data: items } = await supabase.from('invoice_line_items').select('amount, source_type').eq('invoice_id', invoiceId);
-  const lineItems = items || [];
-  
-  const lineLabor = lineItems.filter(i => i.source_type === 'labor' || i.source_type === 'ad_hoc').reduce((sum, i) => sum + Number(i.amount || 0), 0);
-  const lineMaterials = lineItems.filter(i => i.source_type === 'material').reduce((sum, i) => sum + Number(i.amount || 0), 0);
-  
-  const totalLabor = Number(inv.base_labor_amount || 0) + lineLabor;
-  const totalAmount = totalLabor + lineMaterials;
-  
-  await supabase.from('invoices').update({
-    labor_amount: totalLabor,
-    materials_amount: lineMaterials,
-    total_amount: totalAmount
-  }).eq('id', invoiceId);
 }
 
 router.get('/', async (req, res, next) => {
@@ -153,9 +135,9 @@ router.post('/', async (req, res, next) => {
         due_date: sanitizedDueDate,
         tenant_id: req.user.tenant_id,
         invoice_number: invoiceNumber,
-        labor_amount: invoiceData.base_labor_amount || 0,
+        labor_amount: invoiceData.labor_amount || 0,
         materials_amount: 0,
-        total_amount: invoiceData.base_labor_amount || 0,
+        total_amount: invoiceData.labor_amount || 0,
         status: 'draft'
       }])
       .select()
@@ -207,7 +189,21 @@ router.patch('/:id', async (req, res, next) => {
 
     if (invoiceError) throw invoiceError;
 
-    await syncInvoiceTotals(req.params.id);
+    // Calculate totals inline
+    const { data: items } = await supabase.from('invoice_line_items').select('amount, source_type, is_billable').eq('invoice_id', req.params.id);
+    const lineItems = items || [];
+    
+    const lineLabor = lineItems.filter(i => i.is_billable && (i.source_type === 'labor' || i.source_type === 'ad_hoc')).reduce((sum, i) => sum + Number(i.amount || 0), 0);
+    const lineMaterials = lineItems.filter(i => i.is_billable && i.source_type === 'material').reduce((sum, i) => sum + Number(i.amount || 0), 0);
+    
+    const totalLabor = Number(invoiceData.labor_amount || 0) + lineLabor;
+    const totalAmount = totalLabor + lineMaterials;
+    
+    await supabase.from('invoices').update({
+      labor_amount: totalLabor,
+      materials_amount: lineMaterials,
+      total_amount: totalAmount
+    }).eq('id', req.params.id);
 
     const { error: logError } = await supabase.from('invoice_logs').insert([{
       invoice_id: invoice.id,
@@ -248,7 +244,6 @@ router.post('/:id/items', async (req, res, next) => {
       await supabase.from(table).update({ billing_status: 'on_draft' }).eq('id', source_id);
     }
     
-    await syncInvoiceTotals(req.params.id);
     res.json({ success: true, data: item });
   } catch (err) { next(err); }
 });
@@ -268,7 +263,6 @@ router.patch('/:id/items/:itemId', async (req, res, next) => {
       .single();
     if (itemError) throw itemError;
 
-    await syncInvoiceTotals(req.params.id);
     res.json({ success: true, data: item });
   } catch (err) { next(err); }
 });
@@ -294,7 +288,6 @@ router.delete('/:id/items/:itemId', async (req, res, next) => {
       }
     }
     
-    await syncInvoiceTotals(req.params.id);
     res.json({ success: true });
   } catch (err) { next(err); }
 });

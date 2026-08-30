@@ -50,31 +50,37 @@ export const SmartDropdown = ({ jobId, session, onAddItems, filterType, existing
     if (type === 'labor' && selectedJob?.rate_type === 'hourly') {
       amount = (item.hours || 0) * (selectedJob.hourly_rate || 0);
     }
+    
+    const isFlatRate = selectedJob?.rate_type === 'flat';
 
     onAddItems([{
       source_type: type,
       source_id: item.id,
       description: item.description || (type === 'labor' ? `${item.hours} hours logged` : 'Material'),
       amount: amount,
-      service_date: type === 'labor' ? item.date : null
+      service_date: type === 'labor' ? item.date : null,
+      is_billable: !isFlatRate
     }]);
   };
 
   const handleAddAll = () => {
+    const isFlatRate = selectedJob?.rate_type === 'flat';
     const items = [
       ...materials.map(m => ({
         source_type: 'material',
         source_id: m.id,
-        description: m.description,
+        description: m.item_name || 'Material Item',
         amount: m.cost || 0,
-        service_date: null
+        service_date: null,
+        is_billable: !isFlatRate
       })),
       ...hours.map(h => ({
         source_type: 'labor',
         source_id: h.id,
         description: h.description || `${h.hours} hours logged`,
         amount: selectedJob?.rate_type === 'hourly' ? (h.hours || 0) * (selectedJob.hourly_rate || 0) : 0,
-        service_date: h.date
+        service_date: h.date,
+        is_billable: !isFlatRate
       }))
     ];
     if (items.length > 0) {
