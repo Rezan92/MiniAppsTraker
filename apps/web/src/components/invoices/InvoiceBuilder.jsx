@@ -471,6 +471,7 @@ export const InvoiceBuilder = () => {
                 addItemMutation={addItemMutation}
                 updateItemMutation={updateItemMutation}
                 setDeleteItemId={setDeleteItemId}
+                selectedJob={selectedJob}
               />
             </div>
 

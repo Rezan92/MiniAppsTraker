@@ -78,8 +78,7 @@ router.get('/', async (req, res, next) => {
     const { data, error } = await query;
     if (error) throw error;
 
-    // Notice: We now rely on the database columns (labor_amount, materials_amount, total_amount)
-    // which are kept perfectly in sync by the syncInvoiceTotals helper.
+    // Totals (labor_amount, materials_amount, total_amount) are stored directly in DB columns on save
     res.json({ success: true, data });
   } catch (err) {
     next(err);
@@ -178,11 +177,32 @@ router.patch('/:id', async (req, res, next) => {
 
     await enforceInvoiceEditability(req.params.id, req.user.tenant_id);
 
+    // Calculate totals inline from line items
+    const { data: items } = await supabase
+      .from('invoice_line_items')
+      .select('amount, source_type, is_billable')
+      .eq('invoice_id', req.params.id);
+    const lineItems = items || [];
+    
+    const lineLabor = lineItems
+      .filter(i => i.is_billable !== false && (i.source_type === 'labor' || i.source_type === 'ad_hoc'))
+      .reduce((sum, i) => sum + Number(i.amount || 0), 0);
+    const lineMaterials = lineItems
+      .filter(i => i.is_billable !== false && i.source_type === 'material')
+      .reduce((sum, i) => sum + Number(i.amount || 0), 0);
+    
+    const baseLaborAmount = Number(invoiceData.labor_amount || 0);
+    const totalLabor = baseLaborAmount + lineLabor;
+    const totalAmount = totalLabor + lineMaterials;
+
     const { data: invoice, error: invoiceError } = await supabase
       .from('invoices')
       .update({
         ...invoiceData,
-        due_date: sanitizedDueDate
+        due_date: sanitizedDueDate,
+        labor_amount: totalLabor,
+        materials_amount: lineMaterials,
+        total_amount: totalAmount
       })
       .eq('id', req.params.id)
       .eq('tenant_id', req.user.tenant_id)
@@ -190,22 +210,6 @@ router.patch('/:id', async (req, res, next) => {
       .single();
 
     if (invoiceError) throw invoiceError;
-
-    // Calculate totals inline
-    const { data: items } = await supabase.from('invoice_line_items').select('amount, source_type, is_billable').eq('invoice_id', req.params.id);
-    const lineItems = items || [];
-    
-    const lineLabor = lineItems.filter(i => i.is_billable !== false && (i.source_type === 'labor' || i.source_type === 'ad_hoc')).reduce((sum, i) => sum + Number(i.amount || 0), 0);
-    const lineMaterials = lineItems.filter(i => i.is_billable !== false && i.source_type === 'material').reduce((sum, i) => sum + Number(i.amount || 0), 0);
-    
-    const totalLabor = Number(invoiceData.labor_amount || 0) + lineLabor;
-    const totalAmount = totalLabor + lineMaterials;
-    
-    await supabase.from('invoices').update({
-      labor_amount: totalLabor,
-      materials_amount: lineMaterials,
-      total_amount: totalAmount
-    }).eq('id', req.params.id);
 
     const { error: logError } = await supabase.from('invoice_logs').insert([{
       invoice_id: invoice.id,
@@ -217,10 +221,7 @@ router.patch('/:id', async (req, res, next) => {
     
     if (logError) throw logError;
 
-    // Fetch the fully synced invoice to return
-    const { data: finalInvoice } = await supabase.from('invoices').select('*').eq('id', invoice.id).single();
-
-    res.json({ success: true, data: finalInvoice });
+    res.json({ success: true, data: invoice });
   } catch (err) {
     next(err);
   }

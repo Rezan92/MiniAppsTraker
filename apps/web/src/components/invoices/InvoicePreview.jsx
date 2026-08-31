@@ -5,17 +5,13 @@ import './InvoicePreview.css';
 export const InvoicePreview = forwardRef(({ invoice, tenant }, ref) => {
   if (!invoice || !tenant) return null;
 
-  const baseLaborAmount = Number(invoice.labor_amount) || 0;
-  
+  const laborAmount = Number(invoice.labor_amount) || 0;
+  const materialsAmount = Number(invoice.materials_amount) || 0;
+  const totalDue = Number(invoice.total_amount) || 0;
+
   // Merge ad_hoc into laborItems for logical grouping
   const laborItems = invoice.invoice_line_items?.filter(i => i.source_type === 'labor' || i.source_type === 'ad_hoc') || [];
   const materialItems = invoice.invoice_line_items?.filter(i => i.source_type === 'material') || [];
-
-  const laborLineItemsAmount = laborItems.reduce((sum, i) => sum + (Number(i.amount) || 0), 0);
-  const materialsAmount = materialItems.reduce((sum, i) => sum + (Number(i.amount) || 0), 0);
-  
-  const laborAmount = baseLaborAmount + laborLineItemsAmount;
-  const totalDue = laborAmount + materialsAmount;
 
   // Filter out hidden items for display purposes only
   const visibleLaborItems = laborItems.filter(i => !i.is_hidden);
