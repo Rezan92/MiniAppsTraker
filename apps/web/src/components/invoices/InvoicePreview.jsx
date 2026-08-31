@@ -13,9 +13,9 @@ export const InvoicePreview = forwardRef(({ invoice, tenant }, ref) => {
   const laborItems = invoice.invoice_line_items?.filter(i => i.source_type === 'labor' || i.source_type === 'ad_hoc') || [];
   const materialItems = invoice.invoice_line_items?.filter(i => i.source_type === 'material') || [];
 
-  // Filter out hidden items for display purposes only
-  const visibleLaborItems = laborItems.filter(i => !i.is_hidden);
-  const visibleMaterialItems = materialItems.filter(i => !i.is_hidden);
+  // Filter out hidden and non-billable items for display purposes
+  const visibleLaborItems = laborItems.filter(i => !i.is_hidden && i.is_billable !== false);
+  const visibleMaterialItems = materialItems.filter(i => !i.is_hidden && i.is_billable !== false);
 
   return (
     <div className="invoice-preview-container">
