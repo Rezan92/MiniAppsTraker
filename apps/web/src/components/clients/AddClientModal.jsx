@@ -1,29 +1,52 @@
-import React, { useState } from 'react';
+import React, { useEffect } from 'react';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
 import { BaseModal } from '../common/BaseModal';
+import { FormField } from '../common/FormField';
+import { clientSchema } from '../../schemas/clientSchema';
 
-export const AddClientModal = ({ open, onClose, onSubmit, formData, setFormData, editMode }) => {
-  const [errors, setErrors] = useState({});
-
-  const validateField = (name, value) => {
-    let errorMsg = null;
-    if (name === 'name') {
-      if (!value.trim()) errorMsg = "Name is required";
-      else if (/[0-9]/.test(value)) errorMsg = "Name cannot contain numbers";
-    } else if (name === 'phone') {
-      if (!value.trim()) errorMsg = "Phone number is required";
-      else if (/[a-zA-Z]/.test(value)) errorMsg = "Phone number cannot contain letters";
-    } else if (name === 'email') {
-      if (value && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
-        errorMsg = "Please enter a valid email address";
-      }
+export const AddClientModal = ({ open, onClose, onSubmit, formData, editMode }) => {
+  const {
+    register,
+    handleSubmit,
+    reset,
+    watch,
+    formState: { errors, isSubmitting }
+  } = useForm({
+    resolver: zodResolver(clientSchema),
+    defaultValues: {
+      client_type: 'residential',
+      company_name: '',
+      name: '',
+      email: '',
+      phone: '',
+      address: '',
+      notes: '',
+      status: 'active',
+      ...formData
     }
-    setErrors(prev => ({ ...prev, [name]: errorMsg }));
-  };
+  });
 
-  const handleInputChange = (e) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
-    validateField(name, value);
+  const selectedClientType = watch('client_type');
+
+  useEffect(() => {
+    if (open) {
+      reset({
+        client_type: 'residential',
+        company_name: '',
+        name: '',
+        email: '',
+        phone: '',
+        address: '',
+        notes: '',
+        status: 'active',
+        ...formData
+      });
+    }
+  }, [open, formData, reset]);
+
+  const onValidSubmit = (data) => {
+    onSubmit(data);
   };
 
   const footer = (
@@ -31,17 +54,18 @@ export const AddClientModal = ({ open, onClose, onSubmit, formData, setFormData,
       <button 
         type="button"
         onClick={onClose}
-        className="px-4 py-2 bg-white border border-gray-300 text-gray-700 font-body-md font-bold rounded-lg cursor-pointer hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors focus:outline-none focus:ring-2 focus:ring-gray-300"
+        disabled={isSubmitting}
+        className="px-4 py-2 bg-white border border-gray-300 text-gray-700 font-body-md font-bold rounded-lg cursor-pointer hover:bg-gray-50 disabled:opacity-50 transition-colors focus:outline-none focus:ring-2 focus:ring-gray-300"
       >
         Cancel
       </button>
       <button 
         type="submit"
         form="add-client-form"
-        className="px-4 py-2 bg-primary text-black font-body-md font-bold rounded-lg cursor-pointer hover:bg-opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors focus:outline-none focus:ring-2 focus:ring-primary shadow-sm"
-        disabled={!formData.name || !formData.phone || Object.values(errors).some(Boolean)}
+        disabled={isSubmitting}
+        className="px-5 py-2 bg-primary text-black font-body-md font-bold rounded-lg cursor-pointer hover:bg-opacity-90 disabled:opacity-50 transition-colors focus:outline-none focus:ring-2 focus:ring-primary shadow-sm"
       >
-        {editMode ? 'Save Changes' : 'Add Client'}
+        {isSubmitting ? 'Saving...' : editMode ? 'Save Changes' : 'Add Client'}
       </button>
     </>
   );
@@ -54,128 +78,106 @@ export const AddClientModal = ({ open, onClose, onSubmit, formData, setFormData,
       footer={footer}
       size="md"
     >
-      <form className="space-y-5" id="add-client-form" onSubmit={(e) => { e.preventDefault(); onSubmit(); }}>
+      <form className="space-y-5" id="add-client-form" onSubmit={handleSubmit(onValidSubmit)}>
         {/* Client Type */}
-        <div>
-          <label className="block font-label-md text-label-md text-on-surface-variant mb-2">Client Type</label>
-          <div className="flex gap-4">
+        <FormField label="Client Type">
+          <div className="flex gap-4 pt-1">
             <label className="flex items-center gap-2 cursor-pointer">
               <input 
-                className="text-primary focus:ring-primary h-4 w-4 border-outline-variant" 
-                name="clientType" 
+                className="text-primary focus:ring-primary h-4 w-4 border-gray-300 cursor-pointer" 
                 type="radio" 
                 value="residential" 
-                checked={formData.client_type === 'residential'}
-                onChange={e => setFormData({...formData, client_type: e.target.value})}
+                {...register('client_type')}
               />
-              <span className="text-body-md">Residential</span>
+              <span className="text-sm text-gray-700">Residential</span>
             </label>
             <label className="flex items-center gap-2 cursor-pointer">
               <input 
-                className="text-primary focus:ring-primary h-4 w-4 border-outline-variant" 
-                name="clientType" 
+                className="text-primary focus:ring-primary h-4 w-4 border-gray-300 cursor-pointer" 
                 type="radio" 
                 value="commercial" 
-                checked={formData.client_type === 'commercial'}
-                onChange={e => setFormData({...formData, client_type: e.target.value})}
+                {...register('client_type')}
               />
-              <span className="text-body-md">Commercial</span>
+              <span className="text-sm text-gray-700">Commercial</span>
             </label>
             <label className="flex items-center gap-2 cursor-pointer">
               <input 
-                className="text-primary focus:ring-primary h-4 w-4 border-outline-variant" 
-                name="clientType" 
+                className="text-primary focus:ring-primary h-4 w-4 border-gray-300 cursor-pointer" 
                 type="radio" 
                 value="property_manager" 
-                checked={formData.client_type === 'property_manager'}
-                onChange={e => setFormData({...formData, client_type: e.target.value})}
+                {...register('client_type')}
               />
-              <span className="text-body-md">Property Manager</span>
+              <span className="text-sm text-gray-700">Property Manager</span>
             </label>
           </div>
-        </div>
+        </FormField>
         
         {/* Full Name */}
-        <div>
-          <label className="block font-label-md text-label-md text-on-surface-variant mb-1">Full Name *</label>
-            <input 
-              className={`w-full px-3 py-2 border rounded-md bg-surface text-on-surface focus:outline-none focus:ring-1 transition-shadow placeholder:text-on-surface-variant/50 ${errors.name ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : 'border-outline-variant focus:border-primary focus:ring-primary'}`}
-              placeholder="e.g. John Doe" 
-              name="name"
-              type="text" 
-              value={formData.name || ''}
-              onChange={handleInputChange}
-              required
-            />
-            {errors.name && <p className="text-red-500 text-xs mt-1">{errors.name}</p>}
-        </div>
+        <FormField label="Full Name" error={errors.name} required>
+          <input 
+            className={`w-full px-3 py-2 border rounded-lg bg-surface text-gray-900 focus:outline-none focus:ring-1 transition-shadow placeholder:text-gray-400 ${
+              errors.name ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : 'border-gray-300 focus:border-primary focus:ring-primary'
+            }`}
+            placeholder="e.g. John Doe" 
+            type="text" 
+            {...register('name')}
+          />
+        </FormField>
 
         {/* Company Name */}
-        {(formData.client_type === 'commercial' || formData.client_type === 'property_manager') && (
-          <div>
-            <label className="block font-label-md text-label-md text-on-surface-variant mb-1">Company Name / LLC</label>
+        {(selectedClientType === 'commercial' || selectedClientType === 'property_manager') && (
+          <FormField label="Company Name / LLC" error={errors.company_name}>
             <input 
-              className="w-full px-3 py-2 border rounded-md bg-surface text-on-surface border-outline-variant focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-shadow placeholder:text-on-surface-variant/50"
+              className="w-full px-3 py-2 border rounded-lg bg-surface text-gray-900 border-gray-300 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-shadow placeholder:text-gray-400"
               placeholder="e.g. Acme Property Management LLC" 
-              name="company_name"
               type="text" 
-              value={formData.company_name || ''}
-              onChange={handleInputChange}
+              {...register('company_name')}
             />
-          </div>
+          </FormField>
         )}
         
         {/* Contact Info Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-          <div>
-            <label className="block font-label-md text-label-md text-on-surface-variant mb-1">Email Address</label>
+          <FormField label="Email Address" error={errors.email}>
             <input 
-              className={`w-full px-3 py-2 border rounded-md bg-surface text-on-surface focus:outline-none focus:ring-1 transition-shadow placeholder:text-on-surface-variant/50 ${errors.email ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : 'border-outline-variant focus:border-primary focus:ring-primary'}`} 
+              className={`w-full px-3 py-2 border rounded-lg bg-surface text-gray-900 focus:outline-none focus:ring-1 transition-shadow placeholder:text-gray-400 ${
+                errors.email ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : 'border-gray-300 focus:border-primary focus:ring-primary'
+              }`} 
               placeholder="email@example.com" 
-              name="email"
               type="email" 
-              value={formData.email}
-              onChange={handleInputChange}
+              {...register('email')}
             />
-            {errors.email && <p className="text-red-500 text-xs mt-1">{errors.email}</p>}
-          </div>
-          <div>
-            <label className="block font-label-md text-label-md text-on-surface-variant mb-1">Phone Number *</label>
+          </FormField>
+          <FormField label="Phone Number" error={errors.phone} required>
             <input 
-              className={`w-full px-3 py-2 border rounded-md bg-surface text-on-surface focus:outline-none focus:ring-1 transition-shadow placeholder:text-on-surface-variant/50 ${errors.phone ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : 'border-outline-variant focus:border-primary focus:ring-primary'}`}
+              className={`w-full px-3 py-2 border rounded-lg bg-surface text-gray-900 focus:outline-none focus:ring-1 transition-shadow placeholder:text-gray-400 ${
+                errors.phone ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : 'border-gray-300 focus:border-primary focus:ring-primary'
+              }`}
               placeholder="(555) 000-0000" 
-              name="phone"
               type="tel" 
-              value={formData.phone}
-              onChange={handleInputChange}
-              required
+              {...register('phone')}
             />
-            {errors.phone && <p className="text-red-500 text-xs mt-1">{errors.phone}</p>}
-          </div>
+          </FormField>
         </div>
         
         {/* Address */}
-        <div>
-          <label className="block font-label-md text-label-md text-on-surface-variant mb-1">Physical Address</label>
+        <FormField label="Physical Address" error={errors.address}>
           <input 
-            className="w-full px-3 py-2 border border-outline-variant rounded-md bg-surface text-on-surface focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-shadow placeholder:text-on-surface-variant/50" 
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-surface text-gray-900 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-shadow placeholder:text-gray-400" 
             placeholder="123 Main St, City, State ZIP" 
             type="text" 
-            value={formData.address}
-            onChange={e => setFormData({...formData, address: e.target.value})}
+            {...register('address')}
           />
-        </div>
+        </FormField>
         
         {/* Notes */}
-        <div>
-          <label className="block font-label-md text-label-md text-on-surface-variant mb-1">Notes (Optional)</label>
+        <FormField label="Notes (Optional)" error={errors.notes}>
           <textarea 
-            className="w-full px-3 py-2 border border-outline-variant rounded-md bg-surface text-on-surface focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-shadow placeholder:text-on-surface-variant/50 resize-none h-24" 
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-surface text-gray-900 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-shadow placeholder:text-gray-400 resize-none h-24" 
             placeholder="Additional details about the client..."
-            value={formData.notes}
-            onChange={e => setFormData({...formData, notes: e.target.value})}
-          ></textarea>
-        </div>
+            {...register('notes')}
+          />
+        </FormField>
       </form>
     </BaseModal>
   );

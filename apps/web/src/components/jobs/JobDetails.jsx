@@ -88,15 +88,16 @@ export const JobDetails = () => {
     enabled: !!session?.access_token
   });
 
-  const handleAddMaterial = async () => {
+  const handleAddMaterial = async (submittedData) => {
     try {
-      const payload = { ...matData, cost: parseFloat(matData.cost) };
-      if (!matData.id && draftInvoice) {
+      const dataToUse = submittedData || matData;
+      const payload = { ...dataToUse, cost: parseFloat(dataToUse.cost) };
+      if (!dataToUse.id && draftInvoice) {
         payload.invoice_id = draftInvoice.id;
       }
-      const method = matData.id ? 'PATCH' : 'POST';
-      const url = matData.id 
-        ? `${import.meta.env.VITE_API_URL || 'http://localhost:4000'}/api/jobs/${id}/materials/${matData.id}`
+      const method = dataToUse.id ? 'PATCH' : 'POST';
+      const url = dataToUse.id 
+        ? `${import.meta.env.VITE_API_URL || 'http://localhost:4000'}/api/jobs/${id}/materials/${dataToUse.id}`
         : `${import.meta.env.VITE_API_URL || 'http://localhost:4000'}/api/jobs/${id}/materials`;
 
       const res = await fetch(url, {
@@ -110,11 +111,11 @@ export const JobDetails = () => {
       if (res.ok) {
         setMatOpen(false);
         setMatData({ description: '', cost: '20.00', is_from_stock: false, store: '', purchase_date: new Date().toISOString().split('T')[0], notes: '' });
-        showSuccess(`Material ${matData.id ? 'updated' : 'added'} successfully!`);
+        showSuccess(`Material ${dataToUse.id ? 'updated' : 'added'} successfully!`);
         queryClient.invalidateQueries({ queryKey: ['materials', 'job', id] });
       } else {
         const errorData = await res.json();
-        showError(errorData.error?.message || `Failed to ${matData.id ? 'update' : 'add'} material`);
+        showError(errorData.error?.message || `Failed to ${dataToUse.id ? 'update' : 'add'} material`);
       }
     } catch (err) {
       console.error(err);
@@ -204,13 +205,14 @@ export const JobDetails = () => {
     }
   };
 
-  const handleEditJob = async () => {
+  const handleEditJob = async (submittedData) => {
     try {
+      const dataToUse = submittedData || editFormData;
       const payload = {
-        ...editFormData,
-        property_id: editFormData.property_id || null,
-        hourly_rate: editFormData.rate_type === 'hourly' ? parseFloat(editFormData.hourly_rate) : undefined,
-        flat_rate: editFormData.rate_type === 'flat' ? parseFloat(editFormData.flat_rate) : undefined
+        ...dataToUse,
+        property_id: dataToUse.property_id || null,
+        hourly_rate: dataToUse.rate_type === 'hourly' ? parseFloat(dataToUse.hourly_rate) : undefined,
+        flat_rate: dataToUse.rate_type === 'flat' ? parseFloat(dataToUse.flat_rate) : undefined
       };
       
       const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:4000'}/api/jobs/${id}`, {

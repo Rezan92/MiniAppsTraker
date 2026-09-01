@@ -1,32 +1,63 @@
-import React, { useState } from 'react';
+import React, { useEffect } from 'react';
+import { useForm, Controller } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
 import { DatePicker } from '../common/DatePicker';
 import { BaseModal } from '../common/BaseModal';
+import { FormField } from '../common/FormField';
 import { useProperties } from '../../hooks/api/useProperties';
+import { jobSchema } from '../../schemas/jobSchema';
 
-export const AddJobModal = ({ open, onClose, onSubmit, formData, setFormData, clients }) => {
-  const [errors, setErrors] = useState({});
-
-  const selectedClient = clients.find(c => c.id === formData.client_id);
-  const { data: properties = [] } = useProperties(formData.client_id);
-
-  const validateField = (name, value) => {
-    let errorMsg = null;
-    if (name === 'title') {
-      if (!value.trim()) errorMsg = "Title is required";
-    } else if (name === 'hourly_rate' || name === 'flat_rate') {
-      if (value && parseFloat(value) < 0) errorMsg = "Rate cannot be negative";
-    } else if (name === 'end_date') {
-      if (formData.start_date && value && new Date(value) < new Date(formData.start_date)) {
-        errorMsg = "End date cannot be before start date";
-      }
+export const AddJobModal = ({ open, onClose, onSubmit, formData, clients = [] }) => {
+  const {
+    register,
+    handleSubmit,
+    control,
+    reset,
+    watch,
+    formState: { errors, isSubmitting }
+  } = useForm({
+    resolver: zodResolver(jobSchema),
+    defaultValues: {
+      client_id: '',
+      property_id: '',
+      title: '',
+      rate_type: 'flat',
+      hourly_rate: 65.00,
+      flat_rate: '',
+      start_date: '',
+      end_date: '',
+      notes: '',
+      ...formData
     }
-    setErrors(prev => ({ ...prev, [name]: errorMsg }));
-  };
+  });
 
-  const handleInputChange = (e) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
-    validateField(name, value);
+  const selectedClientId = watch('client_id');
+  const selectedRateType = watch('rate_type');
+  const selectedClient = clients.find(c => c.id === selectedClientId);
+  const { data: properties = [] } = useProperties(selectedClientId);
+
+  useEffect(() => {
+    if (open) {
+      reset({
+        client_id: '',
+        property_id: '',
+        title: '',
+        rate_type: 'flat',
+        hourly_rate: 65.00,
+        flat_rate: '',
+        start_date: '',
+        end_date: '',
+        notes: '',
+        ...formData
+      });
+    }
+  }, [open, formData, reset]);
+
+  const onValidSubmit = (data) => {
+    onSubmit({
+      ...data,
+      id: formData?.id
+    });
   };
 
   const footer = (
@@ -34,17 +65,18 @@ export const AddJobModal = ({ open, onClose, onSubmit, formData, setFormData, cl
       <button 
         type="button"
         onClick={onClose}
-        className="px-4 py-2 bg-white border border-gray-300 text-gray-700 font-body-md font-bold rounded-lg cursor-pointer hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors focus:outline-none focus:ring-2 focus:ring-gray-300"
+        disabled={isSubmitting}
+        className="px-4 py-2 bg-white border border-gray-300 text-gray-700 font-body-md font-bold rounded-lg cursor-pointer hover:bg-gray-50 disabled:opacity-50 transition-colors focus:outline-none focus:ring-2 focus:ring-gray-300"
       >
         Cancel
       </button>
       <button 
         type="submit"
         form="add-job-form"
-        disabled={!formData.client_id || !formData.title || !formData.rate_type || (formData.rate_type === 'hourly' && !formData.hourly_rate) || (formData.rate_type === 'flat' && !formData.flat_rate) || Object.values(errors).some(Boolean)}
-        className="px-4 py-2 bg-primary text-black font-body-md font-bold rounded-lg cursor-pointer hover:bg-opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors focus:outline-none focus:ring-2 focus:ring-primary shadow-sm"
+        disabled={isSubmitting}
+        className="px-5 py-2 bg-primary text-black font-body-md font-bold rounded-lg cursor-pointer hover:bg-opacity-90 disabled:opacity-50 transition-colors focus:outline-none focus:ring-2 focus:ring-primary shadow-sm"
       >
-        {formData.id ? 'Update Job' : 'Create Job'}
+        {isSubmitting ? 'Saving...' : formData?.id ? 'Update Job' : 'Create Job'}
       </button>
     </>
   );
@@ -53,37 +85,34 @@ export const AddJobModal = ({ open, onClose, onSubmit, formData, setFormData, cl
     <BaseModal
       open={open}
       onClose={onClose}
-      title={formData.id ? 'Update Job' : 'Add New Job'}
+      title={formData?.id ? 'Update Job' : 'Add New Job'}
       footer={footer}
       size="md"
     >
-      <form className="space-y-5" id="add-job-form" onSubmit={(e) => { e.preventDefault(); onSubmit(); }}>
+      <form className="space-y-5" id="add-job-form" onSubmit={handleSubmit(onValidSubmit)}>
         {/* Select Client */}
-        <div>
-          <label className="block font-label-md text-label-md text-on-surface-variant mb-1">Select Client *</label>
+        <FormField label="Select Client" error={errors.client_id} required>
           <div className="relative">
             <select 
-              className="w-full px-3 py-2 border border-outline-variant rounded-md bg-surface text-on-surface focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-shadow appearance-none cursor-pointer" 
-              value={formData.client_id} 
-              onChange={e => setFormData({...formData, client_id: e.target.value})}
-              required
+              className={`w-full px-3 py-2 border rounded-lg bg-surface text-gray-900 focus:outline-none focus:ring-1 transition-shadow appearance-none cursor-pointer ${
+                errors.client_id ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : 'border-gray-300 focus:border-primary focus:ring-primary'
+              }`}
+              {...register('client_id')}
             >
               <option value="" disabled>Select a client...</option>
               {clients.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
             </select>
-            <span className="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-on-surface-variant pointer-events-none">expand_more</span>
+            <span className="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none">expand_more</span>
           </div>
-        </div>
+        </FormField>
 
         {/* Select Property */}
-        {formData.client_id && (
-          <div>
-            <label className="block font-label-md text-label-md text-on-surface-variant mb-1">Select Property (Optional)</label>
+        {selectedClientId && (
+          <FormField label="Select Property (Optional)" error={errors.property_id}>
             <div className="relative">
               <select 
-                className="w-full px-3 py-2 border border-outline-variant rounded-md bg-surface text-on-surface focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-shadow appearance-none cursor-pointer" 
-                value={formData.property_id || ''} 
-                onChange={e => setFormData({...formData, property_id: e.target.value})}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-surface text-gray-900 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-shadow appearance-none cursor-pointer" 
+                {...register('property_id')}
               >
                 <option value="">
                   {selectedClient?.address ? `[Primary Address] ${selectedClient.address}` : 'None (Link to Client Only)'}
@@ -92,113 +121,105 @@ export const AddJobModal = ({ open, onClose, onSubmit, formData, setFormData, cl
                   <option key={p.id} value={p.id}>{p.name ? `${p.name} - ` : ''}{p.address}</option>
                 ))}
               </select>
-              <span className="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-on-surface-variant pointer-events-none">expand_more</span>
+              <span className="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none">expand_more</span>
             </div>
-          </div>
+          </FormField>
         )}
         
         {/* Job Title */}
-        <div>
-          <label className="block font-label-md text-label-md text-on-surface-variant mb-1">Job Title *</label>
+        <FormField label="Job Title" error={errors.title} required>
           <input 
-            className={`w-full px-3 py-2 border rounded-md bg-surface text-on-surface focus:outline-none focus:ring-1 transition-shadow placeholder:text-on-surface-variant/50 ${errors.title ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : 'border-outline-variant focus:border-primary focus:ring-primary'}`} 
+            className={`w-full px-3 py-2 border rounded-lg bg-surface text-gray-900 focus:outline-none focus:ring-1 transition-shadow placeholder:text-gray-400 ${
+              errors.title ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : 'border-gray-300 focus:border-primary focus:ring-primary'
+            }`} 
             placeholder="e.g. Kitchen Remodel Plumbing" 
-            name="title"
             type="text" 
-            value={formData.title}
-            onChange={handleInputChange}
-            required
+            {...register('title')}
           />
-          {errors.title && <p className="text-red-500 text-xs mt-1">{errors.title}</p>}
-        </div>
+        </FormField>
         
-        {/* Rate Type and Hourly Rate Grid */}
+        {/* Rate Type and Rate Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-          <div>
-            <label className="block font-label-md text-label-md text-on-surface-variant mb-1">Rate Type</label>
+          <FormField label="Rate Type" error={errors.rate_type}>
             <div className="relative">
               <select 
-                className="w-full px-3 py-2 border border-outline-variant rounded-md bg-surface text-on-surface focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-shadow appearance-none cursor-pointer" 
-                value={formData.rate_type} 
-                onChange={e => setFormData({...formData, rate_type: e.target.value})}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-surface text-gray-900 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-shadow appearance-none cursor-pointer" 
+                {...register('rate_type')}
               >
                 <option value="flat">Flat Rate</option>
                 <option value="hourly">Hourly Rate</option>
               </select>
-              <span className="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-on-surface-variant pointer-events-none">expand_more</span>
+              <span className="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none">expand_more</span>
             </div>
-          </div>
+          </FormField>
           
-          {formData.rate_type === 'hourly' && (
-            <div>
-              <label className="block font-label-md text-label-md text-on-surface-variant mb-1">Hourly Rate ($) *</label>
+          {selectedRateType === 'hourly' ? (
+            <FormField label="Hourly Rate ($)" error={errors.hourly_rate} required>
               <input 
-                className={`w-full px-3 py-2 border rounded-md bg-surface text-on-surface focus:outline-none focus:ring-1 transition-shadow placeholder:text-on-surface-variant/50 ${errors.hourly_rate ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : 'border-outline-variant focus:border-primary focus:ring-primary'}`} 
+                className={`w-full px-3 py-2 border rounded-lg bg-surface text-gray-900 focus:outline-none focus:ring-1 transition-shadow placeholder:text-gray-400 ${
+                  errors.hourly_rate ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : 'border-gray-300 focus:border-primary focus:ring-primary'
+                }`} 
                 placeholder="e.g. 75.00" 
-                name="hourly_rate"
                 type="number" 
                 min="0"
                 step="0.01"
-                value={formData.hourly_rate}
-                onChange={handleInputChange}
-                required
+                {...register('hourly_rate')}
               />
-              {errors.hourly_rate && <p className="text-red-500 text-xs mt-1">{errors.hourly_rate}</p>}
-            </div>
-          )}
-          {formData.rate_type === 'flat' && (
-            <div>
-              <label className="block font-label-md text-label-md text-on-surface-variant mb-1">Flat Rate ($) *</label>
+            </FormField>
+          ) : (
+            <FormField label="Flat Rate ($)" error={errors.flat_rate} required>
               <input 
-                className={`w-full px-3 py-2 border rounded-md bg-surface text-on-surface focus:outline-none focus:ring-1 transition-shadow placeholder:text-on-surface-variant/50 ${errors.flat_rate ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : 'border-outline-variant focus:border-primary focus:ring-primary'}`} 
+                className={`w-full px-3 py-2 border rounded-lg bg-surface text-gray-900 focus:outline-none focus:ring-1 transition-shadow placeholder:text-gray-400 ${
+                  errors.flat_rate ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : 'border-gray-300 focus:border-primary focus:ring-primary'
+                }`} 
                 placeholder="e.g. 500.00" 
-                name="flat_rate"
                 type="number" 
                 min="0"
                 step="0.01"
-                value={formData.flat_rate}
-                onChange={handleInputChange}
-                required
+                {...register('flat_rate')}
               />
-              {errors.flat_rate && <p className="text-red-500 text-xs mt-1">{errors.flat_rate}</p>}
-            </div>
+            </FormField>
           )}
         </div>
 
         {/* Dates Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-          <div>
-            <label className="block font-label-md text-label-md text-on-surface-variant mb-1">Start Date</label>
-            <DatePicker
-              value={formData.start_date || ''}
-              onChange={(val) => setFormData({...formData, start_date: val})}
-              placeholder="Select start date"
+          <FormField label="Start Date" error={errors.start_date}>
+            <Controller
+              name="start_date"
+              control={control}
+              render={({ field }) => (
+                <DatePicker
+                  value={field.value || ''}
+                  onChange={field.onChange}
+                  placeholder="Select start date"
+                />
+              )}
             />
-          </div>
-          <div>
-            <label className="block font-label-md text-label-md text-on-surface-variant mb-1">End Date</label>
-            <DatePicker
-              value={formData.end_date || ''}
-              onChange={(val) => {
-                setFormData({...formData, end_date: val});
-                validateField('end_date', val);
-              }}
-              placeholder="Select end date"
+          </FormField>
+          <FormField label="End Date" error={errors.end_date}>
+            <Controller
+              name="end_date"
+              control={control}
+              render={({ field }) => (
+                <DatePicker
+                  value={field.value || ''}
+                  onChange={field.onChange}
+                  placeholder="Select end date"
+                />
+              )}
             />
-            {errors.end_date && <p className="text-red-500 text-xs mt-1">{errors.end_date}</p>}
-          </div>
+          </FormField>
         </div>
 
         {/* Notes */}
-        <div>
-          <label className="block font-label-md text-label-md text-on-surface-variant mb-1">Job Notes</label>
+        <FormField label="Job Notes" error={errors.notes}>
           <textarea 
-            className="w-full px-3 py-2 border border-outline-variant rounded-md bg-surface text-on-surface focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-shadow placeholder:text-on-surface-variant/50 resize-none h-20" 
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-surface text-gray-900 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-shadow placeholder:text-gray-400 resize-none h-20" 
             placeholder="Initial assessment, scope details..."
-            value={formData.notes || ''}
-            onChange={e => setFormData({...formData, notes: e.target.value})}
-          ></textarea>
-        </div>
+            {...register('notes')}
+          />
+        </FormField>
       </form>
     </BaseModal>
   );

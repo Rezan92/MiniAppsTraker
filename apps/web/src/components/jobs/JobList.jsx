@@ -46,15 +46,16 @@ export const JobList = () => {
     }
   }, [searchParams, setSearchParams]);
 
-  const handleSaveJob = () => {
+  const handleSaveJob = (submittedData) => {
+    const dataToUse = submittedData || formData;
     const payload = {
-      ...formData,
-      property_id: formData.property_id || null,
-      hourly_rate: formData.rate_type === 'hourly' ? parseFloat(formData.hourly_rate) : undefined,
-      flat_rate: formData.rate_type === 'flat' ? parseFloat(formData.flat_rate) : undefined
+      ...dataToUse,
+      property_id: dataToUse.property_id || null,
+      hourly_rate: dataToUse.rate_type === 'hourly' ? parseFloat(dataToUse.hourly_rate) : undefined,
+      flat_rate: dataToUse.rate_type === 'flat' ? parseFloat(dataToUse.flat_rate) : undefined
     };
 
-    if (formData.id) {
+    if (dataToUse.id) {
       updateJobMutation.mutate(payload, {
         onSuccess: () => {
           setOpen(false);
@@ -71,9 +72,10 @@ export const JobList = () => {
     }
   };
 
-  const handleAddMaterial = async () => {
+  const handleAddMaterial = async (submittedData) => {
     try {
-      const payload = { ...matData, cost: parseFloat(matData.cost) };
+      const dataToUse = submittedData || matData;
+      const payload = { ...dataToUse, cost: parseFloat(dataToUse.cost) };
       await apiClient.post(`/api/jobs/${selectedJobId}/materials`, payload);
       queryClient.invalidateQueries({ queryKey: JOB_QUERY_KEYS.all });
       setMatOpen(false);
@@ -88,9 +90,10 @@ export const JobList = () => {
     updateJobStatusMutation.mutate({ id: jobId, status: newStatus });
   };
 
-  const handleLogHours = async () => {
+  const handleLogHours = async (submittedData) => {
     try {
-      const payload = { ...hoursData, hours: parseFloat(hoursData.hours) };
+      const dataToUse = submittedData || hoursData;
+      const payload = { ...dataToUse, hours: parseFloat(dataToUse.hours) };
       await apiClient.post(`/api/jobs/${selectedJobId}/hours`, payload);
       queryClient.invalidateQueries({ queryKey: JOB_QUERY_KEYS.all });
       setHoursOpen(false);

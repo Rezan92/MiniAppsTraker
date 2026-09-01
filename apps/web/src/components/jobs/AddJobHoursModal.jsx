@@ -1,11 +1,50 @@
-import React from 'react';
+import React, { useEffect } from 'react';
+import { useForm, Controller } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
 import { DatePicker } from '../common/DatePicker';
 import { BaseModal } from '../common/BaseModal';
+import { FormField } from '../common/FormField';
+import { hoursSchema } from '../../schemas/hoursSchema';
 
-export const AddJobHoursModal = ({ open, isOpen, onClose, onSubmit, hoursData, setHoursData, formData, setFormData }) => {
+export const AddJobHoursModal = ({ open, isOpen, onClose, onSubmit, hoursData, formData }) => {
   const isModalOpen = open || isOpen;
-  const data = hoursData || formData || {};
-  const setData = setHoursData || setFormData;
+  const initialData = hoursData || formData || {};
+
+  const {
+    register,
+    handleSubmit,
+    control,
+    reset,
+    watch,
+    setValue,
+    formState: { errors, isSubmitting }
+  } = useForm({
+    resolver: zodResolver(hoursSchema),
+    defaultValues: {
+      date: new Date().toISOString().split('T')[0],
+      start_time: '',
+      end_time: '',
+      hours: '',
+      description: '',
+      ...initialData
+    }
+  });
+
+  const startTime = watch('start_time');
+  const endTime = watch('end_time');
+
+  useEffect(() => {
+    if (isModalOpen) {
+      reset({
+        date: new Date().toISOString().split('T')[0],
+        start_time: '',
+        end_time: '',
+        hours: '',
+        description: '',
+        ...initialData
+      });
+    }
+  }, [isModalOpen, initialData, reset]);
 
   const calculateHours = (start, end) => {
     if (!start || !end) return '';
@@ -15,21 +54,29 @@ export const AddJobHoursModal = ({ open, isOpen, onClose, onSubmit, hoursData, s
     let diff = (endH + endM / 60) - (startH + startM / 60);
     // Handle overnight (e.g. 11 PM to 2 AM)
     if (diff < 0) diff += 24;
-    return diff.toFixed(2);
+    return parseFloat(diff.toFixed(2));
   };
 
-  const handleTimeChange = (field, value) => {
-    const newData = { ...data, [field]: value };
-    
-    if (newData.start_time && newData.end_time) {
-      newData.hours = calculateHours(newData.start_time, newData.end_time);
+  const handleStartTimeChange = (e) => {
+    const val = e.target.value;
+    setValue('start_time', val);
+    if (val && endTime) {
+      const calc = calculateHours(val, endTime);
+      if (calc) setValue('hours', calc, { shouldValidate: true });
     }
-    
-    setData(newData);
   };
 
-  const handleFormSubmit = () => {
-    let finalData = { ...data };
+  const handleEndTimeChange = (e) => {
+    const val = e.target.value;
+    setValue('end_time', val);
+    if (startTime && val) {
+      const calc = calculateHours(startTime, val);
+      if (calc) setValue('hours', calc, { shouldValidate: true });
+    }
+  };
+
+  const onValidSubmit = (data) => {
+    let finalData = { ...data, id: initialData?.id };
     if (finalData.hours && !finalData.start_time) {
       finalData.start_time = '01:00';
       const hoursNum = parseFloat(finalData.hours);
@@ -43,7 +90,6 @@ export const AddJobHoursModal = ({ open, isOpen, onClose, onSubmit, hoursData, s
       endH = endH % 24;
       finalData.end_time = `${String(endH).padStart(2, '0')}:${String(endM).padStart(2, '0')}`;
     }
-    setData(finalData);
     onSubmit(finalData);
   };
 
@@ -52,17 +98,18 @@ export const AddJobHoursModal = ({ open, isOpen, onClose, onSubmit, hoursData, s
       <button 
         type="button"
         onClick={onClose} 
-        className="px-4 py-2 bg-white border border-gray-300 text-gray-700 font-body-md font-bold rounded-lg cursor-pointer hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors focus:outline-none focus:ring-2 focus:ring-gray-300"
+        disabled={isSubmitting}
+        className="px-4 py-2 bg-white border border-gray-300 text-gray-700 font-body-md font-bold rounded-lg cursor-pointer hover:bg-gray-50 disabled:opacity-50 transition-colors focus:outline-none focus:ring-2 focus:ring-gray-300"
       >
         Cancel
       </button>
       <button 
-        type="button"
-        onClick={handleFormSubmit} 
-        disabled={!data.date || !data.hours || !data.description?.trim()} 
-        className="px-4 py-2 bg-primary text-black font-body-md font-bold rounded-lg cursor-pointer hover:bg-opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors focus:outline-none focus:ring-2 focus:ring-primary shadow-sm"
+        type="submit"
+        form="add-hours-form"
+        disabled={isSubmitting}
+        className="px-5 py-2 bg-primary text-black font-body-md font-bold rounded-lg cursor-pointer hover:bg-opacity-90 disabled:opacity-50 transition-colors focus:outline-none focus:ring-2 focus:ring-primary shadow-sm"
       >
-        {data.id ? 'Save Changes' : 'Log Hours'}
+        {isSubmitting ? 'Saving...' : initialData?.id ? 'Save Changes' : 'Log Hours'}
       </button>
     </>
   );
@@ -71,69 +118,70 @@ export const AddJobHoursModal = ({ open, isOpen, onClose, onSubmit, hoursData, s
     <BaseModal
       open={isModalOpen}
       onClose={onClose}
-      title={data.id ? 'Edit Hours' : 'Log Hours'}
+      title={initialData?.id ? 'Edit Hours' : 'Log Hours'}
       footer={footer}
       size="sm"
     >
-      <form className="space-y-5" id="add-hours-form" onSubmit={(e) => { e.preventDefault(); handleFormSubmit(); }}>
+      <form className="space-y-5" id="add-hours-form" onSubmit={handleSubmit(onValidSubmit)}>
         {/* Date */}
-        <div>
-          <label className="block font-label-md text-label-md text-on-surface-variant mb-1">Date *</label>
-          <DatePicker
-            value={data.date}
-            onChange={(val) => setData({...data, date: val})}
-            placeholder="Select date"
+        <FormField label="Date" error={errors.date} required>
+          <Controller
+            name="date"
+            control={control}
+            render={({ field }) => (
+              <DatePicker
+                value={field.value || ''}
+                onChange={field.onChange}
+                placeholder="Select date"
+              />
+            )}
           />
-        </div>
+        </FormField>
 
         {/* Times */}
         <div className="grid grid-cols-2 gap-4">
-          <div>
-            <label className="block font-label-md text-label-md text-on-surface-variant mb-1">Start Time</label>
+          <FormField label="Start Time" error={errors.start_time}>
             <input 
-              className="w-full px-3 py-2 border border-outline-variant rounded-md bg-surface text-on-surface focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-shadow" 
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-surface text-gray-900 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-shadow" 
               type="time" 
-              value={data.start_time || ''}
-              onChange={e => handleTimeChange('start_time', e.target.value)}
+              {...register('start_time')}
+              onChange={handleStartTimeChange}
             />
-          </div>
-          <div>
-            <label className="block font-label-md text-label-md text-on-surface-variant mb-1">End Time</label>
+          </FormField>
+          <FormField label="End Time" error={errors.end_time}>
             <input 
-              className="w-full px-3 py-2 border border-outline-variant rounded-md bg-surface text-on-surface focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-shadow" 
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-surface text-gray-900 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-shadow" 
               type="time" 
-              value={data.end_time || ''}
-              onChange={e => handleTimeChange('end_time', e.target.value)}
+              {...register('end_time')}
+              onChange={handleEndTimeChange}
             />
-          </div>
+          </FormField>
         </div>
         
         {/* Hours */}
-        <div>
-          <label className="block font-label-md text-label-md text-on-surface-variant mb-1">Total Hours *</label>
+        <FormField label="Total Hours" error={errors.hours} required>
           <input 
-            className="w-full px-3 py-2 border border-outline-variant rounded-md bg-surface text-on-surface focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-shadow placeholder:text-on-surface-variant/50" 
+            className={`w-full px-3 py-2 border rounded-lg bg-surface text-gray-900 focus:outline-none focus:ring-1 transition-shadow placeholder:text-gray-400 ${
+              errors.hours ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : 'border-gray-300 focus:border-primary focus:ring-primary'
+            }`} 
             placeholder="e.g. 2.5" 
             type="number" 
             min="0"
             step="0.01"
-            value={data.hours || ''}
-            onChange={e => setData({...data, hours: e.target.value})}
-            required
+            {...register('hours')}
           />
-        </div>
+        </FormField>
 
         {/* Description */}
-        <div>
-          <label className="block font-label-md text-label-md text-on-surface-variant mb-1">Work Description *</label>
+        <FormField label="Work Description" error={errors.description} required>
           <textarea 
-            className="w-full px-3 py-2 border border-outline-variant rounded-md bg-surface text-on-surface focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-shadow placeholder:text-on-surface-variant/50"
-            value={data.description || ''}
-            onChange={e => setData({...data, description: e.target.value})}
-            placeholder="E.g., Initial site prep..."
-            rows={2}
+            className={`w-full px-3 py-2 border rounded-lg bg-surface text-gray-900 focus:outline-none focus:ring-1 transition-shadow placeholder:text-gray-400 resize-none h-20 ${
+              errors.description ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : 'border-gray-300 focus:border-primary focus:ring-primary'
+            }`}
+            placeholder="E.g., Initial site prep, pipe repair..."
+            {...register('description')}
           />
-        </div>
+        </FormField>
       </form>
     </BaseModal>
   );

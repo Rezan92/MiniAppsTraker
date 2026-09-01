@@ -47,9 +47,10 @@ export const ClientList = () => {
     setOpenMenuId(openMenuId === id ? null : id);
   };
 
-  const handleCreate = () => {
+  const handleCreate = (submittedData) => {
+    const dataToUse = submittedData || formData;
     if (editMode && editingId) {
-      updateClientMutation.mutate({ id: editingId, ...formData }, {
+      updateClientMutation.mutate({ id: editingId, ...dataToUse }, {
         onSuccess: () => {
           setOpen(false);
           setEditMode(false);
@@ -58,7 +59,7 @@ export const ClientList = () => {
         }
       });
     } else {
-      createClientMutation.mutate(formData, {
+      createClientMutation.mutate(dataToUse, {
         onSuccess: () => {
           setOpen(false);
           setFormData({ client_type: 'residential', company_name: '', name: '', email: '', phone: '', address: '', notes: '', status: 'active' });

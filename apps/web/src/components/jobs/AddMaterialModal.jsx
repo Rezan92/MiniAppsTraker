@@ -1,137 +1,186 @@
-import React from 'react';
+import React, { useEffect } from 'react';
+import { useForm, Controller } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
 import { DatePicker } from '../common/DatePicker';
 import { BaseModal } from '../common/BaseModal';
+import { FormField } from '../common/FormField';
+import { materialSchema } from '../../schemas/materialSchema';
 
-export const AddMaterialModal = ({ open, onClose, onSubmit, matData, setMatData }) => {
+export const AddMaterialModal = ({ open, onClose, onSubmit, matData = {} }) => {
+  const {
+    register,
+    handleSubmit,
+    control,
+    reset,
+    watch,
+    setValue,
+    formState: { errors, isSubmitting }
+  } = useForm({
+    resolver: zodResolver(materialSchema),
+    defaultValues: {
+      description: '',
+      cost: 20.00,
+      is_from_stock: false,
+      store: '',
+      purchase_date: new Date().toISOString().split('T')[0],
+      notes: '',
+      ...matData
+    }
+  });
+
+  const selectedStore = watch('store');
+
+  useEffect(() => {
+    if (open) {
+      reset({
+        description: '',
+        cost: 20.00,
+        is_from_stock: false,
+        store: '',
+        purchase_date: new Date().toISOString().split('T')[0],
+        notes: '',
+        ...matData
+      });
+    }
+  }, [open, matData, reset]);
+
+  const onValidSubmit = (data) => {
+    onSubmit({
+      ...data,
+      id: matData?.id
+    });
+  };
+
   const footer = (
     <>
       <button 
         type="button"
         onClick={onClose}
-        className="px-4 py-2 bg-white border border-gray-300 text-gray-700 font-body-md font-bold rounded-lg cursor-pointer hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors focus:outline-none focus:ring-2 focus:ring-gray-300"
+        disabled={isSubmitting}
+        className="px-4 py-2 bg-white border border-gray-300 text-gray-700 font-body-md font-bold rounded-lg cursor-pointer hover:bg-gray-50 disabled:opacity-50 transition-colors focus:outline-none focus:ring-2 focus:ring-gray-300"
       >
         Cancel
       </button>
       <button 
-        type="button"
-        onClick={onSubmit}
-        disabled={!matData.description || !matData.cost}
-        className="px-4 py-2 bg-primary text-black font-body-md font-bold rounded-lg cursor-pointer hover:bg-opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors focus:outline-none focus:ring-2 focus:ring-primary shadow-sm"
+        type="submit"
+        form="add-material-form"
+        disabled={isSubmitting}
+        className="px-5 py-2 bg-primary text-black font-body-md font-bold rounded-lg cursor-pointer hover:bg-opacity-90 disabled:opacity-50 transition-colors focus:outline-none focus:ring-2 focus:ring-primary shadow-sm"
       >
-        {matData.id ? 'Save Changes' : 'Add Material'}
+        {isSubmitting ? 'Saving...' : matData?.id ? 'Save Changes' : 'Add Material'}
       </button>
     </>
   );
+
+  const standardStores = ['Home Depot', "Lowe's", 'Menards', 'Ace Hardware', 'Amazon', 'Walmart'];
+  const isCustomStore = selectedStore && !standardStores.includes(selectedStore);
 
   return (
     <BaseModal
       open={open}
       onClose={onClose}
-      title={matData.id ? 'Edit Material' : 'Add Material to Job'}
+      title={matData?.id ? 'Edit Material' : 'Add Material to Job'}
       footer={footer}
       size="md"
     >
-      <form className="space-y-5" id="add-material-form" onSubmit={(e) => { e.preventDefault(); onSubmit(); }}>
+      <form className="space-y-5" id="add-material-form" onSubmit={handleSubmit(onValidSubmit)}>
         {/* Description */}
-        <div>
-          <label className="block font-label-md text-label-md text-on-surface-variant mb-1">Description *</label>
+        <FormField label="Description" error={errors.description} required>
           <input 
-            className="w-full px-3 py-2 border border-outline-variant rounded-md bg-surface text-on-surface focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-shadow placeholder:text-on-surface-variant/50" 
+            className={`w-full px-3 py-2 border rounded-lg bg-surface text-gray-900 focus:outline-none focus:ring-1 transition-shadow placeholder:text-gray-400 ${
+              errors.description ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : 'border-gray-300 focus:border-primary focus:ring-primary'
+            }`}
             placeholder="e.g. Copper pipes" 
             type="text" 
-            value={matData.description}
-            onChange={e => setMatData({...matData, description: e.target.value})}
-            required
+            {...register('description')}
           />
-        </div>
+        </FormField>
         
         {/* Cost and Purchase Date Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-          <div>
-            <label className="block font-label-md text-label-md text-on-surface-variant mb-1">Cost ($) *</label>
+          <FormField label="Cost ($)" error={errors.cost} required>
             <input 
-              className="w-full px-3 py-2 border border-outline-variant rounded-md bg-surface text-on-surface focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-shadow placeholder:text-on-surface-variant/50" 
+              className={`w-full px-3 py-2 border rounded-lg bg-surface text-gray-900 focus:outline-none focus:ring-1 transition-shadow placeholder:text-gray-400 ${
+                errors.cost ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : 'border-gray-300 focus:border-primary focus:ring-primary'
+              }`} 
               placeholder="e.g. 45.00" 
               type="number" 
               min="0"
               step="0.01"
-              value={matData.cost}
-              onChange={e => setMatData({...matData, cost: e.target.value})}
-              required
+              {...register('cost')}
             />
-          </div>
-          <div>
-            <label className="block font-label-md text-label-md text-on-surface-variant mb-1">Purchase Date</label>
-            <DatePicker
-              value={matData.purchase_date || ''}
-              onChange={(val) => setMatData({...matData, purchase_date: val})}
-              placeholder="Select date"
+          </FormField>
+          
+          <FormField label="Purchase Date" error={errors.purchase_date}>
+            <Controller
+              name="purchase_date"
+              control={control}
+              render={({ field }) => (
+                <DatePicker
+                  value={field.value || ''}
+                  onChange={field.onChange}
+                  placeholder="Select date"
+                />
+              )}
             />
-          </div>
+          </FormField>
         </div>
 
         {/* Store */}
-        <div>
-          <label className="block font-label-md text-label-md text-on-surface-variant mb-1">Store / Supplier</label>
+        <FormField label="Store / Supplier" error={errors.store}>
           <div className="space-y-2">
             <div className="relative">
               <select
-                className="w-full px-3 py-2 border border-outline-variant rounded-md bg-surface text-on-surface focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-shadow appearance-none cursor-pointer"
-                value={['Home Depot', "Lowe's", 'Menards', 'Ace Hardware', 'Amazon', 'Walmart'].includes(matData.store) ? matData.store : (matData.store ? 'Other' : '')}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-surface text-gray-900 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-shadow appearance-none cursor-pointer"
+                value={standardStores.includes(selectedStore) ? selectedStore : (selectedStore ? 'Other' : '')}
                 onChange={(e) => {
                   if (e.target.value !== 'Other') {
-                    setMatData({...matData, store: e.target.value});
+                    setValue('store', e.target.value);
                   } else {
-                    setMatData({...matData, store: 'Other_custom'});
+                    setValue('store', 'Other Custom');
                   }
                 }}
               >
-                <option value="" disabled>Select Store</option>
-                <option value="Home Depot">Home Depot</option>
-                <option value="Lowe's">Lowe's</option>
-                <option value="Menards">Menards</option>
-                <option value="Ace Hardware">Ace Hardware</option>
-                <option value="Amazon">Amazon</option>
-                <option value="Walmart">Walmart</option>
+                <option value="">Select Store</option>
+                {standardStores.map(store => (
+                  <option key={store} value={store}>{store}</option>
+                ))}
                 <option value="Other">Other</option>
               </select>
-              <span className="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-on-surface-variant pointer-events-none">expand_more</span>
+              <span className="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none">expand_more</span>
             </div>
             
-            {(!['Home Depot', "Lowe's", 'Menards', 'Ace Hardware', 'Amazon', 'Walmart', ''].includes(matData.store)) && (
+            {isCustomStore && (
               <input 
-                className="w-full px-3 py-2 border border-outline-variant rounded-md bg-surface text-on-surface focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-shadow placeholder:text-on-surface-variant/50" 
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-surface text-gray-900 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-shadow placeholder:text-gray-400" 
                 placeholder="Enter custom store name" 
                 type="text" 
-                value={matData.store === 'Other_custom' ? '' : (matData.store || '')}
-                onChange={e => setMatData({...matData, store: e.target.value})}
+                value={selectedStore === 'Other Custom' ? '' : selectedStore}
+                onChange={(e) => setValue('store', e.target.value)}
                 autoFocus
               />
             )}
           </div>
-        </div>
+        </FormField>
 
         {/* Notes */}
-        <div>
-          <label className="block font-label-md text-label-md text-on-surface-variant mb-1">Notes</label>
+        <FormField label="Notes" error={errors.notes}>
           <textarea 
-            className="w-full px-3 py-2 border border-outline-variant rounded-md bg-surface text-on-surface focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-shadow placeholder:text-on-surface-variant/50 resize-none h-16" 
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-surface text-gray-900 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-shadow placeholder:text-gray-400 resize-none h-16" 
             placeholder="Receipt number, warranty info..."
-            value={matData.notes || ''}
-            onChange={e => setMatData({...matData, notes: e.target.value})}
-          ></textarea>
-        </div>
+            {...register('notes')}
+          />
+        </FormField>
         
         {/* Inventory Checkbox */}
         <div className="pt-2">
           <label className="flex items-center gap-3 cursor-pointer group w-fit">
             <input 
               type="checkbox" 
-              className="text-primary focus:ring-primary h-5 w-5 border-outline-variant rounded transition-colors" 
-              checked={matData.is_from_stock}
-              onChange={e => setMatData({...matData, is_from_stock: e.target.checked})}
+              className="text-primary focus:ring-primary h-5 w-5 border-gray-300 rounded transition-colors cursor-pointer" 
+              {...register('is_from_stock')}
             />
-            <span className="font-body-md text-on-surface group-hover:text-primary transition-colors">
+            <span className="font-body-md text-gray-800 group-hover:text-primary transition-colors select-none">
               Pulled From Stock Inventory?
             </span>
           </label>
