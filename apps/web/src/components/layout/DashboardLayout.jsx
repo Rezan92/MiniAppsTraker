@@ -2,16 +2,16 @@ import React, { useState, useEffect, useRef } from 'react';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { useToast } from '../../contexts/ToastContext';
+import { useWorkspace } from '../../contexts/WorkspaceContext';
 import { CreateWorkspaceModal } from './CreateWorkspaceModal';
 import { CreateJobModal } from '../shared/CreateJobModal';
 
 export const DashboardLayout = ({ children }) => {
-  const { user, session, userData } = useAuth();
+  const { user, userData } = useAuth();
+  const { workspaces, currentWorkspace, activeTenantId, isSwitching, switchWorkspace } = useWorkspace();
   const navigate = useNavigate();
-  const { showSuccess, showError } = useToast();
+  const { showSuccess } = useToast();
   
-  const [workspaces, setWorkspaces] = useState([]);
-  const [switching, setSwitching] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const [createModalOpen, setCreateModalOpen] = useState(false);
@@ -19,37 +19,15 @@ export const DashboardLayout = ({ children }) => {
   const dropdownRef = useRef(null);
   const profileRef = useRef(null);
 
-  // Fetch workspaces on mount and handle post-reload toasts
+  // Handle URL toast params if any (e.g. from invite join)
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const toastParam = params.get('toast');
-    if (toastParam === 'workspace_created') {
-      showSuccess('Your new business profile is successfully created and active.');
-      window.history.replaceState({}, '', '/');
-    } else if (toastParam === 'joined_workspace') {
+    if (toastParam === 'joined_workspace') {
       showSuccess('You have successfully joined the team workspace.');
       window.history.replaceState({}, '', '/');
-    } else if (toastParam === 'workspace_deleted') {
-      showSuccess('Workspace has been permanently deleted.');
-      window.history.replaceState({}, '', '/');
     }
-
-    if (!session) return;
-    const fetchWorkspaces = async () => {
-      try {
-        const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:4000'}/api/auth/workspaces`, {
-          headers: { 'Authorization': `Bearer ${session.access_token}` }
-        });
-        const json = await res.json();
-        if (json.success) {
-          setWorkspaces(json.data);
-        }
-      } catch (err) {
-        console.error("Failed to fetch workspaces", err);
-      }
-    };
-    fetchWorkspaces();
-  }, [session]);
+  }, []);
 
   // Click outside to close dropdowns
   useEffect(() => {
@@ -66,32 +44,14 @@ export const DashboardLayout = ({ children }) => {
   }, []);
 
   const handleSwitchWorkspace = async (targetId) => {
-    if (targetId === userData?.tenant_id) {
+    if (targetId === activeTenantId) {
       setDropdownOpen(false);
       return;
     }
-    setSwitching(true);
-    try {
-      const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:4000'}/api/auth/switch-workspace`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session.access_token}`
-        },
-        body: JSON.stringify({ target_tenant_id: targetId })
-      });
-      const json = await res.json();
-      if (!res.ok || !json.success) throw new Error(json.error);
-      
-      // Hard reload to clear query cache
-      window.location.href = '/';
-    } catch (err) {
-      showError(err.message);
-      setSwitching(false);
-    }
+    setDropdownOpen(false);
+    await switchWorkspace(targetId);
   };
   
-  const currentWorkspace = workspaces.find(w => w.tenant_id === userData?.tenant_id);
   const tenantName = currentWorkspace?.name || "Loading..."; 
   const tenantSubtitle = currentWorkspace?.role === 'admin' ? "Business Admin" : "Employee";
 
@@ -205,14 +165,14 @@ export const DashboardLayout = ({ children }) => {
                   <button
                     key={ws.tenant_id}
                     onClick={() => handleSwitchWorkspace(ws.tenant_id)}
-                    disabled={switching}
-                    className={`w-full text-left px-4 py-2.5 flex items-center justify-between transition-colors ${ws.tenant_id === userData?.tenant_id ? 'bg-primary/10 text-primary' : 'hover:bg-gray-50 text-gray-700'}`}
+                    disabled={isSwitching}
+                    className={`w-full text-left px-4 py-2.5 flex items-center justify-between transition-colors ${ws.tenant_id === activeTenantId ? 'bg-primary/10 text-primary' : 'hover:bg-gray-50 text-gray-700'}`}
                   >
                     <div className="flex flex-col">
-                      <span className={`font-medium ${ws.tenant_id === userData?.tenant_id ? 'font-bold text-primary' : ''}`}>{ws.name}</span>
+                      <span className={`font-medium ${ws.tenant_id === activeTenantId ? 'font-bold text-primary' : ''}`}>{ws.name}</span>
                       <span className="text-xs text-gray-500 capitalize">{ws.role}</span>
                     </div>
-                    {ws.tenant_id === userData?.tenant_id && (
+                    {ws.tenant_id === activeTenantId && (
                       <span className="material-symbols-outlined text-primary" style={{ fontSize: '18px' }}>check</span>
                     )}
                   </button>

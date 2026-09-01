@@ -2,6 +2,7 @@ import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { ToastProvider } from './contexts/ToastContext';
+import { WorkspaceProvider } from './contexts/WorkspaceContext';
 import { LoginCard } from './components/LoginCard';
 import { DashboardLayout } from './components/layout/DashboardLayout';
 import { Dashboard } from './components/dashboard/Dashboard';
@@ -66,10 +67,12 @@ function App() {
     <ErrorBoundary>
       <AuthProvider>
         <ToastProvider>
-          <BrowserRouter>
-            <NetworkBanner />
-            <MainApp />
-          </BrowserRouter>
+          <WorkspaceProvider>
+            <BrowserRouter>
+              <NetworkBanner />
+              <MainApp />
+            </BrowserRouter>
+          </WorkspaceProvider>
         </ToastProvider>
       </AuthProvider>
     </ErrorBoundary>

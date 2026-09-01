@@ -1,12 +1,9 @@
 import React, { useState } from 'react';
-import { useAuth } from '../../contexts/AuthContext';
-import { useToast } from '../../contexts/ToastContext';
 import { BaseModal } from '../common/BaseModal';
-import { apiClient } from '../../lib/apiClient';
+import { useWorkspace } from '../../contexts/WorkspaceContext';
 
 export const DeleteWorkspaceModal = ({ isOpen, onClose, tenantName, tenantId }) => {
-  const { refreshUserData } = useAuth();
-  const { showError } = useToast();
+  const { deleteWorkspace } = useWorkspace();
   
   const [confirmText, setConfirmText] = useState('');
   const [loading, setLoading] = useState(false);
@@ -18,13 +15,10 @@ export const DeleteWorkspaceModal = ({ isOpen, onClose, tenantName, tenantId }) 
     setLoading(true);
 
     try {
-      await apiClient.delete(`/api/auth/workspaces/${tenantId}`);
-      await refreshUserData();
+      await deleteWorkspace(tenantId);
       onClose();
-      // Hard redirect to clear cache and show toast
-      window.location.href = '/?toast=workspace_deleted';
     } catch (err) {
-      showError(err.message || 'Failed to delete workspace');
+      // Error toast handled in WorkspaceContext
     } finally {
       setLoading(false);
     }

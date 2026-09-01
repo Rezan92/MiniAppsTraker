@@ -1,12 +1,9 @@
 import React, { useState } from 'react';
-import { useAuth } from '../../contexts/AuthContext';
-import { useToast } from '../../contexts/ToastContext';
 import { BaseModal } from '../common/BaseModal';
-import { apiClient } from '../../lib/apiClient';
+import { useWorkspace } from '../../contexts/WorkspaceContext';
 
 export const CreateWorkspaceModal = ({ isOpen, onClose }) => {
-  const { refreshUserData } = useAuth();
-  const { showSuccess, showError } = useToast();
+  const { createWorkspace } = useWorkspace();
   
   const [formData, setFormData] = useState({
     name: '',
@@ -24,13 +21,11 @@ export const CreateWorkspaceModal = ({ isOpen, onClose }) => {
     setLoading(true);
 
     try {
-      await apiClient.post('/api/auth/onboarding', formData);
-      await refreshUserData();
+      await createWorkspace(formData);
+      setFormData({ name: '', phone: '', address: '' });
       onClose();
-      // Hard redirect to clear cache and switch to new workspace
-      window.location.href = '/?toast=workspace_created';
     } catch (err) {
-      showError(err.message || 'Failed to create workspace');
+      // Error toast is handled in WorkspaceContext
     } finally {
       setLoading(false);
     }
