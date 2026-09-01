@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { AddClientModal } from './AddClientModal';
 import { ConfirmModal } from '../common/ConfirmModal';
+import { DataTable } from '../common/DataTable';
 import { useDebounce } from '../../hooks/useDebounce';
 import { useClients, useCreateClient, useUpdateClient, useDeleteClient } from '../../hooks/api/useClients';
 
@@ -110,6 +111,82 @@ export const ClientList = () => {
     setOpen(true);
   };
 
+  const columns = [
+    {
+      header: 'Client Name',
+      key: 'name',
+      render: (c) => (
+        <div className="flex items-center gap-3">
+          <div className="w-8 h-8 rounded bg-gray-100 flex items-center justify-center text-gray-500 font-bold border border-gray-200 shrink-0">
+            {(c.name || 'C').substring(0, 2).toUpperCase()}
+          </div>
+          <div>
+            <div className="font-medium text-gray-900">{c.name}</div>
+            <div className="text-xs text-gray-500 capitalize">{c.client_type?.replace('_', ' ')}</div>
+          </div>
+        </div>
+      )
+    },
+    {
+      header: 'Address',
+      key: 'address',
+      render: (c) => (
+        <div className="text-gray-700 text-sm truncate max-w-[220px]">
+          {c.address || <span className="text-gray-400 italic">No address</span>}
+        </div>
+      )
+    },
+    {
+      header: 'Contact Info',
+      key: 'contact',
+      render: (c) => (
+        <div>
+          <div className="text-gray-900 text-sm">{c.email || <span className="text-gray-400 italic">No email</span>}</div>
+          <div className="text-xs text-gray-500">{c.phone || <span className="text-gray-400 italic">No phone</span>}</div>
+        </div>
+      )
+    },
+    {
+      header: 'Status',
+      key: 'status',
+      render: (c) => (
+        <button 
+          onClick={(e) => handleStatusClick(e, c.id)}
+          className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold transition-colors cursor-pointer ${
+            c.status === 'inactive' ? 'bg-gray-100 text-gray-800 border border-gray-200 hover:bg-gray-200' : 'bg-emerald-100 text-emerald-800 border border-emerald-200 hover:bg-emerald-200'
+          }`}
+        >
+          <span>{c.status === 'inactive' ? 'Inactive' : 'Active'}</span>
+          <span className="material-symbols-outlined text-[14px]">expand_more</span>
+        </button>
+      )
+    },
+    {
+      header: 'Actions',
+      key: 'actions',
+      align: 'center',
+      width: '100px',
+      render: (c) => (
+        <div className="flex justify-center gap-1.5" onClick={(e) => e.stopPropagation()}>
+          <button 
+            onClick={() => openEditClient(c)} 
+            aria-label="Edit Client" 
+            className="p-1.5 text-gray-600 hover:text-gray-900 transition-colors rounded-lg hover:bg-gray-100 cursor-pointer"
+          >
+            <span className="material-symbols-outlined text-[18px]">edit</span>
+          </button>
+          <button 
+            onClick={() => confirmDelete(c)} 
+            aria-label="Delete Client" 
+            className="p-1.5 text-red-600 hover:text-red-800 transition-colors rounded-lg hover:bg-red-50 cursor-pointer"
+          >
+            <span className="material-symbols-outlined text-[18px]">delete</span>
+          </button>
+        </div>
+      )
+    }
+  ];
+
   return (
     <>
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
@@ -128,102 +205,27 @@ export const ClientList = () => {
               onChange={e => setSearch(e.target.value)}
             />
           </div>
-          <button className="flex items-center justify-center gap-2 bg-[#F9FAFB] border border-outline-variant text-on-surface-variant px-4 py-2 rounded font-body-md font-medium hover:bg-surface-container-low transition-colors h-11">
-            <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>filter_list</span>
-            Filter
-          </button>
           <button 
             onClick={openAddClient}
             className="flex items-center justify-center gap-2 bg-primary text-black px-4 py-2 rounded font-body-md font-bold cursor-pointer hover:bg-opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-[0_0_10px_rgba(245,158,11,0.15)] h-11"
           >
-            <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>person_add</span>
+            <span className="material-symbols-outlined text-[18px]">person_add</span>
             Add Client
           </button>
         </div>
       </div>
 
-      <div className="bg-white border border-surface-container-high rounded-lg shadow-sm overflow-hidden">
-        {loading ? (
-          <div className="text-center py-8 text-on-surface-variant font-body-md">Loading clients...</div>
-        ) : (
-          <>
-            <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse">
-                <thead>
-                  <tr className="bg-[#1F2937] text-white border-b border-surface-container-high">
-                    <th className="py-3 px-4 font-label-caps text-label-caps whitespace-nowrap">Client Name</th>
-                    <th className="py-3 px-4 font-label-caps text-label-caps whitespace-nowrap">Address</th>
-                    <th className="py-3 px-4 font-label-caps text-label-caps whitespace-nowrap">Contact Info</th>
-                    <th className="py-3 px-4 font-label-caps text-label-caps whitespace-nowrap">Status</th>
-                    <th className="py-3 px-4 font-label-caps text-label-caps text-center whitespace-nowrap w-16">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="font-body-md divide-y divide-surface-container-high">
-                  {clients.length === 0 ? (
-                    <tr className="bg-white">
-                      <td colSpan="5" className="py-8 px-6 text-center text-on-surface-variant">
-                        No clients found.
-                      </td>
-                    </tr>
-                  ) : (
-                    clients.map((c, idx) => (
-                      <tr key={c.id} onClick={() => navigate(`/clients/${c.id}`)} className={`hover:bg-gray-100 transition-colors group cursor-pointer ${idx % 2 !== 0 ? 'bg-[#F9FAFB]' : 'bg-white'}`}>
-                        <td className="py-3 px-4 rounded-l-lg">
-                          <div className="flex items-center gap-3">
-                            <div className="w-8 h-8 rounded bg-gray-100 flex items-center justify-center text-gray-500 font-bold border border-gray-200">
-                              {(c.name || 'C').substring(0, 2).toUpperCase()}
-                            </div>
-                            <div>
-                              <div className="font-medium text-on-surface">{c.name}</div>
-                              <div className="text-xs text-gray-500 capitalize">{c.client_type?.replace('_', ' ')}</div>
-                            </div>
-                          </div>
-                        </td>
-                        <td className="py-3 px-4">
-                          <div className="text-on-surface text-sm truncate max-w-[200px]">{c.address || 'No address'}</div>
-                        </td>
-                        <td className="py-3 px-4">
-                          <div className="text-on-surface">{c.email || 'No email'}</div>
-                          <div className="text-xs text-gray-500">{c.phone || 'No phone'}</div>
-                        </td>
-                        <td className="py-3 px-4 relative">
-                          <button 
-                            onClick={(e) => handleStatusClick(e, c.id)}
-                            className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium transition-colors ${
-                              c.status === 'inactive' ? 'bg-gray-100 text-gray-800 border border-gray-200 hover:bg-gray-200' : 'bg-emerald-100 text-emerald-800 border border-emerald-200 hover:bg-emerald-200'
-                            }`}
-                          >
-                            <span>{c.status === 'inactive' ? 'Inactive' : 'Active'}</span>
-                            <span className="material-symbols-outlined" style={{ fontSize: '14px' }}>expand_more</span>
-                          </button>
-                        </td>
-                        <td className="py-3 px-4 text-center">
-                          <div className="flex justify-center gap-2">
-                            <button onClick={(e) => { e.stopPropagation(); openEditClient(c); }} aria-label="Edit Client" className="p-1 text-black hover:text-gray-600 transition-colors rounded hover:bg-gray-200">
-                              <span className="material-symbols-outlined text-[20px]">edit</span>
-                            </button>
-                            <button onClick={(e) => { e.stopPropagation(); confirmDelete(c); }} aria-label="Delete Client" className="p-1 text-black hover:text-gray-600 transition-colors rounded hover:bg-gray-200">
-                              <span className="material-symbols-outlined text-[20px]">delete</span>
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
-            
-            <div className="flex items-center justify-between px-4 py-3 bg-[#F9FAFB] border-t border-surface-container-high text-sm text-gray-500">
-              <div>Showing {clients.length} clients</div>
-              <div className="flex gap-2">
-                <button className="px-2 py-1 border border-surface-container-high rounded bg-white hover:bg-gray-50 disabled:opacity-50" disabled>Prev</button>
-                <button className="px-2 py-1 border border-surface-container-high rounded bg-white hover:bg-gray-50 disabled:opacity-50" disabled>Next</button>
-              </div>
-            </div>
-          </>
-        )}
-      </div>
+      <DataTable 
+        columns={columns}
+        data={clients}
+        isLoading={loading}
+        onRowClick={(c) => navigate(`/clients/${c.id}`)}
+        emptyIcon="person_off"
+        emptyTitle="No clients found"
+        emptyDescription="Get started by adding your first client or adjust your search filter."
+        emptyActionText="Add Client"
+        onEmptyAction={openAddClient}
+      />
 
       <AddClientModal 
         open={open}

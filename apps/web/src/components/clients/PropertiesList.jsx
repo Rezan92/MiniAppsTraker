@@ -1,13 +1,14 @@
 import React, { useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { useAuth } from '../../contexts/AuthContext';
 import { useToast } from '../../contexts/ToastContext';
 import { useNavigate } from 'react-router-dom';
 import { Tooltip } from '../common/Tooltip';
 import { ConfirmModal } from '../common/ConfirmModal';
+import { BaseModal } from '../common/BaseModal';
+import { DataTable } from '../common/DataTable';
+import { apiClient } from '../../lib/apiClient';
 
 export const PropertiesList = ({ clientId }) => {
-  const { session } = useAuth();
   const { showError, showSuccess } = useToast();
   const queryClient = useQueryClient();
   const navigate = useNavigate();
@@ -20,15 +21,8 @@ export const PropertiesList = ({ clientId }) => {
 
   const { data: properties = [], isLoading } = useQuery({
     queryKey: ['properties', clientId],
-    queryFn: async () => {
-      const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:4000'}/api/properties?client_id=${clientId}`, {
-        headers: { 'Authorization': `Bearer ${session?.access_token}` }
-      });
-      if (!res.ok) throw new Error('Failed to fetch properties');
-      const data = await res.json();
-      return data.data || [];
-    },
-    enabled: !!session?.access_token && !!clientId
+    queryFn: () => apiClient.get(`/api/properties?client_id=${clientId}`),
+    enabled: !!clientId
   });
 
   const handleOpenAdd = () => {
@@ -51,18 +45,11 @@ export const PropertiesList = ({ clientId }) => {
   const executeDelete = async () => {
     if (!propToDelete) return;
     try {
-      const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:4000'}/api/properties/${propToDelete}`, {
-        method: 'DELETE',
-        headers: { 'Authorization': `Bearer ${session?.access_token}` }
-      });
-      if (res.ok) {
-        queryClient.invalidateQueries({ queryKey: ['properties', clientId] });
-        showSuccess('Property deleted successfully!');
-      } else {
-        showError('Failed to delete property');
-      }
+      await apiClient.delete(`/api/properties/${propToDelete}`);
+      queryClient.invalidateQueries({ queryKey: ['properties', clientId] });
+      showSuccess('Property deleted successfully!');
     } catch (err) {
-      showError('An error occurred');
+      showError(err.message || 'Failed to delete property');
     } finally {
       setDeleteModalOpen(false);
       setPropToDelete(null);
@@ -72,34 +59,93 @@ export const PropertiesList = ({ clientId }) => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      const url = editingId 
-        ? `${import.meta.env.VITE_API_URL || 'http://localhost:4000'}/api/properties/${editingId}`
-        : `${import.meta.env.VITE_API_URL || 'http://localhost:4000'}/api/properties`;
-      
-      const method = editingId ? 'PUT' : 'POST';
       const payload = { ...formData, client_id: clientId };
-
-      const res = await fetch(url, {
-        method,
-        headers: { 
-          'Authorization': `Bearer ${session?.access_token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(payload)
-      });
-
-      if (res.ok) {
-        queryClient.invalidateQueries({ queryKey: ['properties', clientId] });
-        setIsModalOpen(false);
-        showSuccess(`Property ${editingId ? 'updated' : 'added'} successfully!`);
+      if (editingId) {
+        await apiClient.put(`/api/properties/${editingId}`, payload);
       } else {
-        const errorData = await res.json();
-        showError(errorData.error?.message || errorData.message || 'Failed to save property');
+        await apiClient.post('/api/properties', payload);
       }
+
+      queryClient.invalidateQueries({ queryKey: ['properties', clientId] });
+      setIsModalOpen(false);
+      showSuccess(`Property ${editingId ? 'updated' : 'added'} successfully!`);
     } catch (err) {
-      showError('An unexpected error occurred.');
+      showError(err.message || 'Failed to save property');
     }
   };
+
+  const columns = [
+    {
+      header: 'Name / Alias',
+      key: 'name',
+      render: (prop) => <div className="font-medium text-gray-900">{prop.name || '-'}</div>
+    },
+    {
+      header: 'Address',
+      key: 'address',
+      render: (prop) => <div className="text-gray-700">{prop.address}</div>
+    },
+    {
+      header: 'Tenant Info',
+      key: 'tenant',
+      render: (prop) => (
+        <div>
+          {prop.renter_name ? <div className="font-medium text-gray-900">{prop.renter_name}</div> : <div className="text-gray-400 italic">No tenant</div>}
+          {prop.renter_phone && <div className="text-xs text-gray-500">{prop.renter_phone}</div>}
+        </div>
+      )
+    },
+    {
+      header: 'Notes',
+      key: 'notes',
+      render: (prop) => <div className="max-w-xs truncate text-gray-600">{prop.notes || '-'}</div>
+    },
+    {
+      header: 'Actions',
+      key: 'actions',
+      align: 'right',
+      width: '100px',
+      render: (prop) => (
+        <div className="flex justify-end gap-1.5" onClick={(e) => e.stopPropagation()}>
+          <Tooltip text="Edit" position="top">
+            <button 
+              onClick={() => handleOpenEdit(prop)} 
+              className="p-1.5 text-gray-600 hover:text-gray-900 transition-colors rounded-lg hover:bg-gray-100 cursor-pointer" 
+            >
+              <span className="material-symbols-outlined text-[18px]">edit</span>
+            </button>
+          </Tooltip>
+          <Tooltip text="Delete" position="top">
+            <button 
+              onClick={() => confirmDelete(prop.id)} 
+              className="p-1.5 text-red-600 hover:text-red-800 transition-colors rounded-lg hover:bg-red-50 cursor-pointer ml-1" 
+            >
+              <span className="material-symbols-outlined text-[18px]">delete</span>
+            </button>
+          </Tooltip>
+        </div>
+      )
+    }
+  ];
+
+  const modalFooter = (
+    <>
+      <button 
+        type="button" 
+        onClick={() => setIsModalOpen(false)} 
+        className="px-4 py-2 text-gray-700 font-medium rounded-lg hover:bg-gray-100 transition-colors cursor-pointer"
+      >
+        Cancel
+      </button>
+      <button 
+        type="submit" 
+        form="property-form"
+        className="px-5 py-2 bg-primary text-black font-bold rounded-lg hover:bg-opacity-90 transition-colors shadow-sm cursor-pointer"
+      >
+        {editingId ? 'Save Changes' : 'Add Property'}
+      </button>
+    </>
+  );
 
   return (
     <div className="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden flex flex-col mt-6">
@@ -110,149 +156,92 @@ export const PropertiesList = ({ clientId }) => {
         </h3>
         <button 
           onClick={handleOpenAdd}
-          className="text-sm font-medium text-primary hover:text-primary/80 transition-colors flex items-center gap-1 cursor-pointer"
+          className="text-sm font-bold text-primary hover:text-primary/80 transition-colors flex items-center gap-1 cursor-pointer"
         >
           <span className="material-symbols-outlined text-[16px]">add</span>
           Add Property
         </button>
       </div>
 
-      <div className="overflow-x-auto">
-        <table className="w-full text-left border-collapse">
-          <thead>
-            <tr className="bg-[#1F2937] text-white border-b border-surface-container-high font-label-caps text-label-caps whitespace-nowrap">
-              <th className="p-4 font-semibold">Name / Alias</th>
-              <th className="p-4 font-semibold">Address</th>
-              <th className="p-4 font-semibold">Tenant Info</th>
-              <th className="p-4 font-semibold">Notes</th>
-              <th className="p-4 font-semibold text-right">Actions</th>
-            </tr>
-          </thead>
-          <tbody className="font-body-md text-gray-700">
-            {isLoading ? (
-              <tr><td colSpan="4" className="p-6 text-center">Loading properties...</td></tr>
-            ) : properties.length === 0 ? (
-              <tr>
-                <td colSpan="5" className="p-6 text-center text-gray-500 italic">No rental properties added yet.</td>
-              </tr>
-            ) : (
-              properties.map((prop) => (
-                <tr 
-                  key={prop.id} 
-                  onClick={() => navigate(`/properties/${prop.id}`)}
-                  className="border-b border-gray-100 hover:bg-gray-50 transition-colors cursor-pointer"
-                >
-                  <td className="p-4 font-medium">{prop.name || '-'}</td>
-                  <td className="p-4">{prop.address}</td>
-                  <td className="p-4">
-                    {prop.renter_name ? <div className="font-medium">{prop.renter_name}</div> : <div className="text-gray-400 italic">No tenant</div>}
-                    {prop.renter_phone && <div className="text-sm text-gray-500">{prop.renter_phone}</div>}
-                  </td>
-                  <td className="p-4 max-w-xs truncate">{prop.notes || '-'}</td>
-                  <td className="p-4 text-right">
-                    <Tooltip text="Edit" position="top">
-                      <button 
-                        onClick={(e) => { e.stopPropagation(); handleOpenEdit(prop); }} 
-                        className="text-black hover:opacity-80 transition-opacity p-1 cursor-pointer" 
-                      >
-                        <span className="material-symbols-outlined text-[18px]">edit</span>
-                      </button>
-                    </Tooltip>
-                    <Tooltip text="Delete" position="top">
-                      <button 
-                        onClick={(e) => { e.stopPropagation(); confirmDelete(prop.id); }} 
-                        className="text-black hover:opacity-80 transition-opacity p-1 ml-2 cursor-pointer" 
-                      >
-                        <span className="material-symbols-outlined text-[18px]">delete</span>
-                      </button>
-                    </Tooltip>
-                  </td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      </div>
+      <DataTable
+        columns={columns}
+        data={properties}
+        isLoading={isLoading}
+        onRowClick={(prop) => navigate(`/properties/${prop.id}`)}
+        emptyIcon="home_work"
+        emptyTitle="No properties found"
+        emptyDescription="No rental properties have been linked to this client yet."
+        emptyActionText="Add Property"
+        onEmptyAction={handleOpenAdd}
+      />
 
-      {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-on-background/40 backdrop-blur-sm p-4">
-          <div className="bg-surface-container-lowest rounded-xl shadow-lg w-full max-w-[32rem] overflow-hidden flex flex-col">
-            <div className="px-6 py-4 border-b border-outline-variant flex justify-between items-center">
-              <h2 className="font-title-md text-title-md font-bold text-primary">{editingId ? 'Edit Property' : 'Add Property'}</h2>
-              <button type="button" onClick={() => setIsModalOpen(false)} className="text-on-surface-variant hover:text-primary transition-colors cursor-pointer">
-                <span className="material-symbols-outlined">close</span>
-              </button>
+      <BaseModal
+        open={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        title={editingId ? 'Edit Property' : 'Add Property'}
+        footer={modalFooter}
+        size="md"
+      >
+        <form id="property-form" onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label className="block font-label-md text-label-md text-gray-700 mb-1">Property Name / Alias (Optional)</label>
+            <input 
+              className="w-full px-3 py-2 border rounded-md bg-surface text-gray-900 border-gray-300 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+              placeholder="e.g. Downtown Triplex" 
+              value={formData.name}
+              onChange={(e) => setFormData({...formData, name: e.target.value})}
+            />
+          </div>
+          <div>
+            <label className="block font-label-md text-label-md text-gray-700 mb-1">Full Address *</label>
+            <input 
+              className="w-full px-3 py-2 border rounded-md bg-surface text-gray-900 border-gray-300 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+              placeholder="e.g. 123 Main St, Apt 4B, City, ST 12345" 
+              value={formData.address}
+              onChange={(e) => setFormData({...formData, address: e.target.value})}
+              required
+            />
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block font-label-md text-label-md text-gray-700 mb-1">Tenant Name</label>
+              <input 
+                className="w-full px-3 py-2 border rounded-md bg-surface text-gray-900 border-gray-300 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+                placeholder="e.g. Jane Smith" 
+                value={formData.renter_name}
+                onChange={(e) => setFormData({...formData, renter_name: e.target.value})}
+              />
             </div>
-            <div className="p-6">
-              <form onSubmit={handleSubmit} className="space-y-4">
-                <div>
-                  <label className="block font-label-md text-label-md text-on-surface-variant mb-1">Property Name / Alias (Optional)</label>
-                  <input 
-                    className="w-full px-3 py-2 border rounded-md bg-surface text-on-surface border-outline-variant focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary"
-                    placeholder="e.g. Downtown Triplex" 
-                    value={formData.name}
-                    onChange={(e) => setFormData({...formData, name: e.target.value})}
-                  />
-                </div>
-                <div>
-                  <label className="block font-label-md text-label-md text-on-surface-variant mb-1">Full Address *</label>
-                  <input 
-                    className="w-full px-3 py-2 border rounded-md bg-surface text-on-surface border-outline-variant focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary"
-                    placeholder="e.g. 123 Main St, Apt 4B, City, ST 12345" 
-                    value={formData.address}
-                    onChange={(e) => setFormData({...formData, address: e.target.value})}
-                    required
-                  />
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block font-label-md text-label-md text-on-surface-variant mb-1">Tenant Name</label>
-                    <input 
-                      className="w-full px-3 py-2 border rounded-md bg-surface text-on-surface border-outline-variant focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary"
-                      placeholder="e.g. Jane Smith" 
-                      value={formData.renter_name}
-                      onChange={(e) => setFormData({...formData, renter_name: e.target.value})}
-                    />
-                  </div>
-                  <div>
-                    <label className="block font-label-md text-label-md text-on-surface-variant mb-1">Tenant Phone</label>
-                    <input 
-                      className="w-full px-3 py-2 border rounded-md bg-surface text-on-surface border-outline-variant focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary"
-                      placeholder="e.g. (555) 123-4567" 
-                      value={formData.renter_phone}
-                      onChange={(e) => setFormData({...formData, renter_phone: e.target.value})}
-                    />
-                  </div>
-                </div>
-                <div>
-                  <label className="block font-label-md text-label-md text-on-surface-variant mb-1">Access Notes / Details</label>
-                  <textarea 
-                    className="w-full px-3 py-2 border rounded-md bg-surface text-on-surface border-outline-variant focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary resize-y h-24"
-                    placeholder="Gate code, tenant name, special instructions..." 
-                    value={formData.notes}
-                    onChange={(e) => setFormData({...formData, notes: e.target.value})}
-                  />
-                </div>
-                <div className="flex justify-end gap-3 mt-6 pt-4 border-t border-outline-variant">
-                  <button type="button" onClick={() => setIsModalOpen(false)} className="px-4 py-2 text-on-surface-variant font-medium rounded hover:bg-surface-variant transition-colors cursor-pointer">
-                    Cancel
-                  </button>
-                  <button type="submit" className="px-6 py-2 bg-primary text-black font-medium rounded hover:bg-opacity-90 transition-colors shadow-sm cursor-pointer">
-                    {editingId ? 'Save Changes' : 'Add Property'}
-                  </button>
-                </div>
-              </form>
+            <div>
+              <label className="block font-label-md text-label-md text-gray-700 mb-1">Tenant Phone</label>
+              <input 
+                className="w-full px-3 py-2 border rounded-md bg-surface text-gray-900 border-gray-300 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+                placeholder="e.g. (555) 123-4567" 
+                value={formData.renter_phone}
+                onChange={(e) => setFormData({...formData, renter_phone: e.target.value})}
+              />
             </div>
           </div>
-        </div>
-      )}
+          <div>
+            <label className="block font-label-md text-label-md text-gray-700 mb-1">Access Notes / Details</label>
+            <textarea 
+              className="w-full px-3 py-2 border rounded-md bg-surface text-gray-900 border-gray-300 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary resize-y h-24"
+              placeholder="Gate code, special instructions..." 
+              value={formData.notes}
+              onChange={(e) => setFormData({...formData, notes: e.target.value})}
+            />
+          </div>
+        </form>
+      </BaseModal>
 
       <ConfirmModal
         open={deleteModalOpen}
         onClose={() => { setDeleteModalOpen(false); setPropToDelete(null); }}
         onConfirm={executeDelete}
         title="Delete Property?"
-        message="Are you sure you want to delete this property?"
+        message="Are you sure you want to delete this property? All associated records will be permanently removed."
+        confirmText="Delete Property"
+        confirmColor="red"
       />
     </div>
   );

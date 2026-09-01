@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { formatCurrency, formatDate } from '../../utils/formatters';
 import { PageHeader } from '../common/PageHeader';
 import { DateRangeFilter } from '../common/DateRangeFilter';
-import { INVOICE_STATUSES, INVOICE_FILTER_TABS, STATUS_COLORS } from '../../utils/constants';
+import { DataTable } from '../common/DataTable';
+import { INVOICE_STATUSES, INVOICE_FILTER_TABS } from '../../utils/constants';
 import { StatusBadgeDropdown } from '../shared/StatusBadgeDropdown';
 import { useInvoices, useUpdateInvoiceStatus } from '../../hooks/api/useInvoices';
 import { useToast } from '../../contexts/ToastContext';
@@ -85,6 +86,101 @@ export const InvoiceList = () => {
   const materialTotal = filteredInvoices.reduce((sum, inv) => sum + Number(inv.materials_amount || 0), 0);
   const invoiceTotal = filteredInvoices.reduce((sum, inv) => sum + Number(inv.total_amount || 0), 0);
 
+  const columns = [
+    {
+      header: 'Invoice',
+      key: 'invoice_number',
+      render: (inv) => (
+        <div className="font-title-sm font-semibold text-gray-900 group-hover:text-primary transition-colors">
+          #{inv.invoice_number}
+        </div>
+      )
+    },
+    {
+      header: 'Client',
+      key: 'client',
+      render: (inv) => (
+        <div className="font-title-sm text-gray-900">
+          {inv.clients?.name || 'Unknown Client'}
+        </div>
+      )
+    },
+    {
+      header: 'Created',
+      key: 'created_at',
+      render: (inv) => (
+        <div className="text-body-md text-gray-600">
+          {inv.created_at ? formatDate(inv.created_at) : 'N/A'}
+        </div>
+      )
+    },
+    {
+      header: 'Paid',
+      key: 'paid_at',
+      render: (inv) => (
+        <div className="text-body-md text-gray-600">
+          {inv.paid_at ? formatDate(inv.paid_at) : '-'}
+        </div>
+      )
+    },
+    {
+      header: 'Labor',
+      key: 'labor_amount',
+      align: 'right',
+      render: (inv) => (
+        <div className="font-title-sm text-gray-900">
+          {formatCurrency(inv.labor_amount)}
+        </div>
+      )
+    },
+    {
+      header: 'Materials',
+      key: 'materials_amount',
+      align: 'right',
+      render: (inv) => (
+        <div className="font-title-sm text-gray-900">
+          {formatCurrency(inv.materials_amount)}
+        </div>
+      )
+    },
+    {
+      header: 'Total Amount',
+      key: 'total_amount',
+      align: 'right',
+      render: (inv) => (
+        <div className="font-title-sm text-gray-900 font-bold">
+          {formatCurrency(inv.total_amount)}
+        </div>
+      )
+    },
+    {
+      header: 'Status',
+      key: 'status',
+      align: 'right',
+      render: (inv) => (
+        <div onClick={(e) => e.stopPropagation()} className="flex justify-end">
+          <StatusBadgeDropdown
+            currentStatus={inv.status}
+            statuses={INVOICE_STATUSES}
+            onStatusChange={(newStatus) => handleStatusChange(inv.id, newStatus)}
+          />
+        </div>
+      )
+    }
+  ];
+
+  const tableFooter = (
+    <tr className="bg-[#1F2937] text-white">
+      <td colSpan="4" className="px-4 py-3.5 text-right font-label-caps text-label-caps text-gray-300 tracking-wider">
+        Totals · {filter === 'all' ? 'All Invoices' : filter.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
+      </td>
+      <td className="px-4 py-3.5 text-right font-title-sm text-amber-400 font-semibold">{formatCurrency(laborTotal)}</td>
+      <td className="px-4 py-3.5 text-right font-title-sm text-amber-400 font-semibold">{formatCurrency(materialTotal)}</td>
+      <td className="px-4 py-3.5 text-right font-title-md font-bold text-white">{formatCurrency(invoiceTotal)}</td>
+      <td className="bg-[#1F2937]"></td>
+    </tr>
+  );
+
   return (
     <div className="flex flex-col gap-8">
       <PageHeader
@@ -106,99 +202,23 @@ export const InvoiceList = () => {
         />
       </PageHeader>
 
-      <div className="bg-white border border-surface-container-high rounded-lg shadow-sm overflow-hidden flex flex-col">
-        {isLoading ? (
-          <div className="p-8 text-center text-gray-500">Loading invoices...</div>
-        ) : filteredInvoices.length === 0 ? (
-          <div className="p-12 text-center">
-            <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <span className="material-symbols-outlined text-3xl text-gray-400">receipt_long</span>
-            </div>
-            <h3 className="text-title-md font-bold text-gray-900 mb-2">No invoices found</h3>
-            <p className="text-body-md text-gray-500 mb-6">
-              {(search || filter !== 'all' || dateRange?.startDate || dateRange?.endDate)
-                ? 'No invoices match your current filters. Try adjusting your search, status, or date range.'
-                : "You haven't created any invoices yet."
-              }
-            </p>
-            {!search && filter === 'all' && !dateRange?.startDate && !dateRange?.endDate && (
-              <Link 
-                to="/invoices/new"
-                className="inline-flex items-center gap-2 text-primary hover:underline font-title-sm"
-              >
-                Create your first invoice
-                <span className="material-symbols-outlined text-[18px]">arrow_forward</span>
-              </Link>
-            )}
-          </div>
-        ) : (
-          <div className="overflow-x-auto min-h-[300px]">
-            <table className="w-full text-left min-w-[1000px] border-collapse relative">
-              <thead className="sticky top-0 bg-[#1F2937] text-white z-10 border-b border-surface-container-high">
-                <tr>
-                  <th className="py-3 px-4 font-label-caps text-label-caps whitespace-nowrap">Invoice</th>
-                  <th className="py-3 px-4 font-label-caps text-label-caps whitespace-nowrap">Client</th>
-                  <th className="py-3 px-4 font-label-caps text-label-caps whitespace-nowrap">Created</th>
-                  <th className="py-3 px-4 font-label-caps text-label-caps whitespace-nowrap">Paid</th>
-                  <th className="py-3 px-4 font-label-caps text-label-caps whitespace-nowrap text-right">Labor</th>
-                  <th className="py-3 px-4 font-label-caps text-label-caps whitespace-nowrap text-right">Materials</th>
-                  <th className="py-3 px-4 font-label-caps text-label-caps whitespace-nowrap text-right">Total Amount</th>
-                  <th className="py-3 px-4 font-label-caps text-label-caps whitespace-nowrap text-right">Status</th>
-                </tr>
-              </thead>
-              <tbody className="font-body-md divide-y divide-surface-container-high">
-                {filteredInvoices.map((invoice, idx) => (
-                  <tr 
-                    key={invoice.id} 
-                    onClick={() => navigate(`/invoices/${invoice.id}`)}
-                    className={`hover:bg-gray-100 cursor-pointer transition-colors group ${idx % 2 !== 0 ? 'bg-[#F9FAFB]' : 'bg-white'}`}
-                  >
-                    <td className="px-4 py-4">
-                      <div className="font-title-sm text-gray-900 group-hover:text-primary transition-colors">#{invoice.invoice_number}</div>
-                    </td>
-                    <td className="px-4 py-4">
-                      <div className="font-title-sm text-gray-900">{invoice.clients?.name}</div>
-                    </td>
-                    <td className="px-4 py-4 text-body-md text-gray-600">
-                      {invoice.created_at ? formatDate(invoice.created_at) : 'N/A'}
-                    </td>
-                    <td className="px-4 py-4 text-body-md text-gray-600">
-                      {invoice.paid_at ? formatDate(invoice.paid_at) : '-'}
-                    </td>
-                    <td className="px-4 py-4 text-right font-title-sm text-gray-900">
-                      {formatCurrency(invoice.labor_amount)}
-                    </td>
-                    <td className="px-4 py-4 text-right font-title-sm text-gray-900">
-                      {formatCurrency(invoice.materials_amount)}
-                    </td>
-                    <td className="px-4 py-4 text-right font-title-sm text-gray-900 font-bold">
-                      {formatCurrency(invoice.total_amount)}
-                    </td>
-                    <td className="px-4 py-4 text-right">
-                      <StatusBadgeDropdown
-                        currentStatus={invoice.status}
-                        statuses={INVOICE_STATUSES}
-                        onStatusChange={(newStatus) => handleStatusChange(invoice.id, newStatus)}
-                      />
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-              <tfoot className="sticky bottom-0 z-10">
-                <tr className="bg-[#1F2937]">
-                  <td colSpan="4" className="px-4 py-3.5 text-right font-label-caps text-label-caps text-gray-300 tracking-wider">
-                    Totals · {filter === 'all' ? 'All Invoices' : filter.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
-                  </td>
-                  <td className="px-4 py-3.5 text-right font-title-sm text-amber-400">{formatCurrency(laborTotal)}</td>
-                  <td className="px-4 py-3.5 text-right font-title-sm text-amber-400">{formatCurrency(materialTotal)}</td>
-                  <td className="px-4 py-3.5 text-right font-title-md font-bold text-white">{formatCurrency(invoiceTotal)}</td>
-                  <td className="bg-[#1F2937]"></td>
-                </tr>
-              </tfoot>
-            </table>
-          </div>
-        )}
-      </div>
+      <DataTable
+        columns={columns}
+        data={filteredInvoices}
+        isLoading={isLoading}
+        onRowClick={(inv) => navigate(`/invoices/${inv.id}`)}
+        emptyIcon="receipt_long"
+        emptyTitle="No invoices found"
+        emptyDescription={
+          search || filter !== 'all' || dateRange?.startDate || dateRange?.endDate
+            ? 'No invoices match your current filters. Try adjusting your search, status, or date range.'
+            : "You haven't created any invoices yet."
+        }
+        emptyActionText={!search && filter === 'all' && !dateRange?.startDate ? 'Create Invoice' : undefined}
+        onEmptyAction={() => navigate('/invoices/new')}
+        minWidth="1000px"
+        footer={filteredInvoices.length > 0 ? tableFooter : null}
+      />
 
       <ReasonModal
         open={reasonModalOpen}

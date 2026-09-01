@@ -1,9 +1,8 @@
 import React, { useState } from 'react';
+import { BaseModal } from '../common/BaseModal';
 
 export const AddClientModal = ({ open, onClose, onSubmit, formData, setFormData, editMode }) => {
   const [errors, setErrors] = useState({});
-
-  if (!open) return null;
 
   const validateField = (name, value) => {
     let errorMsg = null;
@@ -27,170 +26,157 @@ export const AddClientModal = ({ open, onClose, onSubmit, formData, setFormData,
     validateField(name, value);
   };
 
-  return (
-    <div 
-      className="fixed inset-0 z-50 flex items-center justify-center bg-on-background/40 backdrop-blur-sm p-4"
-      onMouseDown={onClose}
-    >
-      <div 
-        className="bg-surface-container-lowest rounded-xl shadow-lg w-full max-w-[32rem] overflow-hidden flex flex-col max-h-[90vh]"
-        onMouseDown={e => e.stopPropagation()}
+  const footer = (
+    <>
+      <button 
+        type="button"
+        onClick={onClose}
+        className="px-4 py-2 bg-white border border-gray-300 text-gray-700 font-body-md font-bold rounded-lg cursor-pointer hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors focus:outline-none focus:ring-2 focus:ring-gray-300"
       >
-        <div className="px-6 py-4 border-b border-outline-variant flex justify-between items-center">
-          <h2 className="font-title-md text-title-md font-bold text-primary">{editMode ? 'Edit Client' : 'Add New Client'}</h2>
-          <button 
-            type="button"
-            onClick={onClose}
-            className="text-on-surface-variant hover:text-primary transition-colors"
-          >
-            <span className="material-symbols-outlined">close</span>
-          </button>
-        </div>
-        
-        <div className="p-6 flex-1 overflow-y-auto">
-          <form className="space-y-5" id="add-client-form" onSubmit={(e) => { e.preventDefault(); onSubmit(); }}>
-            {/* Client Type */}
-            <div>
-              <label className="block font-label-md text-label-md text-on-surface-variant mb-2">Client Type</label>
-              <div className="flex gap-4">
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input 
-                    className="text-primary focus:ring-primary h-4 w-4 border-outline-variant" 
-                    name="clientType" 
-                    type="radio" 
-                    value="residential" 
-                    checked={formData.client_type === 'residential'}
-                    onChange={e => setFormData({...formData, client_type: e.target.value})}
-                  />
-                  <span className="text-body-md">Residential</span>
-                </label>
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input 
-                    className="text-primary focus:ring-primary h-4 w-4 border-outline-variant" 
-                    name="clientType" 
-                    type="radio" 
-                    value="commercial" 
-                    checked={formData.client_type === 'commercial'}
-                    onChange={e => setFormData({...formData, client_type: e.target.value})}
-                  />
-                  <span className="text-body-md">Commercial</span>
-                </label>
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input 
-                    className="text-primary focus:ring-primary h-4 w-4 border-outline-variant" 
-                    name="clientType" 
-                    type="radio" 
-                    value="property_manager" 
-                    checked={formData.client_type === 'property_manager'}
-                    onChange={e => setFormData({...formData, client_type: e.target.value})}
-                  />
-                  <span className="text-body-md">Property Manager</span>
-                </label>
-              </div>
-            </div>
-            
-            {/* Full Name */}
-            <div>
-              <label className="block font-label-md text-label-md text-on-surface-variant mb-1">Full Name *</label>
-                <input 
-                  className={`w-full px-3 py-2 border rounded-md bg-surface text-on-surface focus:outline-none focus:ring-1 transition-shadow placeholder:text-on-surface-variant/50 ${errors.name ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : 'border-outline-variant focus:border-primary focus:ring-primary'}`}
-                  placeholder="e.g. John Doe" 
-                  name="name"
-                  type="text" 
-                  value={formData.name || ''}
-                  onChange={handleInputChange}
-                  required
-                />
-                {errors.name && <p className="text-red-500 text-xs mt-1">{errors.name}</p>}
-            </div>
+        Cancel
+      </button>
+      <button 
+        type="submit"
+        form="add-client-form"
+        className="px-4 py-2 bg-primary text-black font-body-md font-bold rounded-lg cursor-pointer hover:bg-opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors focus:outline-none focus:ring-2 focus:ring-primary shadow-sm"
+        disabled={!formData.name || !formData.phone || Object.values(errors).some(Boolean)}
+      >
+        {editMode ? 'Save Changes' : 'Add Client'}
+      </button>
+    </>
+  );
 
-            {/* Company Name */}
-            {(formData.client_type === 'commercial' || formData.client_type === 'property_manager') && (
-              <div>
-                <label className="block font-label-md text-label-md text-on-surface-variant mb-1">Company Name / LLC</label>
-                <input 
-                  className="w-full px-3 py-2 border rounded-md bg-surface text-on-surface border-outline-variant focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-shadow placeholder:text-on-surface-variant/50"
-                  placeholder="e.g. Acme Property Management LLC" 
-                  name="company_name"
-                  type="text" 
-                  value={formData.company_name || ''}
-                  onChange={handleInputChange}
-                />
-              </div>
-            )}
-            
-            {/* Contact Info Grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-              <div>
-                <label className="block font-label-md text-label-md text-on-surface-variant mb-1">Email Address</label>
-                <input 
-                  className={`w-full px-3 py-2 border rounded-md bg-surface text-on-surface focus:outline-none focus:ring-1 transition-shadow placeholder:text-on-surface-variant/50 ${errors.email ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : 'border-outline-variant focus:border-primary focus:ring-primary'}`} 
-                  placeholder="email@example.com" 
-                  name="email"
-                  type="email" 
-                  value={formData.email}
-                  onChange={handleInputChange}
-                />
-                {errors.email && <p className="text-red-500 text-xs mt-1">{errors.email}</p>}
-              </div>
-              <div>
-                <label className="block font-label-md text-label-md text-on-surface-variant mb-1">Phone Number *</label>
-                <input 
-                  className={`w-full px-3 py-2 border rounded-md bg-surface text-on-surface focus:outline-none focus:ring-1 transition-shadow placeholder:text-on-surface-variant/50 ${errors.phone ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : 'border-outline-variant focus:border-primary focus:ring-primary'}`}
-                  placeholder="(555) 000-0000" 
-                  name="phone"
-                  type="tel" 
-                  value={formData.phone}
-                  onChange={handleInputChange}
-                  required
-                />
-                {errors.phone && <p className="text-red-500 text-xs mt-1">{errors.phone}</p>}
-              </div>
-            </div>
-            
-            {/* Address */}
-            <div>
-              <label className="block font-label-md text-label-md text-on-surface-variant mb-1">Physical Address</label>
+  return (
+    <BaseModal
+      open={open}
+      onClose={onClose}
+      title={editMode ? 'Edit Client' : 'Add New Client'}
+      footer={footer}
+      size="md"
+    >
+      <form className="space-y-5" id="add-client-form" onSubmit={(e) => { e.preventDefault(); onSubmit(); }}>
+        {/* Client Type */}
+        <div>
+          <label className="block font-label-md text-label-md text-on-surface-variant mb-2">Client Type</label>
+          <div className="flex gap-4">
+            <label className="flex items-center gap-2 cursor-pointer">
               <input 
-                className="w-full px-3 py-2 border border-outline-variant rounded-md bg-surface text-on-surface focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-shadow placeholder:text-on-surface-variant/50" 
-                placeholder="123 Main St, City, State ZIP" 
-                type="text" 
-                value={formData.address}
-                onChange={e => setFormData({...formData, address: e.target.value})}
+                className="text-primary focus:ring-primary h-4 w-4 border-outline-variant" 
+                name="clientType" 
+                type="radio" 
+                value="residential" 
+                checked={formData.client_type === 'residential'}
+                onChange={e => setFormData({...formData, client_type: e.target.value})}
               />
-            </div>
-            
-            {/* Notes */}
-            <div>
-              <label className="block font-label-md text-label-md text-on-surface-variant mb-1">Notes (Optional)</label>
-              <textarea 
-                className="w-full px-3 py-2 border border-outline-variant rounded-md bg-surface text-on-surface focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-shadow placeholder:text-on-surface-variant/50 resize-none h-24" 
-                placeholder="Additional details about the client..."
-                value={formData.notes}
-                onChange={e => setFormData({...formData, notes: e.target.value})}
-              ></textarea>
-            </div>
-          </form>
+              <span className="text-body-md">Residential</span>
+            </label>
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input 
+                className="text-primary focus:ring-primary h-4 w-4 border-outline-variant" 
+                name="clientType" 
+                type="radio" 
+                value="commercial" 
+                checked={formData.client_type === 'commercial'}
+                onChange={e => setFormData({...formData, client_type: e.target.value})}
+              />
+              <span className="text-body-md">Commercial</span>
+            </label>
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input 
+                className="text-primary focus:ring-primary h-4 w-4 border-outline-variant" 
+                name="clientType" 
+                type="radio" 
+                value="property_manager" 
+                checked={formData.client_type === 'property_manager'}
+                onChange={e => setFormData({...formData, client_type: e.target.value})}
+              />
+              <span className="text-body-md">Property Manager</span>
+            </label>
+          </div>
         </div>
         
-        <div className="px-6 py-4 border-t border-outline-variant bg-surface flex justify-end gap-3">
-          <button 
-            type="button"
-            onClick={onClose}
-            className="px-4 py-2 bg-white border border-gray-300 text-gray-700 font-body-md font-bold rounded cursor-pointer hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors focus:outline-none focus:ring-2 focus:ring-gray-300"
-          >
-            Cancel
-          </button>
-          <button 
-            type="submit"
-            form="add-client-form"
-            className="px-4 py-2 bg-primary text-black font-body-md font-bold rounded cursor-pointer hover:bg-opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors focus:outline-none focus:ring-2 focus:ring-primary shadow-sm"
-            disabled={!formData.name || !formData.phone || Object.values(errors).some(Boolean)}
-          >
-            {editMode ? 'Save Changes' : 'Add Client'}
-          </button>
+        {/* Full Name */}
+        <div>
+          <label className="block font-label-md text-label-md text-on-surface-variant mb-1">Full Name *</label>
+            <input 
+              className={`w-full px-3 py-2 border rounded-md bg-surface text-on-surface focus:outline-none focus:ring-1 transition-shadow placeholder:text-on-surface-variant/50 ${errors.name ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : 'border-outline-variant focus:border-primary focus:ring-primary'}`}
+              placeholder="e.g. John Doe" 
+              name="name"
+              type="text" 
+              value={formData.name || ''}
+              onChange={handleInputChange}
+              required
+            />
+            {errors.name && <p className="text-red-500 text-xs mt-1">{errors.name}</p>}
         </div>
-      </div>
-    </div>
+
+        {/* Company Name */}
+        {(formData.client_type === 'commercial' || formData.client_type === 'property_manager') && (
+          <div>
+            <label className="block font-label-md text-label-md text-on-surface-variant mb-1">Company Name / LLC</label>
+            <input 
+              className="w-full px-3 py-2 border rounded-md bg-surface text-on-surface border-outline-variant focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-shadow placeholder:text-on-surface-variant/50"
+              placeholder="e.g. Acme Property Management LLC" 
+              name="company_name"
+              type="text" 
+              value={formData.company_name || ''}
+              onChange={handleInputChange}
+            />
+          </div>
+        )}
+        
+        {/* Contact Info Grid */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+          <div>
+            <label className="block font-label-md text-label-md text-on-surface-variant mb-1">Email Address</label>
+            <input 
+              className={`w-full px-3 py-2 border rounded-md bg-surface text-on-surface focus:outline-none focus:ring-1 transition-shadow placeholder:text-on-surface-variant/50 ${errors.email ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : 'border-outline-variant focus:border-primary focus:ring-primary'}`} 
+              placeholder="email@example.com" 
+              name="email"
+              type="email" 
+              value={formData.email}
+              onChange={handleInputChange}
+            />
+            {errors.email && <p className="text-red-500 text-xs mt-1">{errors.email}</p>}
+          </div>
+          <div>
+            <label className="block font-label-md text-label-md text-on-surface-variant mb-1">Phone Number *</label>
+            <input 
+              className={`w-full px-3 py-2 border rounded-md bg-surface text-on-surface focus:outline-none focus:ring-1 transition-shadow placeholder:text-on-surface-variant/50 ${errors.phone ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : 'border-outline-variant focus:border-primary focus:ring-primary'}`}
+              placeholder="(555) 000-0000" 
+              name="phone"
+              type="tel" 
+              value={formData.phone}
+              onChange={handleInputChange}
+              required
+            />
+            {errors.phone && <p className="text-red-500 text-xs mt-1">{errors.phone}</p>}
+          </div>
+        </div>
+        
+        {/* Address */}
+        <div>
+          <label className="block font-label-md text-label-md text-on-surface-variant mb-1">Physical Address</label>
+          <input 
+            className="w-full px-3 py-2 border border-outline-variant rounded-md bg-surface text-on-surface focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-shadow placeholder:text-on-surface-variant/50" 
+            placeholder="123 Main St, City, State ZIP" 
+            type="text" 
+            value={formData.address}
+            onChange={e => setFormData({...formData, address: e.target.value})}
+          />
+        </div>
+        
+        {/* Notes */}
+        <div>
+          <label className="block font-label-md text-label-md text-on-surface-variant mb-1">Notes (Optional)</label>
+          <textarea 
+            className="w-full px-3 py-2 border border-outline-variant rounded-md bg-surface text-on-surface focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-shadow placeholder:text-on-surface-variant/50 resize-none h-24" 
+            placeholder="Additional details about the client..."
+            value={formData.notes}
+            onChange={e => setFormData({...formData, notes: e.target.value})}
+          ></textarea>
+        </div>
+      </form>
+    </BaseModal>
   );
 };
