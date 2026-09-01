@@ -17,6 +17,7 @@ export const AddJobModal = ({ open, onClose, onSubmit, formData, clients = [] })
     formState: { errors, isSubmitting }
   } = useForm({
     resolver: zodResolver(jobSchema),
+    mode: 'onChange',
     defaultValues: {
       client_id: '',
       property_id: '',

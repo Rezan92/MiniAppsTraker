@@ -20,6 +20,7 @@ export const AddJobHoursModal = ({ open, isOpen, onClose, onSubmit, hoursData, f
     formState: { errors, isSubmitting }
   } = useForm({
     resolver: zodResolver(hoursSchema),
+    mode: 'onChange',
     defaultValues: {
       date: new Date().toISOString().split('T')[0],
       start_time: '',
@@ -57,9 +58,19 @@ export const AddJobHoursModal = ({ open, isOpen, onClose, onSubmit, hoursData, f
     return parseFloat(diff.toFixed(2));
   };
 
+  const addHoursToTime = (startTimeStr, hoursNum) => {
+    if (!startTimeStr || isNaN(hoursNum) || hoursNum <= 0) return '';
+    const [startH, startM] = startTimeStr.split(':').map(Number);
+    const totalMinutes = Math.round(hoursNum * 60);
+    const combinedMinutes = startM + totalMinutes;
+    const endH = (startH + Math.floor(combinedMinutes / 60)) % 24;
+    const endM = combinedMinutes % 60;
+    return `${String(endH).padStart(2, '0')}:${String(endM).padStart(2, '0')}`;
+  };
+
   const handleStartTimeChange = (e) => {
     const val = e.target.value;
-    setValue('start_time', val);
+    setValue('start_time', val, { shouldValidate: true });
     if (val && endTime) {
       const calc = calculateHours(val, endTime);
       if (calc) setValue('hours', calc, { shouldValidate: true });
@@ -68,10 +79,26 @@ export const AddJobHoursModal = ({ open, isOpen, onClose, onSubmit, hoursData, f
 
   const handleEndTimeChange = (e) => {
     const val = e.target.value;
-    setValue('end_time', val);
+    setValue('end_time', val, { shouldValidate: true });
     if (startTime && val) {
       const calc = calculateHours(startTime, val);
       if (calc) setValue('hours', calc, { shouldValidate: true });
+    }
+  };
+
+  const handleHoursChange = (e) => {
+    const val = e.target.value;
+    setValue('hours', val, { shouldValidate: true });
+    const num = parseFloat(val);
+    if (!isNaN(num) && num > 0) {
+      const curStart = startTime || '01:00';
+      if (!startTime) {
+        setValue('start_time', '01:00', { shouldValidate: true });
+      }
+      const calculatedEnd = addHoursToTime(curStart, num);
+      if (calculatedEnd) {
+        setValue('end_time', calculatedEnd, { shouldValidate: true });
+      }
     }
   };
 
@@ -80,15 +107,8 @@ export const AddJobHoursModal = ({ open, isOpen, onClose, onSubmit, hoursData, f
     if (finalData.hours && !finalData.start_time) {
       finalData.start_time = '01:00';
       const hoursNum = parseFloat(finalData.hours);
-      const totalMinutes = hoursNum * 60;
-      let endH = 1 + Math.floor(totalMinutes / 60);
-      let endM = Math.round(totalMinutes % 60);
-      if (endM >= 60) {
-        endH += Math.floor(endM / 60);
-        endM = endM % 60;
-      }
-      endH = endH % 24;
-      finalData.end_time = `${String(endH).padStart(2, '0')}:${String(endM).padStart(2, '0')}`;
+      const calculatedEnd = addHoursToTime('01:00', hoursNum);
+      finalData.end_time = calculatedEnd || '02:00';
     }
     onSubmit(finalData);
   };
@@ -169,6 +189,7 @@ export const AddJobHoursModal = ({ open, isOpen, onClose, onSubmit, hoursData, f
             min="0"
             step="0.01"
             {...register('hours')}
+            onChange={handleHoursChange}
           />
         </FormField>
 

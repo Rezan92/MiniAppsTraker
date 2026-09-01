@@ -14,6 +14,7 @@ export const AddClientModal = ({ open, onClose, onSubmit, formData, editMode }) 
     formState: { errors, isSubmitting }
   } = useForm({
     resolver: zodResolver(clientSchema),
+    mode: 'onChange',
     defaultValues: {
       client_type: 'residential',
       company_name: '',

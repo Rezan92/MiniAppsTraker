@@ -17,6 +17,7 @@ export const AddMaterialModal = ({ open, onClose, onSubmit, matData = {} }) => {
     formState: { errors, isSubmitting }
   } = useForm({
     resolver: zodResolver(materialSchema),
+    mode: 'onChange',
     defaultValues: {
       description: '',
       cost: 20.00,

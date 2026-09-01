@@ -8,15 +8,15 @@ router.use(authenticate);
 
 const jobSchema = z.object({
   client_id: z.string().uuid(),
-  property_id: z.string().uuid().optional().nullable(),
+  property_id: z.string().uuid().optional().nullable().or(z.literal('')).transform(val => val || null),
   title: z.string().min(1, "Title is required"),
   rate_type: z.enum(['flat', 'hourly']),
-  hourly_rate: z.number().optional(),
-  flat_rate: z.number().optional(),
+  hourly_rate: z.number().optional().nullable(),
+  flat_rate: z.number().optional().nullable(),
   status: z.enum(['open', 'in_progress', 'completed', 'on_hold', 'cancelled']).optional().default('open'),
-  start_date: z.string().optional(),
-  end_date: z.string().optional(),
-  notes: z.string().optional()
+  start_date: z.string().optional().nullable().or(z.literal('')).transform(val => val || null),
+  end_date: z.string().optional().nullable().or(z.literal('')).transform(val => val || null),
+  notes: z.string().optional().nullable().or(z.literal('')).transform(val => val || null)
 });
 
 const statusSchema = z.object({
