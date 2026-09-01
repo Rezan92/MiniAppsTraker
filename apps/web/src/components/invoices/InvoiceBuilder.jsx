@@ -24,6 +24,7 @@ export const InvoiceBuilder = () => {
   const presetPropertyId = searchParams.get('property_id');
   const presetJobId = searchParams.get('job_id') || fromJobId;
   const [deleteItemId, setDeleteItemId] = useState(null);
+  const [localLineItems, setLocalLineItems] = useState([]);
   const hasInitializedEdit = useRef(false);
 
   const handleBackNavigation = () => {
@@ -143,6 +144,8 @@ export const InvoiceBuilder = () => {
         return;
       }
       const lineItems = existingInvoice.invoice_line_items || [];
+      setLocalLineItems(lineItems);
+
       const billableLabor = lineItems.filter(i => (i.source_type === 'labor' || i.source_type === 'ad_hoc') && i.is_billable !== false).reduce((sum, i) => sum + Number(i.amount || 0), 0);
       const flatRate = Math.max(0, Number(existingInvoice.labor_amount || 0) - billableLabor);
 
@@ -220,6 +223,28 @@ export const InvoiceBuilder = () => {
     }
   };
 
+  const handleAddItem = (newItems) => {
+    const itemsWithTempIds = newItems.map((item, idx) => ({
+      ...item,
+      id: item.id || `temp-${Date.now()}-${idx}-${Math.random().toString(36).substring(2, 7)}`,
+      sort_order: item.sort_order ?? (localLineItems.length + idx),
+      is_billable: item.is_billable !== false,
+      is_hidden: !!item.is_hidden
+    }));
+    setLocalLineItems(prev => [...prev, ...itemsWithTempIds]);
+    showSuccess(newItems.length > 1 ? `${newItems.length} items added to draft` : 'Item added to draft');
+  };
+
+  const handleUpdateItem = (itemId, updates) => {
+    setLocalLineItems(prev => prev.map(item => item.id === itemId ? { ...item, ...updates } : item));
+  };
+
+  const handleDeleteItem = (itemId) => {
+    setLocalLineItems(prev => prev.filter(item => item.id !== itemId));
+    setDeleteItemId(null);
+    showSuccess('Item removed from draft');
+  };
+
   const saveMutation = useMutation({
     mutationFn: async () => {
       let finalBilledToName = formData.billed_to_name;
@@ -243,7 +268,8 @@ export const InvoiceBuilder = () => {
         job_id: formData.job_id || null,
         property_id: formData.property_id || null,
         billed_to_name: finalBilledToName,
-        labor_amount: Number(formData.labor_amount) || 0
+        labor_amount: Number(formData.labor_amount) || 0,
+        ...(isEditing ? { line_items: localLineItems } : {})
       };
       
       const url = `${import.meta.env.VITE_API_URL || 'http://localhost:4000'}/api/invoices${isEditing ? `/${id}` : ''}`;
@@ -276,65 +302,14 @@ export const InvoiceBuilder = () => {
     }
   });
 
-  // LINE ITEM MUTATIONS
-  const addItemMutation = useMutation({
-    mutationFn: async (items) => {
-      for (const item of items) {
-        const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:4000'}/api/invoices/${id}/items`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session.access_token}` },
-          body: JSON.stringify(item)
-        });
-        const json = await res.json();
-        if (!res.ok) throw new Error(json.error);
-      }
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries(['invoice', id]);
-      showSuccess('Items added to draft');
-    },
-    onError: (err) => showError(err.message)
-  });
-
-  const updateItemMutation = useMutation({
-    mutationFn: async ({ itemId, updates }) => {
-      const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:4000'}/api/invoices/${id}/items/${itemId}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session.access_token}` },
-        body: JSON.stringify(updates)
-      });
-      const json = await res.json();
-      if (!res.ok) throw new Error(json.error);
-    },
-    onSuccess: () => queryClient.invalidateQueries(['invoice', id]),
-    onError: (err) => showError(err.message)
-  });
-
-  const deleteItemMutation = useMutation({
-    mutationFn: async (itemId) => {
-      const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:4000'}/api/invoices/${id}/items/${itemId}`, {
-        method: 'DELETE',
-        headers: { 'Authorization': `Bearer ${session.access_token}` }
-      });
-      const json = await res.json();
-      if (!res.ok) throw new Error(json.error);
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries(['invoice', id]);
-      showSuccess('Item removed');
-    },
-    onError: (err) => showError(err.message)
-  });
-
   const selectedJob = availableJobs.find(j => j.id === formData.job_id);
-  const lineItems = existingInvoice?.invoice_line_items?.sort((a,b) => a.sort_order - b.sort_order) || [];
   const isFlatRate = selectedJob?.rate_type === 'flat';
   
-  const laborLineItemsSubtotal = lineItems
+  const laborLineItemsSubtotal = localLineItems
     .filter(i => (i.source_type === 'labor' || i.source_type === 'ad_hoc') && i.is_billable !== false)
     .reduce((sum, i) => sum + Number(i.amount || 0), 0);
     
-  const materialsSubtotal = lineItems
+  const materialsSubtotal = localLineItems
     .filter(i => i.source_type === 'material' && i.is_billable !== false)
     .reduce((sum, i) => sum + Number(i.amount || 0), 0);
   
@@ -469,22 +444,22 @@ export const InvoiceBuilder = () => {
             
             <div className="space-y-8 mt-6">
               <LaborCard 
-                lineItems={lineItems}
+                lineItems={localLineItems}
                 formData={formData}
                 session={session}
-                addItemMutation={addItemMutation}
-                updateItemMutation={updateItemMutation}
-                setDeleteItemId={setDeleteItemId}
+                onAddItems={handleAddItem}
+                onUpdateItem={handleUpdateItem}
+                onDeleteItem={(itemId) => setDeleteItemId(itemId)}
                 selectedJob={availableJobs.find(j => j.id === formData.job_id)}
               />
               
               <MaterialCard 
-                lineItems={lineItems}
+                lineItems={localLineItems}
                 formData={formData}
                 session={session}
-                addItemMutation={addItemMutation}
-                updateItemMutation={updateItemMutation}
-                setDeleteItemId={setDeleteItemId}
+                onAddItems={handleAddItem}
+                onUpdateItem={handleUpdateItem}
+                onDeleteItem={(itemId) => setDeleteItemId(itemId)}
                 selectedJob={selectedJob}
               />
             </div>
@@ -522,10 +497,10 @@ export const InvoiceBuilder = () => {
         open={!!deleteItemId}
         onClose={() => setDeleteItemId(null)}
         onConfirm={() => {
-          if (deleteItemId) deleteItemMutation.mutate(deleteItemId);
+          if (deleteItemId) handleDeleteItem(deleteItemId);
         }}
         title="Delete Item"
-        message="Are you sure you want to remove this item from the invoice? This cannot be undone."
+        message="Are you sure you want to remove this item from the draft invoice?"
         confirmText="Remove Item"
         confirmColor="red"
       />
