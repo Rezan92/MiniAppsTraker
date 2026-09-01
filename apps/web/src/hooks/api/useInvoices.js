@@ -66,17 +66,23 @@ export const useSaveInvoice = (id) => {
   });
 };
 
-export const useUpdateInvoiceStatus = () => {
+export const useUpdateInvoiceStatus = (defaultId) => {
   const queryClient = useQueryClient();
   const { showSuccess, showError } = useToast();
 
   return useMutation({
-    mutationFn: ({ id, status, reason }) => apiClient.patch(`/api/invoices/${id}/status`, { status, reason }),
+    mutationFn: (variables) => {
+      const id = variables?.id || defaultId;
+      if (!id) throw new Error("Invoice ID is required to update status");
+      const { status, reason } = variables;
+      return apiClient.patch(`/api/invoices/${id}/status`, { status, reason });
+    },
     onSuccess: (_data, variables) => {
+      const id = variables?.id || defaultId;
       queryClient.invalidateQueries({ queryKey: INVOICE_QUERY_KEYS.all });
-      if (variables?.id) {
-        queryClient.invalidateQueries({ queryKey: INVOICE_QUERY_KEYS.detail(variables.id) });
-        queryClient.invalidateQueries({ queryKey: INVOICE_QUERY_KEYS.logs(variables.id) });
+      if (id) {
+        queryClient.invalidateQueries({ queryKey: INVOICE_QUERY_KEYS.detail(id) });
+        queryClient.invalidateQueries({ queryKey: INVOICE_QUERY_KEYS.logs(id) });
       }
       showSuccess('Status updated successfully');
     },
@@ -84,15 +90,21 @@ export const useUpdateInvoiceStatus = () => {
   });
 };
 
-export const useUpdateInvoiceInternalNotes = () => {
+export const useUpdateInvoiceInternalNotes = (defaultId) => {
   const queryClient = useQueryClient();
   const { showSuccess, showError } = useToast();
 
   return useMutation({
-    mutationFn: ({ id, notes }) => apiClient.patch(`/api/invoices/${id}/internal-notes`, { internal_notes: notes }),
+    mutationFn: (variables) => {
+      const id = typeof variables === 'object' && variables?.id ? variables.id : defaultId;
+      const notes = typeof variables === 'object' && variables?.notes !== undefined ? variables.notes : variables;
+      if (!id) throw new Error("Invoice ID is required to update notes");
+      return apiClient.patch(`/api/invoices/${id}/internal-notes`, { internal_notes: notes });
+    },
     onSuccess: (_data, variables) => {
-      if (variables?.id) {
-        queryClient.invalidateQueries({ queryKey: INVOICE_QUERY_KEYS.detail(variables.id) });
+      const id = typeof variables === 'object' && variables?.id ? variables.id : defaultId;
+      if (id) {
+        queryClient.invalidateQueries({ queryKey: INVOICE_QUERY_KEYS.detail(id) });
       }
       showSuccess('Internal notes updated');
     },
@@ -100,12 +112,16 @@ export const useUpdateInvoiceInternalNotes = () => {
   });
 };
 
-export const useDeleteInvoice = () => {
+export const useDeleteInvoice = (defaultId) => {
   const queryClient = useQueryClient();
   const { showSuccess, showError } = useToast();
 
   return useMutation({
-    mutationFn: (id) => apiClient.delete(`/api/invoices/${id}`),
+    mutationFn: (variables) => {
+      const id = (typeof variables === 'string' || typeof variables === 'number') ? variables : (variables?.id || defaultId);
+      if (!id) throw new Error("Invoice ID is required to delete invoice");
+      return apiClient.delete(`/api/invoices/${id}`);
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: INVOICE_QUERY_KEYS.all });
       showSuccess('Invoice deleted successfully');

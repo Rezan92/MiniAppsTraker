@@ -26,9 +26,9 @@ export const InvoiceDetails = () => {
 
   const { data: invoice, isLoading } = useInvoice(id);
   const { data: logs = [] } = useInvoiceLogs(id);
-  const statusMutation = useUpdateInvoiceStatus();
-  const deleteMutation = useDeleteInvoice();
-  const notesMutation = useUpdateInvoiceInternalNotes();
+  const statusMutation = useUpdateInvoiceStatus(id);
+  const deleteMutation = useDeleteInvoice(id);
+  const notesMutation = useUpdateInvoiceInternalNotes(id);
 
   const generateFileName = () => {
     if (!invoice) return 'Invoice';
@@ -60,9 +60,15 @@ export const InvoiceDetails = () => {
       showError("A reason is required");
       return;
     }
-    statusMutation.mutate({ status: reasonAction, reason: reasonText });
-    setReasonModalOpen(false);
-    setReasonText('');
+    statusMutation.mutate(
+      { id, status: reasonAction, reason: reasonText.trim() },
+      {
+        onSuccess: () => {
+          setReasonModalOpen(false);
+          setReasonText('');
+        }
+      }
+    );
   };
 
   if (isLoading) {
