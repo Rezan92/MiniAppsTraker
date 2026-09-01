@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useNavigate, useParams, useSearchParams, useLocation } from 'react-router-dom';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../../contexts/AuthContext';
@@ -14,6 +14,7 @@ import { useJobs } from '../../hooks/api/useJobs';
 import { useProperties } from '../../hooks/api/useProperties';
 import { useInvoice } from '../../hooks/api/useInvoices';
 import { apiClient } from '../../lib/apiClient';
+import { useUnsavedChangesWarning } from '../../hooks/useUnsavedChangesWarning';
 
 export const InvoiceBuilder = () => {
   const { id } = useParams();
@@ -31,14 +32,7 @@ export const InvoiceBuilder = () => {
   const [deleteItemId, setDeleteItemId] = useState(null);
   const [localLineItems, setLocalLineItems] = useState([]);
   const hasInitializedEdit = useRef(false);
-
-  const handleBackNavigation = () => {
-    if (fromJobId) {
-      navigate(`/jobs/${fromJobId}`);
-    } else {
-      navigate('/invoices');
-    }
-  };
+  const initialSnapshotRef = useRef(null);
 
   const [formData, setFormData] = useState({
     client_id: presetClientId || '',
@@ -54,6 +48,30 @@ export const InvoiceBuilder = () => {
     property_id: presetPropertyId || '',
     breakdown_by_days: false
   });
+
+  const isDirty = useMemo(() => {
+    if (!initialSnapshotRef.current) return false;
+    const currentSnapshot = JSON.stringify({
+      formData,
+      lineItems: localLineItems
+    });
+    return currentSnapshot !== initialSnapshotRef.current;
+  }, [formData, localLineItems]);
+
+  const {
+    showPrompt: showUnsavedPrompt,
+    guardedNavigate,
+    confirmNavigation: confirmUnsavedNavigation,
+    cancelNavigation: cancelUnsavedNavigation
+  } = useUnsavedChangesWarning(isDirty);
+
+  const handleBackNavigation = () => {
+    if (fromJobId) {
+      guardedNavigate(`/jobs/${fromJobId}`);
+    } else {
+      guardedNavigate('/invoices');
+    }
+  };
 
   const [hasAutoPopulatedJob, setHasAutoPopulatedJob] = useState(false);
 
@@ -106,7 +124,7 @@ export const InvoiceBuilder = () => {
 
       const resolvedAddress = existingInvoice.property_address || existingInvoice.jobs?.rental_properties?.address || '';
 
-      setFormData({
+      const initialForm = {
         client_id: existingInvoice.client_id,
         job_id: existingInvoice.job_id || '',
         invoice_date: existingInvoice.invoice_date,
@@ -119,10 +137,26 @@ export const InvoiceBuilder = () => {
         labor_notes: existingInvoice.labor_notes || '',
         labor_amount: flatRate,
         breakdown_by_days: existingInvoice.breakdown_by_days || false
+      };
+
+      setFormData(initialForm);
+      initialSnapshotRef.current = JSON.stringify({
+        formData: initialForm,
+        lineItems
       });
       hasInitializedEdit.current = true;
     }
   }, [existingInvoice, navigate, showError, id]);
+
+  // Record initial snapshot for new drafts
+  useEffect(() => {
+    if (!isEditing && !initialSnapshotRef.current && (formData.client_id || hasAutoPopulatedJob)) {
+      initialSnapshotRef.current = JSON.stringify({
+        formData,
+        lineItems: []
+      });
+    }
+  }, [isEditing, formData, hasAutoPopulatedJob]);
 
   // Sync property address from job if missing
   useEffect(() => {
@@ -224,6 +258,7 @@ export const InvoiceBuilder = () => {
       return isEditing ? apiClient.patch(`/api/invoices/${id}`, payload) : apiClient.post('/api/invoices', payload);
     },
     onSuccess: (data) => {
+      initialSnapshotRef.current = null;
       showSuccess(`Invoice ${isEditing ? 'updated' : 'created'} successfully`);
       queryClient.invalidateQueries(['invoices']);
       if (!isEditing) {
@@ -275,7 +310,7 @@ export const InvoiceBuilder = () => {
             {formData.job_id && (
               <button 
                 type="button" 
-                onClick={() => navigate(`/jobs/${formData.job_id}`)}
+                onClick={() => guardedNavigate(`/jobs/${formData.job_id}`)}
                 className="px-6 py-2 border border-gray-300 rounded-lg font-title-sm text-gray-700 hover:bg-gray-50 cursor-pointer flex items-center gap-2"
               >
                 <span className="material-symbols-outlined text-[18px]">work</span>
@@ -439,6 +474,16 @@ export const InvoiceBuilder = () => {
         message="Are you sure you want to remove this item from the draft invoice?"
         confirmText="Remove Item"
         confirmColor="red"
+      />
+
+      <ConfirmModal 
+        open={showUnsavedPrompt}
+        onClose={cancelUnsavedNavigation}
+        onConfirm={confirmUnsavedNavigation}
+        title="Unsaved Changes"
+        message="You have unsaved changes on this invoice. Are you sure you want to leave and discard your changes?"
+        confirmText="Discard Changes"
+        confirmColor="amber"
       />
     </div>
   );
