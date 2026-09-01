@@ -1,21 +1,17 @@
-import React, { useRef, useState, useEffect } from 'react';
+import React, { useRef, useState } from 'react';
 import { useParams, useNavigate, Link, useLocation } from 'react-router-dom';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useReactToPrint } from 'react-to-print';
-import { useAuth } from '../../contexts/AuthContext';
 import { useToast } from '../../contexts/ToastContext';
-import { translateApiError } from '../../utils/errorTranslator';
 import { InvoicePreview } from './InvoicePreview';
 import { DeleteInvoiceModal } from './DeleteInvoiceModal';
 import { formatDate } from '../../utils/formatters';
 import { STATUS_COLORS } from '../../utils/constants';
+import { useInvoice, useInvoiceLogs, useUpdateInvoiceStatus, useDeleteInvoice, useUpdateInvoiceInternalNotes } from '../../hooks/api/useInvoices';
 
 export const InvoiceDetails = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { session } = useAuth();
-  const { showSuccess, showError } = useToast();
-  const queryClient = useQueryClient();
+  const { showError } = useToast();
   const location = useLocation();
   const fromJobId = location.state?.fromJob;
   const componentRef = useRef();
@@ -27,101 +23,11 @@ export const InvoiceDetails = () => {
   const [reasonAction, setReasonAction] = useState('');
   const [reasonText, setReasonText] = useState('');
 
-  const { data: invoice, isLoading } = useQuery({
-    queryKey: ['invoice', id],
-    queryFn: async () => {
-      const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:4000'}/api/invoices/${id}`, {
-        headers: { 'Authorization': `Bearer ${session.access_token}` }
-      });
-      const json = await res.json();
-      if (!res.ok || !json.success) throw new Error(json.error);
-      return json.data;
-    },
-    enabled: !!session
-  });
-
-  const { data: logs = [] } = useQuery({
-    queryKey: ['invoice_logs', id],
-    queryFn: async () => {
-      const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:4000'}/api/invoices/${id}/logs`, {
-        headers: { 'Authorization': `Bearer ${session.access_token}` }
-      });
-      const json = await res.json();
-      if (!res.ok || !json.success) throw new Error(json.error);
-      return json.data;
-    },
-    enabled: !!session && !!id
-  });
-
-
-
-  const statusMutation = useMutation({
-    mutationFn: async ({ status, reason }) => {
-      const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:4000'}/api/invoices/${id}/status`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session.access_token}`
-        },
-        body: JSON.stringify({ status, reason })
-      });
-      const json = await res.json();
-      if (!res.ok || !json.success) throw new Error(json.error);
-      return json.data;
-    },
-    onSuccess: () => {
-      showSuccess("Status updated successfully");
-      queryClient.invalidateQueries(['invoice', id]);
-      queryClient.invalidateQueries(['invoices']);
-      queryClient.invalidateQueries(['invoice_logs', id]);
-    },
-    onError: (err) => {
-      showError(translateApiError(err));
-    }
-  });
-
-  const deleteMutation = useMutation({
-    mutationFn: async () => {
-      const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:4000'}/api/invoices/${id}`, {
-        method: 'DELETE',
-        headers: { 'Authorization': `Bearer ${session.access_token}` }
-      });
-      const json = await res.json();
-      if (!res.ok || !json.success) throw new Error(json.error);
-    },
-    onSuccess: () => {
-      showSuccess("Invoice deleted successfully");
-      queryClient.invalidateQueries(['invoices']);
-      navigate('/invoices');
-    },
-    onError: (err) => {
-      showError(translateApiError(err));
-    }
-  });
-
-  const notesMutation = useMutation({
-    mutationFn: async (notes) => {
-      const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:4000'}/api/invoices/${id}/internal-notes`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session.access_token}`
-        },
-        body: JSON.stringify({ internal_notes: notes })
-      });
-      const json = await res.json();
-      if (!res.ok || !json.success) throw new Error(json.error);
-      return json.data;
-    },
-    onSuccess: () => {
-      showSuccess("Internal notes updated");
-      setIsEditingNotes(false);
-      queryClient.invalidateQueries(['invoice', id]);
-    },
-    onError: (err) => {
-      showError(translateApiError(err));
-    }
-  });
+  const { data: invoice, isLoading } = useInvoice(id);
+  const { data: logs = [] } = useInvoiceLogs(id);
+  const statusMutation = useUpdateInvoiceStatus();
+  const deleteMutation = useDeleteInvoice();
+  const notesMutation = useUpdateInvoiceInternalNotes();
 
   const generateFileName = () => {
     if (!invoice) return 'Invoice';

@@ -1,19 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { useAuth } from '../../contexts/AuthContext';
-import { useToast } from '../../contexts/ToastContext';
 import { useNavigate } from 'react-router-dom';
 import { AddClientModal } from './AddClientModal';
 import { ConfirmModal } from '../common/ConfirmModal';
-import { useQuery, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import { useDebounce } from '../../hooks/useDebounce';
-import { translateApiError } from '../../utils/errorTranslator';
+import { useClients, useCreateClient, useUpdateClient, useDeleteClient } from '../../hooks/api/useClients';
 
 export const ClientList = () => {
-  const { session } = useAuth();
-  const { showSuccess, showError } = useToast();
   const navigate = useNavigate();
-  const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
   const [editMode, setEditMode] = useState(false);
   const [editingId, setEditingId] = useState(null);
@@ -25,6 +19,11 @@ export const ClientList = () => {
   const [clientToDelete, setClientToDelete] = useState(null);
 
   const [menuCoords, setMenuCoords] = useState({ top: 0, left: 0 });
+
+  const { data: clients = [], isLoading: loading } = useClients(debouncedSearch);
+  const createClientMutation = useCreateClient();
+  const updateClientMutation = useUpdateClient();
+  const deleteClientMutation = useDeleteClient();
 
   useEffect(() => {
     if (openMenuId) {
@@ -47,73 +46,30 @@ export const ClientList = () => {
     setOpenMenuId(openMenuId === id ? null : id);
   };
 
-  const { data: clients = [], isLoading: loading } = useQuery({
-    queryKey: ['clients', debouncedSearch],
-    placeholderData: keepPreviousData,
-    queryFn: async () => {
-      const url = debouncedSearch 
-        ? `${import.meta.env.VITE_API_URL || 'http://localhost:4000'}/api/clients?search=${encodeURIComponent(debouncedSearch)}` 
-        : `${import.meta.env.VITE_API_URL || 'http://localhost:4000'}/api/clients`;
-      const res = await fetch(url, {
-        headers: { 'Authorization': `Bearer ${session?.access_token}` }
+  const handleCreate = () => {
+    if (editMode && editingId) {
+      updateClientMutation.mutate({ id: editingId, ...formData }, {
+        onSuccess: () => {
+          setOpen(false);
+          setEditMode(false);
+          setEditingId(null);
+          setFormData({ client_type: 'residential', company_name: '', name: '', email: '', phone: '', address: '', notes: '', status: 'active' });
+        }
       });
-      const data = await res.json();
-      if (!data.success) throw new Error(data.error?.message || 'Failed to fetch clients');
-      return data.data;
-    },
-    enabled: !!session?.access_token
-  });
-
-  const handleCreate = async () => {
-    try {
-      const url = editMode ? `${import.meta.env.VITE_API_URL || 'http://localhost:4000'}/api/clients/${editingId}` : `${import.meta.env.VITE_API_URL || 'http://localhost:4000'}/api/clients`;
-      const res = await fetch(url, {
-        method: editMode ? 'PUT' : 'POST',
-        headers: { 
-          'Authorization': `Bearer ${session?.access_token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(formData)
+    } else {
+      createClientMutation.mutate(formData, {
+        onSuccess: () => {
+          setOpen(false);
+          setFormData({ client_type: 'residential', company_name: '', name: '', email: '', phone: '', address: '', notes: '', status: 'active' });
+        }
       });
-      if (res.ok) {
-        queryClient.invalidateQueries({ queryKey: ['clients'] });
-        setOpen(false);
-        setEditMode(false);
-        setEditingId(null);
-        setFormData({ client_type: 'residential', name: '', email: '', phone: '', address: '', notes: '' });
-        showSuccess(editMode ? 'Client updated successfully!' : 'Client successfully added!');
-      } else {
-        const errorData = await res.json();
-        showError(translateApiError(errorData.error?.message || errorData.message || `Failed to ${editMode ? 'update' : 'add'} client`));
-      }
-    } catch (err) {
-      console.error(err);
-      showError(translateApiError(err));
     }
   };
 
-  const handleUpdateStatus = async (client, newStatus) => {
-    try {
-      const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:4000'}/api/clients/${client.id}`, {
-        method: 'PUT',
-        headers: { 
-          'Authorization': `Bearer ${session?.access_token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ ...client, status: newStatus })
-      });
-      if (res.ok) {
-        queryClient.invalidateQueries({ queryKey: ['clients'] });
-        setOpenMenuId(null);
-        showSuccess('Client status updated!');
-      } else {
-        const errorData = await res.json();
-        showError(translateApiError(errorData.error?.message || errorData.message || 'Failed to update client status'));
-      }
-    } catch (err) {
-      console.error(err);
-      showError(translateApiError(err));
-    }
+  const handleUpdateStatus = (client, newStatus) => {
+    updateClientMutation.mutate({ id: client.id, ...client, status: newStatus }, {
+      onSuccess: () => setOpenMenuId(null)
+    });
   };
 
   const confirmDelete = (client) => {
@@ -121,26 +77,14 @@ export const ClientList = () => {
     setDeleteModalOpen(true);
   };
 
-  const executeDelete = async () => {
+  const executeDelete = () => {
     if (!clientToDelete) return;
-    try {
-      const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:4000'}/api/clients/${clientToDelete.id}`, {
-        method: 'DELETE',
-        headers: { 'Authorization': `Bearer ${session?.access_token}` }
-      });
-      if (res.ok) {
-        queryClient.invalidateQueries({ queryKey: ['clients'] });
-        showSuccess('Client deleted successfully!');
+    deleteClientMutation.mutate(clientToDelete.id, {
+      onSuccess: () => {
         setDeleteModalOpen(false);
         setClientToDelete(null);
-      } else {
-        const errorData = await res.json();
-        showError(translateApiError(errorData.error?.message || errorData.message || 'Failed to delete client'));
       }
-    } catch (err) {
-      console.error(err);
-      showError(translateApiError(err));
-    }
+    });
   };
 
   const openAddClient = () => {

@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useParams, useSearchParams, useLocation } from 'react-router-dom';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useAuth } from '../../contexts/AuthContext';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useToast } from '../../contexts/ToastContext';
 import { translateApiError } from '../../utils/errorTranslator';
 import { Tooltip } from '../common/Tooltip';
@@ -9,6 +8,11 @@ import { ConfirmModal } from '../common/ConfirmModal';
 import { LaborCard } from './LaborCard';
 import { MaterialCard } from './MaterialCard';
 import { ClientDetailsForm } from './ClientDetailsForm';
+import { useClients } from '../../hooks/api/useClients';
+import { useJobs } from '../../hooks/api/useJobs';
+import { useProperties } from '../../hooks/api/useProperties';
+import { useInvoice } from '../../hooks/api/useInvoices';
+import { apiClient } from '../../lib/apiClient';
 
 export const InvoiceBuilder = () => {
   const { id } = useParams();
@@ -53,16 +57,10 @@ export const InvoiceBuilder = () => {
   const [hasAutoPopulatedJob, setHasAutoPopulatedJob] = useState(false);
 
   useEffect(() => {
-    if (presetJobId && !isEditing && session && !hasAutoPopulatedJob) {
+    if (presetJobId && !isEditing && !hasAutoPopulatedJob) {
       const fetchPresetJob = async () => {
         try {
-          const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:4000'}/api/invoices/from-job/${presetJobId}`, {
-            headers: { 'Authorization': `Bearer ${session.access_token}` }
-          });
-          const json = await res.json();
-          if (!res.ok || !json.success) return;
-          
-          const payload = json.data;
+          const payload = await apiClient.get(`/api/invoices/from-job/${presetJobId}`);
           setFormData(prev => ({
             ...prev,
             client_id: prev.client_id || payload.client_id,
@@ -78,63 +76,19 @@ export const InvoiceBuilder = () => {
       };
       fetchPresetJob();
     }
-  }, [presetJobId, isEditing, session, hasAutoPopulatedJob]);
+  }, [presetJobId, isEditing, hasAutoPopulatedJob]);
 
   // Fetch clients
-  const { data: clients = [] } = useQuery({
-    queryKey: ['clients'],
-    queryFn: async () => {
-      const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:4000'}/api/clients`, {
-        headers: { 'Authorization': `Bearer ${session.access_token}` }
-      });
-      const json = await res.json();
-      if (!res.ok || !json.success) throw new Error(json.error);
-      return json.data;
-    },
-    enabled: !!session
-  });
+  const { data: clients = [] } = useClients();
 
   // Fetch available jobs for selected client
-  const { data: availableJobs = [] } = useQuery({
-    queryKey: ['jobs', 'available', formData.client_id],
-    queryFn: async () => {
-      const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:4000'}/api/jobs?client_id=${formData.client_id}`, {
-        headers: { 'Authorization': `Bearer ${session.access_token}` }
-      });
-      const json = await res.json();
-      if (!res.ok || !json.success) throw new Error(json.error);
-      return json.data;
-    },
-    enabled: !!session && !!formData.client_id
-  });
+  const { data: availableJobs = [] } = useJobs(formData.client_id ? { client_id: formData.client_id } : {});
 
   // Fetch properties for selected client
-  const { data: properties = [] } = useQuery({
-    queryKey: ['properties', formData.client_id],
-    queryFn: async () => {
-      const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:4000'}/api/properties?client_id=${formData.client_id}`, {
-        headers: { 'Authorization': `Bearer ${session.access_token}` }
-      });
-      const json = await res.json();
-      if (!res.ok || !json.success) throw new Error(json.error);
-      return json.data;
-    },
-    enabled: !!session && !!formData.client_id
-  });
+  const { data: properties = [] } = useProperties(formData.client_id);
 
   // Fetch existing invoice if editing
-  const { data: existingInvoice } = useQuery({
-    queryKey: ['invoice', id],
-    queryFn: async () => {
-      const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:4000'}/api/invoices/${id}`, {
-        headers: { 'Authorization': `Bearer ${session.access_token}` }
-      });
-      const json = await res.json();
-      if (!res.ok || !json.success) throw new Error(json.error);
-      return json.data;
-    },
-    enabled: !!session && isEditing
-  });
+  const { data: existingInvoice } = useInvoice(isEditing ? id : null);
 
   useEffect(() => {
     if (existingInvoice && !hasInitializedEdit.current) {
@@ -203,13 +157,7 @@ export const InvoiceBuilder = () => {
     if (!jobId) return;
 
     try {
-      const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:4000'}/api/invoices/from-job/${jobId}`, {
-        headers: { 'Authorization': `Bearer ${session.access_token}` }
-      });
-      const json = await res.json();
-      if (!res.ok || !json.success) throw new Error(json.error);
-      
-      const payload = json.data;
+      const payload = await apiClient.get(`/api/invoices/from-job/${jobId}`);
       setFormData(prev => ({
         ...prev,
         labor_title: payload.labor_title || 'Labor',
@@ -272,20 +220,7 @@ export const InvoiceBuilder = () => {
         ...(isEditing ? { line_items: localLineItems } : {})
       };
       
-      const url = `${import.meta.env.VITE_API_URL || 'http://localhost:4000'}/api/invoices${isEditing ? `/${id}` : ''}`;
-      const method = isEditing ? 'PATCH' : 'POST';
-
-      const res = await fetch(url, {
-        method,
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session.access_token}`
-        },
-        body: JSON.stringify(payload)
-      });
-      const json = await res.json();
-      if (!res.ok || !json.success) throw new Error(typeof json.error === 'object' ? json.error.message : json.error);
-      return json.data;
+      return isEditing ? apiClient.patch(`/api/invoices/${id}`, payload) : apiClient.post('/api/invoices', payload);
     },
     onSuccess: (data) => {
       showSuccess(`Invoice ${isEditing ? 'updated' : 'created'} successfully`);

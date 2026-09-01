@@ -1,25 +1,24 @@
 import React, { useState, useEffect } from 'react';
-import { createPortal } from 'react-dom';
-import { useAuth } from '../../contexts/AuthContext';
-import { useToast } from '../../contexts/ToastContext';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { AddJobModal } from './AddJobModal';
 import { AddMaterialModal } from './AddMaterialModal';
 import { AddJobHoursModal } from './AddJobHoursModal';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { translateApiError } from '../../utils/errorTranslator';
 import { PageHeader } from '../common/PageHeader';
 import { JOB_STATUSES } from '../../utils/constants';
 import { StatusBadgeDropdown } from '../shared/StatusBadgeDropdown';
+import { useJobs, useCreateJob, useUpdateJob, useUpdateJobStatus } from '../../hooks/api/useJobs';
+import { useClients } from '../../hooks/api/useClients';
+import { apiClient } from '../../lib/apiClient';
+import { useToast } from '../../contexts/ToastContext';
+import { useQueryClient } from '@tanstack/react-query';
+import { JOB_QUERY_KEYS } from '../../hooks/api/useJobs';
 
 export const JobList = () => {
-  const { session } = useAuth();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const { showSuccess, showError } = useToast();
   const queryClient = useQueryClient();
   const [search, setSearch] = useState('');
-
   const [statusFilter, setStatusFilter] = useState('all');
 
   const [open, setOpen] = useState(false);
@@ -35,6 +34,12 @@ export const JobList = () => {
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [jobToDelete, setJobToDelete] = useState(null);
 
+  const { data: jobs = [], isLoading: loading } = useJobs();
+  const { data: clients = [] } = useClients();
+  const createJobMutation = useCreateJob();
+  const updateJobMutation = useUpdateJob();
+  const updateJobStatusMutation = useUpdateJobStatus();
+
   useEffect(() => {
     if (searchParams.get('add') === 'true') {
       setOpen(true);
@@ -43,139 +48,58 @@ export const JobList = () => {
     }
   }, [searchParams, setSearchParams]);
 
-  const { data: jobs = [], isLoading: loading } = useQuery({
-    queryKey: ['jobs'],
-    queryFn: async () => {
-      const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:4000'}/api/jobs`, {
-        headers: { 'Authorization': `Bearer ${session?.access_token}` }
-      });
-      const data = await res.json();
-      if (!data.success) throw new Error(data.error?.message || 'Failed to fetch jobs');
-      return data.data;
-    },
-    enabled: !!session?.access_token
-  });
+  const handleSaveJob = () => {
+    const payload = {
+      ...formData,
+      property_id: formData.property_id || null,
+      hourly_rate: formData.rate_type === 'hourly' ? parseFloat(formData.hourly_rate) : undefined,
+      flat_rate: formData.rate_type === 'flat' ? parseFloat(formData.flat_rate) : undefined
+    };
 
-  const { data: clients = [] } = useQuery({
-    queryKey: ['clients'],
-    queryFn: async () => {
-      const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:4000'}/api/clients`, {
-        headers: { 'Authorization': `Bearer ${session?.access_token}` }
+    if (formData.id) {
+      updateJobMutation.mutate(payload, {
+        onSuccess: () => {
+          setOpen(false);
+          setFormData({ client_id: '', property_id: '', title: '', rate_type: 'flat', hourly_rate: '65.00', flat_rate: '', start_date: '', end_date: '', notes: '' });
+        }
       });
-      const data = await res.json();
-      if (!data.success) throw new Error(data.error?.message || 'Failed to fetch clients');
-      return data.data;
-    },
-    enabled: !!session?.access_token
-  });
-
-  const handleSaveJob = async () => {
-    try {
-      const payload = {
-        ...formData,
-        property_id: formData.property_id || null,
-        hourly_rate: formData.rate_type === 'hourly' ? parseFloat(formData.hourly_rate) : undefined,
-        flat_rate: formData.rate_type === 'flat' ? parseFloat(formData.flat_rate) : undefined
-      };
-      
-      const method = formData.id ? 'PUT' : 'POST';
-      const url = formData.id 
-        ? `${import.meta.env.VITE_API_URL || 'http://localhost:4000'}/api/jobs/${formData.id}`
-        : `${import.meta.env.VITE_API_URL || 'http://localhost:4000'}/api/jobs`;
-
-      const res = await fetch(url, {
-        method,
-        headers: { 
-          'Authorization': `Bearer ${session?.access_token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(payload)
+    } else {
+      createJobMutation.mutate(payload, {
+        onSuccess: () => {
+          setOpen(false);
+          setFormData({ client_id: '', property_id: '', title: '', rate_type: 'flat', hourly_rate: '65.00', flat_rate: '', start_date: '', end_date: '', notes: '' });
+        }
       });
-      if (res.ok) {
-        queryClient.invalidateQueries({ queryKey: ['jobs'] });
-        setOpen(false);
-        setFormData({ client_id: '', property_id: '', title: '', rate_type: 'flat', hourly_rate: '65.00', flat_rate: '', start_date: '', end_date: '', notes: '' });
-        showSuccess(`Job successfully ${formData.id ? 'updated' : 'created'}!`);
-      } else {
-        const errorData = await res.json();
-        showError(translateApiError(errorData.error?.message || errorData.message || 'Failed to save job'));
-      }
-    } catch (err) {
-      console.error(err);
-      showError(translateApiError(err));
     }
   };
 
   const handleAddMaterial = async () => {
     try {
       const payload = { ...matData, cost: parseFloat(matData.cost) };
-      const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:4000'}/api/jobs/${selectedJobId}/materials`, {
-        method: 'POST',
-        headers: { 
-          'Authorization': `Bearer ${session?.access_token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(payload)
-      });
-      if (res.ok) {
-        setMatOpen(false);
-        setMatData({ description: '', cost: '20.00', is_from_stock: false, store: '', purchase_date: new Date().toISOString().split('T')[0], notes: '' });
-        showSuccess('Material added successfully!');
-      } else {
-        const errorData = await res.json();
-        showError(errorData.error?.message || 'Failed to add material');
-      }
+      await apiClient.post(`/api/jobs/${selectedJobId}/materials`, payload);
+      queryClient.invalidateQueries({ queryKey: JOB_QUERY_KEYS.all });
+      setMatOpen(false);
+      setMatData({ description: '', cost: '20.00', is_from_stock: false, store: '', purchase_date: new Date().toISOString().split('T')[0], notes: '' });
+      showSuccess('Material added successfully!');
     } catch (err) {
-      console.error(err);
-      showError('An unexpected error occurred.');
+      showError(err.message || 'Failed to add material');
     }
   };
 
-  const handleUpdateStatus = async (jobId, newStatus) => {
-    try {
-      const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:4000'}/api/jobs/${jobId}/status`, {
-        method: 'PATCH',
-        headers: { 
-          'Authorization': `Bearer ${session?.access_token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ status: newStatus })
-      });
-      if (res.ok) {
-        queryClient.invalidateQueries({ queryKey: ['jobs'] });
-        showSuccess('Job status updated!');
-      } else {
-        const errorData = await res.json();
-        showError(errorData.error?.message || 'Failed to update status');
-      }
-    } catch (err) {
-      console.error(err);
-      showError('An unexpected error occurred.');
-    }
+  const handleUpdateStatus = (jobId, newStatus) => {
+    updateJobStatusMutation.mutate({ id: jobId, status: newStatus });
   };
 
   const handleLogHours = async () => {
     try {
       const payload = { ...hoursData, hours: parseFloat(hoursData.hours) };
-      const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:4000'}/api/jobs/${selectedJobId}/hours`, {
-        method: 'POST',
-        headers: { 
-          'Authorization': `Bearer ${session?.access_token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(payload)
-      });
-      if (res.ok) {
-        setHoursOpen(false);
-        setHoursData({ date: new Date().toISOString().split('T')[0], hours: '' });
-        showSuccess('Hours logged successfully!');
-      } else {
-        const errorData = await res.json();
-        showError(errorData.error?.message || 'Failed to log hours');
-      }
+      await apiClient.post(`/api/jobs/${selectedJobId}/hours`, payload);
+      queryClient.invalidateQueries({ queryKey: JOB_QUERY_KEYS.all });
+      setHoursOpen(false);
+      setHoursData({ date: new Date().toISOString().split('T')[0], hours: '' });
+      showSuccess('Hours logged successfully!');
     } catch (err) {
-      console.error(err);
-      showError('An unexpected error occurred.');
+      showError(err.message || 'Failed to log hours');
     }
   };
 

@@ -1,20 +1,16 @@
 import React, { useState } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate } from 'react-router-dom';
-import { useAuth } from '../../contexts/AuthContext';
-import { useToast } from '../../contexts/ToastContext';
 import { formatCurrency, formatDate } from '../../utils/formatters';
 import { PageHeader } from '../common/PageHeader';
 import { DateRangeFilter } from '../common/DateRangeFilter';
 import { INVOICE_STATUSES, STATUS_COLORS } from '../../utils/constants';
-import { translateApiError } from '../../utils/errorTranslator';
 import { StatusBadgeDropdown } from '../shared/StatusBadgeDropdown';
+import { useInvoices, useUpdateInvoiceStatus } from '../../hooks/api/useInvoices';
+import { useToast } from '../../contexts/ToastContext';
 
 export const InvoiceList = () => {
-  const { session } = useAuth();
   const navigate = useNavigate();
-  const { showSuccess, showError } = useToast();
-  const queryClient = useQueryClient();
+  const { showError } = useToast();
   const [filter, setFilter] = useState('all');
   const [search, setSearch] = useState('');
   const [dateRange, setDateRange] = useState({
@@ -27,31 +23,8 @@ export const InvoiceList = () => {
   const [reasonText, setReasonText] = useState('');
   const [selectedInvoiceId, setSelectedInvoiceId] = useState(null);
 
-  const statusMutation = useMutation({
-    mutationFn: async ({ id, status, reason }) => {
-      const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:4000'}/api/invoices/${id}/status`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session.access_token}`
-        },
-        body: JSON.stringify({ status, reason })
-      });
-      const json = await res.json();
-      if (!res.ok || !json.success) throw new Error(json.error);
-      return json.data;
-    },
-    onSuccess: () => {
-      showSuccess("Status updated successfully");
-      queryClient.invalidateQueries(['invoices']);
-      setReasonModalOpen(false);
-      setReasonText('');
-      setSelectedInvoiceId(null);
-    },
-    onError: (err) => {
-      showError(translateApiError(err));
-    }
-  });
+  const { data: invoices = [], isLoading } = useInvoices();
+  const statusMutation = useUpdateInvoiceStatus();
 
   const handleStatusChange = (invoiceId, newStatus) => {
     if (['draft', 'voided', 'disputed'].includes(newStatus)) {
@@ -69,21 +42,17 @@ export const InvoiceList = () => {
       showError("A reason is required");
       return;
     }
-    statusMutation.mutate({ id: selectedInvoiceId, status: reasonAction, reason: reasonText.trim() });
+    statusMutation.mutate(
+      { id: selectedInvoiceId, status: reasonAction, reason: reasonText.trim() },
+      {
+        onSuccess: () => {
+          setReasonModalOpen(false);
+          setReasonText('');
+          setSelectedInvoiceId(null);
+        }
+      }
+    );
   };
-
-  const { data: invoices = [], isLoading } = useQuery({
-    queryKey: ['invoices'],
-    queryFn: async () => {
-      const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:4000'}/api/invoices`, {
-        headers: { 'Authorization': `Bearer ${session.access_token}` }
-      });
-      const json = await res.json();
-      if (!res.ok || !json.success) throw new Error(json.error);
-      return json.data;
-    },
-    enabled: !!session
-  });
 
   const filteredInvoices = invoices.filter(inv => {
     // 1. Status Filter
