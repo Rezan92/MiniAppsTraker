@@ -7,6 +7,7 @@ import { INVOICE_STATUSES, INVOICE_FILTER_TABS, STATUS_COLORS } from '../../util
 import { StatusBadgeDropdown } from '../shared/StatusBadgeDropdown';
 import { useInvoices, useUpdateInvoiceStatus } from '../../hooks/api/useInvoices';
 import { useToast } from '../../contexts/ToastContext';
+import { ReasonModal } from './ReasonModal';
 
 export const InvoiceList = () => {
   const navigate = useNavigate();
@@ -199,46 +200,18 @@ export const InvoiceList = () => {
         )}
       </div>
 
-      {/* Reason Modal */}
-      {reasonModalOpen && (
-        <div className="fixed inset-0 bg-on-background/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl shadow-lg w-full max-w-md overflow-hidden">
-            <div className="px-6 py-4 border-b border-gray-200">
-              <h3 className="text-lg font-bold text-gray-900">
-                Reason for {reasonAction.replace(/_/g, ' ')}
-              </h3>
-            </div>
-            <div className="p-6">
-              <p className="text-sm text-gray-600 mb-4">
-                Please provide a reason for changing the invoice status to {reasonAction.replace(/_/g, ' ')}. This will be saved in the logs.
-              </p>
-              <textarea
-                className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary resize-none"
-                rows="4"
-                placeholder="Enter reason..."
-                value={reasonText}
-                onChange={(e) => setReasonText(e.target.value)}
-                autoFocus
-              ></textarea>
-            </div>
-            <div className="px-6 py-4 bg-gray-50 border-t border-gray-200 flex justify-end gap-3">
-              <button
-                onClick={() => setReasonModalOpen(false)}
-                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={submitReasonAction}
-                disabled={statusMutation.isLoading || !reasonText.trim()}
-                className="px-4 py-2 text-sm font-medium text-white bg-primary rounded-lg hover:bg-opacity-90 disabled:opacity-50"
-              >
-                Confirm
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <ReasonModal
+        open={reasonModalOpen}
+        onClose={() => setReasonModalOpen(false)}
+        onSubmit={submitReasonAction}
+        title={reasonAction === 'draft' ? 'Revert to Draft' : reasonAction === 'voided' ? 'Void Invoice' : `Reason for ${reasonAction?.replace(/_/g, ' ')}`}
+        description={`Please provide a reason for changing the invoice status to ${reasonAction?.replace(/_/g, ' ')}. This will be permanently recorded in the audit trail.`}
+        reasonText={reasonText}
+        onReasonChange={setReasonText}
+        isLoading={statusMutation.isPending}
+        confirmText={reasonAction === 'voided' ? 'Void Invoice' : 'Confirm Action'}
+        confirmColor={reasonAction === 'voided' ? 'red' : 'primary'}
+      />
     </div>
   );
 };

@@ -7,6 +7,7 @@ import { DeleteInvoiceModal } from './DeleteInvoiceModal';
 import { formatDate } from '../../utils/formatters';
 import { STATUS_COLORS } from '../../utils/constants';
 import { useInvoice, useInvoiceLogs, useUpdateInvoiceStatus, useDeleteInvoice, useUpdateInvoiceInternalNotes } from '../../hooks/api/useInvoices';
+import { ReasonModal } from './ReasonModal';
 
 export const InvoiceDetails = () => {
   const { id } = useParams();
@@ -303,46 +304,18 @@ export const InvoiceDetails = () => {
         loading={deleteMutation.isPending}
       />
 
-      {/* Reason Modal */}
-      {reasonModalOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6">
-            <h3 className="text-lg font-bold text-gray-900 mb-2">
-              {reasonAction === 'draft' ? 'Revert to Draft' : 'Void Invoice'}
-            </h3>
-            <p className="text-sm text-gray-600 mb-4">
-              Please provide a reason for this action. This will be permanently recorded in the audit trail.
-            </p>
-            
-            <textarea
-              className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary mb-4 h-24 resize-none text-sm"
-              placeholder="Enter reason..."
-              value={reasonText}
-              onChange={(e) => setReasonText(e.target.value)}
-            />
-            
-            <div className="flex justify-end gap-3 mt-6">
-              <button
-                type="button"
-                onClick={() => setReasonModalOpen(false)}
-                className="px-4 py-2 font-medium text-gray-700 hover:bg-gray-100 rounded-lg transition-colors cursor-pointer"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={submitReasonAction}
-                disabled={statusMutation.isPending || !reasonText.trim()}
-                className={`px-4 py-2 font-medium text-white rounded-lg transition-colors cursor-pointer ${
-                  reasonAction === 'voided' ? 'bg-red-600 hover:bg-red-700' : 'bg-primary hover:bg-opacity-90'
-                } disabled:opacity-50 disabled:cursor-not-allowed`}
-              >
-                {statusMutation.isPending ? 'Processing...' : 'Confirm Action'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <ReasonModal
+        open={reasonModalOpen}
+        onClose={() => setReasonModalOpen(false)}
+        onSubmit={submitReasonAction}
+        title={reasonAction === 'draft' ? 'Revert to Draft' : reasonAction === 'voided' ? 'Void Invoice' : `Reason for ${reasonAction?.replace(/_/g, ' ')}`}
+        description={`Please provide a reason for this action. This will be permanently recorded in the audit trail.`}
+        reasonText={reasonText}
+        onReasonChange={setReasonText}
+        isLoading={statusMutation.isPending}
+        confirmText={reasonAction === 'voided' ? 'Void Invoice' : 'Confirm Action'}
+        confirmColor={reasonAction === 'voided' ? 'red' : 'primary'}
+      />
     </div>
   );
 };
