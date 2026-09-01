@@ -21,6 +21,13 @@ export const AuthProvider = ({ children }) => {
       });
       
       if (!res.ok) {
+        if (res.status === 401) {
+          try { await supabase.auth.signOut({ scope: 'local' }); } catch (_) {}
+          setSession(null);
+          setUser(null);
+          setUserData(null);
+          return;
+        }
         throw new Error('Failed to fetch backend context');
       }
       
@@ -28,11 +35,6 @@ export const AuthProvider = ({ children }) => {
       setUserData(json.data);
     } catch (err) {
       console.error("AuthContext fetchBackendUser error:", err);
-      // Fallback: Clear session to prevent zombie state
-      await supabase.auth.signOut();
-      setSession(null);
-      setUser(null);
-      setUserData(null);
     }
   };
 

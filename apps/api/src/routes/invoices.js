@@ -293,6 +293,7 @@ router.patch('/:id', async (req, res, next) => {
         }
         if (matSourceIds.length > 0) {
           await supabase.from('job_materials').update({ billing_status: 'on_draft' }).in('id', matSourceIds);
+        }
       }
     }
 
