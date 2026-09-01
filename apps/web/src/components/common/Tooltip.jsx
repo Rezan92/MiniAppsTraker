@@ -1,6 +1,6 @@
 import React from 'react';
 
-export const Tooltip = ({ children, text, position = 'top' }) => {
+export const Tooltip = ({ children, text, position = 'top', className = '' }) => {
   const positionClasses = {
     top: 'bottom-full mb-2 left-1/2 -translate-x-1/2',
     bottom: 'top-full mt-2 left-1/2 -translate-x-1/2',
@@ -18,7 +18,7 @@ export const Tooltip = ({ children, text, position = 'top' }) => {
   if (!text) return <>{children}</>;
 
   return (
-    <div className="relative group inline-block">
+    <div className={`relative group ${className || 'inline-block'}`}>
       {children}
       <div className={`absolute ${positionClasses[position]} hidden group-hover:block z-50 animate-[fadeIn_0.15s_ease-out] w-max max-w-[250px]`}>
         <div className="bg-gray-900 text-white text-xs px-3 py-2 rounded shadow-lg whitespace-normal text-center">

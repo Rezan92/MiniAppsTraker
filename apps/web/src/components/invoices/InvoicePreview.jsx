@@ -17,6 +17,8 @@ export const InvoicePreview = forwardRef(({ invoice, tenant }, ref) => {
   const visibleLaborItems = laborItems.filter(i => !i.is_hidden && i.is_billable !== false);
   const visibleMaterialItems = materialItems.filter(i => !i.is_hidden && i.is_billable !== false);
 
+  const propertyLocation = invoice.property_address || invoice.jobs?.rental_properties?.address || '';
+
   return (
     <div className="invoice-preview-container">
       <div ref={ref} className="invoice-preview-paper">
@@ -52,10 +54,10 @@ export const InvoicePreview = forwardRef(({ invoice, tenant }, ref) => {
                     {invoice.clients?.phone && (
                       <p>Phone: {invoice.clients?.phone}</p>
                     )}
-                    {invoice.property_address && (
+                    {propertyLocation && (
                       <>
                         <p><strong>Property Location:</strong></p>
-                        {invoice.property_address.split('\n').map((line, index) => (
+                        {propertyLocation.split('\n').map((line, index) => (
                           <p key={index}>{line}</p>
                         ))}
                       </>

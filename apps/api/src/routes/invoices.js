@@ -17,7 +17,8 @@ const invoiceSchema = z.object({
   property_address: z.string().optional().nullable(),
   property_id: z.string().uuid().optional().nullable(),
   billed_to_name: z.string().optional().nullable(),
-  bill_to_type: z.enum(['client_name', 'company_name', 'property_address', 'renter_name']).optional().default('client_name')
+  bill_to_type: z.enum(['client_name', 'company_name', 'property_address', 'renter_name']).optional().default('client_name'),
+  breakdown_by_days: z.boolean().optional().default(false)
 });
 
 const statusSchema = z.object({
@@ -32,7 +33,8 @@ const lineItemSchema = z.object({
   amount: z.number().default(0),
   sort_order: z.number().default(0),
   is_billable: z.boolean().default(true),
-  service_date: z.string().optional().nullable()
+  service_date: z.string().optional().nullable(),
+  is_hidden: z.boolean().optional().default(false)
 });
 
 const lineItemUpdateSchema = z.object({
@@ -40,7 +42,8 @@ const lineItemUpdateSchema = z.object({
   amount: z.number().optional(),
   sort_order: z.number().optional(),
   is_billable: z.boolean().optional(),
-  service_date: z.string().optional().nullable()
+  service_date: z.string().optional().nullable(),
+  is_hidden: z.boolean().optional()
 });
 
 async function enforceInvoiceEditability(invoiceId, tenantId) {
@@ -93,6 +96,7 @@ router.get('/:id', async (req, res, next) => {
         *,
         clients(name, email, phone, address),
         tenants(name, business_tagline, payment_method, payment_details, phone),
+        jobs(id, title, rental_properties(id, address)),
         invoice_line_items(*)
       `)
       .eq('id', req.params.id)
@@ -233,11 +237,11 @@ router.post('/:id/items', async (req, res, next) => {
     const result = lineItemSchema.safeParse(req.body);
     if (!result.success) return res.status(400).json({ success: false, error: result.error.errors[0].message });
     
-    const { source_type, source_id, description, amount, sort_order, is_billable, service_date } = result.data;
+    const { source_type, source_id, description, amount, sort_order, is_billable, service_date, is_hidden } = result.data;
 
     const { data: item, error: itemError } = await supabase
       .from('invoice_line_items')
-      .insert([{ invoice_id: req.params.id, source_type, source_id, description, amount, sort_order, is_billable, service_date }])
+      .insert([{ invoice_id: req.params.id, source_type, source_id, description, amount, sort_order, is_billable, service_date, is_hidden }])
       .select()
       .single();
     if (itemError) throw itemError;

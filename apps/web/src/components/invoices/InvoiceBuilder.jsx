@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useParams, useSearchParams, useLocation } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../../contexts/AuthContext';
@@ -24,6 +24,7 @@ export const InvoiceBuilder = () => {
   const presetPropertyId = searchParams.get('property_id');
   const presetJobId = searchParams.get('job_id') || fromJobId;
   const [deleteItemId, setDeleteItemId] = useState(null);
+  const hasInitializedEdit = useRef(false);
 
   const handleBackNavigation = () => {
     if (fromJobId) {
@@ -135,7 +136,7 @@ export const InvoiceBuilder = () => {
   });
 
   useEffect(() => {
-    if (existingInvoice) {
+    if (existingInvoice && !hasInitializedEdit.current) {
       if (existingInvoice.status !== 'draft') {
         showError("Only draft invoices can be edited");
         navigate(`/invoices/${id}`);
@@ -145,12 +146,14 @@ export const InvoiceBuilder = () => {
       const billableLabor = lineItems.filter(i => (i.source_type === 'labor' || i.source_type === 'ad_hoc') && i.is_billable !== false).reduce((sum, i) => sum + Number(i.amount || 0), 0);
       const flatRate = Math.max(0, Number(existingInvoice.labor_amount || 0) - billableLabor);
 
+      const resolvedAddress = existingInvoice.property_address || existingInvoice.jobs?.rental_properties?.address || '';
+
       setFormData({
         client_id: existingInvoice.client_id,
         job_id: existingInvoice.job_id || '',
         invoice_date: existingInvoice.invoice_date,
         due_date: existingInvoice.due_date || '',
-        property_address: existingInvoice.property_address || '',
+        property_address: resolvedAddress,
         bill_to_type: existingInvoice.bill_to_type || 'client_name',
         billed_to_name: existingInvoice.billed_to_name || '',
         property_id: existingInvoice.property_id || '',
@@ -159,8 +162,19 @@ export const InvoiceBuilder = () => {
         labor_amount: flatRate,
         breakdown_by_days: existingInvoice.breakdown_by_days || false
       });
+      hasInitializedEdit.current = true;
     }
-  }, [existingInvoice, navigate, showError]);
+  }, [existingInvoice, navigate, showError, id]);
+
+  // Sync property address from job if missing
+  useEffect(() => {
+    if (formData.job_id && !formData.property_address) {
+      const job = availableJobs?.find(j => j.id === formData.job_id);
+      if (job?.rental_properties?.address) {
+        setFormData(prev => ({ ...prev, property_address: job.rental_properties.address }));
+      }
+    }
+  }, [formData.job_id, formData.property_address, availableJobs]);
 
   useEffect(() => {
     if (!isEditing && formData.client_id && !formData.billed_to_name) {
@@ -327,12 +341,12 @@ export const InvoiceBuilder = () => {
   const laborTotal = (Number(formData.labor_amount) || 0) + laborLineItemsSubtotal;
   const totalDue = laborTotal + materialsSubtotal;
 
-  // Auto-populate flat rate if it's 0 (fixes older drafts)
+  // Auto-populate flat rate if it's 0 on new drafts
   useEffect(() => {
-    if (selectedJob?.rate_type === 'flat' && selectedJob?.flat_rate && Number(formData.labor_amount) === 0) {
+    if (!isEditing && selectedJob?.rate_type === 'flat' && selectedJob?.flat_rate && Number(formData.labor_amount) === 0) {
       setFormData(prev => ({ ...prev, labor_amount: selectedJob.flat_rate }));
     }
-  }, [selectedJob, formData.labor_amount]);
+  }, [isEditing, selectedJob, formData.labor_amount]);
 
   return (
     <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">

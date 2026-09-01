@@ -67,14 +67,25 @@ export const ClientDetailsForm = ({
         )}
         {formData.client_id && (
           <div>
-            <label className="block text-label-md text-gray-700 mb-1">
-              Property Address {!formData.job_id && "(Optional)"}
-            </label>
+            <div className="flex items-center gap-1.5 mb-1">
+              <label className="block text-label-md text-gray-700">
+                Property Address {!formData.job_id && "(Optional)"}
+              </label>
+              {formData.job_id && (
+                <Tooltip text="To change this address, please update it on the job." position="top">
+                  <span className="material-symbols-outlined text-[16px] text-gray-400 cursor-help hover:text-gray-600">
+                    info
+                  </span>
+                </Tooltip>
+              )}
+            </div>
             
             {formData.job_id ? (
-              <div className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-100 text-gray-700 cursor-not-allowed">
-                {formData.property_address || 'No property assigned to job'}
-              </div>
+              <Tooltip text="To change this address, please update it on the job." position="top" className="w-full block">
+                <div className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-100 text-gray-700 cursor-not-allowed">
+                  {formData.property_address || availableJobs?.find(j => j.id === formData.job_id)?.rental_properties?.address || 'No property assigned to job'}
+                </div>
+              </Tooltip>
             ) : (
               (clients.find(c => c.id === formData.client_id)?.address || properties.length > 0) ? (
                 <select
