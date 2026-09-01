@@ -98,7 +98,7 @@ export const PropertiesList = ({ clientId }) => {
     {
       header: 'Notes',
       key: 'notes',
-      render: (prop) => <div className="max-w-xs truncate text-gray-600">{prop.notes || '-'}</div>
+      render: (prop) => <div className="max-w-[240px] truncate text-gray-600">{prop.notes || '-'}</div>
     },
     {
       header: 'Actions',

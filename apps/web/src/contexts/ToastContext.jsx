@@ -20,7 +20,7 @@ export const ToastProvider = ({ children }) => {
       {children}
       {toast && (
         <div className="fixed bottom-4 right-4 z-[100] animate-in fade-in slide-in-from-bottom-4 duration-300">
-          <div className={`px-4 py-3 rounded-lg shadow-lg flex items-center gap-3 min-w-[250px] max-w-sm ${
+          <div className={`px-4 py-3 rounded-lg shadow-lg flex items-center gap-3 min-w-[250px] max-w-[420px] ${
             toast.type === 'success' ? 'bg-green-100 text-green-900 border border-green-200' :
             toast.type === 'error' ? 'bg-red-100 text-red-900 border border-red-200' :
             'bg-surface text-on-surface border border-outline-variant'
