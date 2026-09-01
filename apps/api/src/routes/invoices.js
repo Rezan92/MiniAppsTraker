@@ -2,6 +2,7 @@ import express from 'express';
 import { z } from 'zod';
 import { supabase } from '../config/supabase.js';
 import { authenticate } from '../middleware/auth.js';
+import { calculateInvoiceFinancials } from '../services/pricingEngine.js';
 
 const router = express.Router();
 router.use(authenticate);
@@ -292,39 +293,30 @@ router.patch('/:id', async (req, res, next) => {
         }
         if (matSourceIds.length > 0) {
           await supabase.from('job_materials').update({ billing_status: 'on_draft' }).in('id', matSourceIds);
-        }
       }
+    }
 
-      // Calculate totals from line_items
-      lineLabor = line_items
-        .filter(i => i.is_billable !== false && (i.source_type === 'labor' || i.source_type === 'ad_hoc'))
-        .reduce((sum, i) => sum + Number(i.amount || 0), 0);
-      lineMaterials = line_items
-        .filter(i => i.is_billable !== false && i.source_type === 'material')
-        .reduce((sum, i) => sum + Number(i.amount || 0), 0);
+    let lineItemsForCalc = [];
+    if (line_items && Array.isArray(line_items)) {
+      lineItemsForCalc = line_items;
     } else {
       // Backward compatibility: calculate totals from existing DB line items
       const { data: items } = await supabase
         .from('invoice_line_items')
         .select('amount, source_type, is_billable')
         .eq('invoice_id', req.params.id);
-      const dbLines = items || [];
-      lineLabor = dbLines
-        .filter(i => i.is_billable !== false && (i.source_type === 'labor' || i.source_type === 'ad_hoc'))
-        .reduce((sum, i) => sum + Number(i.amount || 0), 0);
-      lineMaterials = dbLines
-        .filter(i => i.is_billable !== false && i.source_type === 'material')
-        .reduce((sum, i) => sum + Number(i.amount || 0), 0);
+      lineItemsForCalc = items || [];
     }
 
-    const baseLaborAmount = Number(invoiceData.labor_amount || 0);
-    const totalLabor = baseLaborAmount + lineLabor;
-    const totalAmount = totalLabor + lineMaterials;
+    const { laborAmount, materialsAmount, totalAmount } = calculateInvoiceFinancials({
+      baseLaborAmount: invoiceData.labor_amount,
+      lineItems: lineItemsForCalc
+    });
 
     const updatePayload = {
       ...invoiceData,
-      labor_amount: totalLabor,
-      materials_amount: lineMaterials,
+      labor_amount: laborAmount,
+      materials_amount: materialsAmount,
       total_amount: totalAmount
     };
     if (due_date !== undefined) {
