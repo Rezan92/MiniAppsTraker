@@ -46,6 +46,25 @@ const lineItemUpdateSchema = z.object({
   is_hidden: z.boolean().optional()
 });
 
+const invoicePatchItemSchema = z.object({
+  id: z.string().optional(),
+  source_type: z.enum(['labor', 'material', 'ad_hoc']),
+  source_id: z.string().uuid().optional().nullable(),
+  description: z.string().min(1, 'Description is required'),
+  amount: z.number().default(0),
+  sort_order: z.number().default(0),
+  is_billable: z.boolean().default(true),
+  service_date: z.string().optional().nullable(),
+  is_hidden: z.boolean().optional().default(false)
+});
+
+const invoicePatchSchema = invoiceSchema.extend({
+  client_id: z.string().uuid().optional(),
+  line_items: z.array(invoicePatchItemSchema).optional()
+});
+
+const isUUID = (str) => typeof str === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(str);
+
 async function enforceInvoiceEditability(invoiceId, tenantId) {
   const { data: invoice, error } = await supabase
     .from('invoices')
@@ -170,47 +189,160 @@ router.post('/', async (req, res, next) => {
 
 router.patch('/:id', async (req, res, next) => {
   try {
-    const result = invoiceSchema.safeParse(req.body);
+    const result = invoicePatchSchema.safeParse(req.body);
     if (!result.success) {
       return res.status(400).json({ success: false, error: result.error.issues[0].message });
     }
 
-    const { due_date, ...invoiceData } = result.data;
+    await enforceInvoiceEditability(req.params.id, req.user.tenant_id);
+
+    const { due_date, line_items, ...invoiceData } = result.data;
     delete invoiceData.job_id;
     const sanitizedDueDate = due_date === '' ? null : due_date;
 
-    await enforceInvoiceEditability(req.params.id, req.user.tenant_id);
+    let lineLabor = 0;
+    let lineMaterials = 0;
 
-    // Calculate totals inline from line items
-    const { data: items } = await supabase
-      .from('invoice_line_items')
-      .select('amount, source_type, is_billable')
-      .eq('invoice_id', req.params.id);
-    const lineItems = items || [];
-    
-    const lineLabor = lineItems
-      .filter(i => i.is_billable !== false && (i.source_type === 'labor' || i.source_type === 'ad_hoc'))
-      .reduce((sum, i) => sum + Number(i.amount || 0), 0);
-    const lineMaterials = lineItems
-      .filter(i => i.is_billable !== false && i.source_type === 'material')
-      .reduce((sum, i) => sum + Number(i.amount || 0), 0);
-    
+    if (Array.isArray(line_items)) {
+      // 1. Fetch current line items from DB for this invoice
+      const { data: existingDbItems, error: fetchItemsErr } = await supabase
+        .from('invoice_line_items')
+        .select('*')
+        .eq('invoice_id', req.params.id);
+      if (fetchItemsErr) throw fetchItemsErr;
+      const dbItems = existingDbItems || [];
+
+      const incomingIds = new Set(line_items.map(i => i.id).filter(id => isUUID(id)));
+
+      // 2. Identify items to delete (in DB but not in incoming line_items)
+      const toDelete = dbItems.filter(item => !incomingIds.has(item.id));
+      const toDeleteIds = toDelete.map(item => item.id);
+
+      if (toDeleteIds.length > 0) {
+        const { error: delErr } = await supabase
+          .from('invoice_line_items')
+          .delete()
+          .in('id', toDeleteIds)
+          .eq('invoice_id', req.params.id);
+        if (delErr) throw delErr;
+
+        // For deleted items linked to job items, revert billing_status to 'unbilled' if no other active draft links to them
+        for (const item of toDelete) {
+          if (item.source_id && item.source_type !== 'ad_hoc') {
+            const { data: otherDrafts } = await supabase
+              .from('invoice_line_items')
+              .select('invoices!inner(status)')
+              .eq('source_id', item.source_id)
+              .neq('invoice_id', req.params.id)
+              .in('invoices.status', ['draft', 'ready_to_send']);
+
+            if (!otherDrafts || otherDrafts.length === 0) {
+              const table = item.source_type === 'labor' ? 'job_hours' : 'job_materials';
+              await supabase.from(table).update({ billing_status: 'unbilled' }).eq('id', item.source_id);
+            }
+          }
+        }
+      }
+
+      // 3. Separate incoming items into updates vs insertions
+      const itemsToUpdate = line_items.filter(item => isUUID(item.id) && dbItems.some(dbItem => dbItem.id === item.id));
+      const itemsToInsert = line_items.filter(item => !isUUID(item.id) || !dbItems.some(dbItem => dbItem.id === item.id));
+
+      // Perform updates
+      for (const item of itemsToUpdate) {
+        const { error: updErr } = await supabase
+          .from('invoice_line_items')
+          .update({
+            description: item.description,
+            amount: item.amount,
+            sort_order: item.sort_order,
+            is_billable: item.is_billable,
+            service_date: item.service_date || null,
+            is_hidden: item.is_hidden ?? false
+          })
+          .eq('id', item.id)
+          .eq('invoice_id', req.params.id);
+        if (updErr) throw updErr;
+      }
+
+      // Perform inserts
+      if (itemsToInsert.length > 0) {
+        const insertPayload = itemsToInsert.map((item, index) => ({
+          invoice_id: req.params.id,
+          source_type: item.source_type,
+          source_id: item.source_id || null,
+          description: item.description,
+          amount: item.amount,
+          sort_order: item.sort_order ?? index,
+          is_billable: item.is_billable ?? true,
+          service_date: item.service_date || null,
+          is_hidden: item.is_hidden ?? false
+        }));
+
+        const { error: insErr } = await supabase
+          .from('invoice_line_items')
+          .insert(insertPayload);
+        if (insErr) throw insErr;
+
+        // Set billing_status = 'on_draft' for newly linked job items
+        const laborSourceIds = itemsToInsert.filter(i => i.source_type === 'labor' && i.source_id).map(i => i.source_id);
+        const matSourceIds = itemsToInsert.filter(i => i.source_type === 'material' && i.source_id).map(i => i.source_id);
+        if (laborSourceIds.length > 0) {
+          await supabase.from('job_hours').update({ billing_status: 'on_draft' }).in('id', laborSourceIds);
+        }
+        if (matSourceIds.length > 0) {
+          await supabase.from('job_materials').update({ billing_status: 'on_draft' }).in('id', matSourceIds);
+        }
+      }
+
+      // Calculate totals from line_items
+      lineLabor = line_items
+        .filter(i => i.is_billable !== false && (i.source_type === 'labor' || i.source_type === 'ad_hoc'))
+        .reduce((sum, i) => sum + Number(i.amount || 0), 0);
+      lineMaterials = line_items
+        .filter(i => i.is_billable !== false && i.source_type === 'material')
+        .reduce((sum, i) => sum + Number(i.amount || 0), 0);
+    } else {
+      // Backward compatibility: calculate totals from existing DB line items
+      const { data: items } = await supabase
+        .from('invoice_line_items')
+        .select('amount, source_type, is_billable')
+        .eq('invoice_id', req.params.id);
+      const dbLines = items || [];
+      lineLabor = dbLines
+        .filter(i => i.is_billable !== false && (i.source_type === 'labor' || i.source_type === 'ad_hoc'))
+        .reduce((sum, i) => sum + Number(i.amount || 0), 0);
+      lineMaterials = dbLines
+        .filter(i => i.is_billable !== false && i.source_type === 'material')
+        .reduce((sum, i) => sum + Number(i.amount || 0), 0);
+    }
+
     const baseLaborAmount = Number(invoiceData.labor_amount || 0);
     const totalLabor = baseLaborAmount + lineLabor;
     const totalAmount = totalLabor + lineMaterials;
 
+    const updatePayload = {
+      ...invoiceData,
+      labor_amount: totalLabor,
+      materials_amount: lineMaterials,
+      total_amount: totalAmount
+    };
+    if (due_date !== undefined) {
+      updatePayload.due_date = sanitizedDueDate;
+    }
+
     const { data: invoice, error: invoiceError } = await supabase
       .from('invoices')
-      .update({
-        ...invoiceData,
-        due_date: sanitizedDueDate,
-        labor_amount: totalLabor,
-        materials_amount: lineMaterials,
-        total_amount: totalAmount
-      })
+      .update(updatePayload)
       .eq('id', req.params.id)
       .eq('tenant_id', req.user.tenant_id)
-      .select()
+      .select(`
+        *,
+        clients(name, email, phone, address),
+        tenants(name, business_tagline, payment_method, payment_details, phone),
+        jobs(id, title, rental_properties(id, address)),
+        invoice_line_items(*)
+      `)
       .single();
 
     if (invoiceError) throw invoiceError;
