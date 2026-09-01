@@ -41,3 +41,20 @@ If a UI pattern or logic is recurring (e.g., confirmation modals, tooltips, load
 ## Rule 7: Continuous Living Ruleset Maintenance
 **Proactively update this file whenever new working rules, patterns, or commands emerge.**
 Whenever the user establishes recurring preferences, working rules, constraints, architectural patterns, or interaction guidelines—or whenever new rules are derived from commands—record them in `.agents/rules/developer-rules.md` immediately, even without an explicit prompt. This maintains a persistent single source of truth for all current and future developers working on this project.
+
+## Rule 8: Centralized API Client & Domain Hooks
+**Never write raw `fetch()` calls in UI components.**
+Always use `apiClient.js` or dedicated domain hooks (`useClients`, `useJobs`, `useInvoices`, `useProperties`, `useWorkspace`). All network calls must pass through the centralized client to guarantee automatic token injection, standardized error throwing, and URL environment handling.
+
+## Rule 9: Standardized Form Architecture
+**Always build forms with React Hook Form, Zod validation, and `mode: 'onChange'`.**
+Never use uncontrolled forms or manual `useState` form state. All forms must use Zod schemas, `FormField.jsx` wrappers, and real-time live validation so users receive instant inline feedback before submitting.
+
+## Rule 10: Centralized Financial Engine & Currency Rounding
+**Always compute monetary and labor totals through `pricingEngine.js` and `roundCurrency`.**
+Never perform inline floating-point arithmetic for invoice line items, tax, or job costs. Use `roundCurrency()` and `calculateInvoiceFinancials()` to prevent floating-point precision drift.
+
+## Rule 11: In-Memory Multi-Tenant State
+**Never trigger hard browser reloads (`window.location.reload()`) for workspace operations.**
+Workspace switching, creation, and deletion must execute smoothly in-memory via `useWorkspace()`, updating React context and purging TanStack Query cache keys without page flicker.
+
