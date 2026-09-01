@@ -20,6 +20,11 @@ export const JOB_STATUSES = [
   { value: 'cancelled', label: 'Cancelled' }
 ];
 
+export const JOB_FILTER_TABS = [
+  { value: 'all', label: 'All' },
+  ...JOB_STATUSES
+];
+
 export const INVOICE_STATUSES = [
   { value: 'draft', label: 'Draft' },
   { value: 'sent', label: 'Sent' },
@@ -27,4 +32,9 @@ export const INVOICE_STATUSES = [
   { value: 'overdue', label: 'Overdue' },
   { value: 'voided', label: 'Voided' },
   { value: 'disputed', label: 'Disputed' }
+];
+
+export const INVOICE_FILTER_TABS = [
+  { value: 'all', label: 'All' },
+  ...INVOICE_STATUSES
 ];

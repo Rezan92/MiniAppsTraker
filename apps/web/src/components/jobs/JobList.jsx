@@ -4,7 +4,7 @@ import { AddJobModal } from './AddJobModal';
 import { AddMaterialModal } from './AddMaterialModal';
 import { AddJobHoursModal } from './AddJobHoursModal';
 import { PageHeader } from '../common/PageHeader';
-import { JOB_STATUSES } from '../../utils/constants';
+import { JOB_STATUSES, JOB_FILTER_TABS } from '../../utils/constants';
 import { StatusBadgeDropdown } from '../shared/StatusBadgeDropdown';
 import { useJobs, useCreateJob, useUpdateJob, useUpdateJobStatus } from '../../hooks/api/useJobs';
 import { useClients } from '../../hooks/api/useClients';
@@ -118,7 +118,7 @@ export const JobList = () => {
         actionButtonText="Add Job"
         actionButtonIcon="add"
         onActionClick={() => setOpen(true)}
-        tabs={JOB_STATUSES}
+        tabs={JOB_FILTER_TABS}
         activeTab={statusFilter}
         onTabChange={setStatusFilter}
         searchPlaceholder="Search jobs, clients..."

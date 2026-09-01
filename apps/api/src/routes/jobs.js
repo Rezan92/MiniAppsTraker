@@ -13,14 +13,14 @@ const jobSchema = z.object({
   rate_type: z.enum(['flat', 'hourly']),
   hourly_rate: z.number().optional(),
   flat_rate: z.number().optional(),
-  status: z.enum(['open', 'in_progress', 'completed', 'cancelled']).optional().default('open'),
+  status: z.enum(['open', 'in_progress', 'completed', 'on_hold', 'cancelled']).optional().default('open'),
   start_date: z.string().optional(),
   end_date: z.string().optional(),
   notes: z.string().optional()
 });
 
 const statusSchema = z.object({
-  status: z.enum(['open', 'in_progress', 'completed', 'cancelled'])
+  status: z.enum(['open', 'in_progress', 'completed', 'on_hold', 'cancelled'])
 });
 
 const materialSchema = z.object({

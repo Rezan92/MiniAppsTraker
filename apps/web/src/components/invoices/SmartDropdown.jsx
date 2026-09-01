@@ -1,7 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { apiClient } from '../../lib/apiClient';
 
-export const SmartDropdown = ({ jobId, session, onAddItems, filterType, existingItems = [], selectedJob }) => {
+export const SmartDropdown = ({ jobId, onAddItems, filterType, existingItems = [], selectedJob }) => {
   const [showBilled, setShowBilled] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef(null);
@@ -21,28 +22,18 @@ export const SmartDropdown = ({ jobId, session, onAddItems, filterType, existing
     queryKey: ['job_materials', jobId, showBilled],
     queryFn: async () => {
       const statusList = showBilled ? 'unbilled,on_draft,billed' : 'unbilled';
-      const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:4000'}/api/jobs/${jobId}/materials?billing_status=${statusList}`, {
-        headers: { 'Authorization': `Bearer ${session.access_token}` }
-      });
-      const json = await res.json();
-      if (!res.ok) throw new Error(json.error);
-      return json.data;
+      return apiClient.get(`/api/jobs/${jobId}/materials?billing_status=${statusList}`);
     },
-    enabled: !!session && !!jobId && isOpen && (!filterType || filterType === 'material')
+    enabled: !!jobId && isOpen && (!filterType || filterType === 'material')
   });
 
   const { data: hours = [], isLoading: loadingHours } = useQuery({
     queryKey: ['job_hours', jobId, showBilled],
     queryFn: async () => {
       const statusList = showBilled ? 'unbilled,on_draft,billed' : 'unbilled';
-      const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:4000'}/api/jobs/${jobId}/hours?billing_status=${statusList}`, {
-        headers: { 'Authorization': `Bearer ${session.access_token}` }
-      });
-      const json = await res.json();
-      if (!res.ok) throw new Error(json.error);
-      return json.data;
+      return apiClient.get(`/api/jobs/${jobId}/hours?billing_status=${statusList}`);
     },
-    enabled: !!session && !!jobId && isOpen && (!filterType || filterType === 'labor')
+    enabled: !!jobId && isOpen && (!filterType || filterType === 'labor')
   });
 
   const handleAddItem = (item, type) => {

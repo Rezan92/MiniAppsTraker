@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { formatCurrency, formatDate } from '../../utils/formatters';
 import { PageHeader } from '../common/PageHeader';
 import { DateRangeFilter } from '../common/DateRangeFilter';
-import { INVOICE_STATUSES, STATUS_COLORS } from '../../utils/constants';
+import { INVOICE_STATUSES, INVOICE_FILTER_TABS, STATUS_COLORS } from '../../utils/constants';
 import { StatusBadgeDropdown } from '../shared/StatusBadgeDropdown';
 import { useInvoices, useUpdateInvoiceStatus } from '../../hooks/api/useInvoices';
 import { useToast } from '../../contexts/ToastContext';
@@ -92,7 +92,7 @@ export const InvoiceList = () => {
         actionButtonText="Create Invoice"
         actionButtonIcon="add"
         actionLinkTo="/invoices/new"
-        tabs={INVOICE_STATUSES}
+        tabs={INVOICE_FILTER_TABS}
         activeTab={filter}
         onTabChange={setFilter}
         searchPlaceholder="Search invoices, clients..."
