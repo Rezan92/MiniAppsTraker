@@ -4,6 +4,7 @@ import { supabase } from '../config/supabase.js';
 import { authenticate } from '../middleware/auth.js';
 import { requireRole } from '../middleware/rbac.js';
 import { inviteLimiter } from '../middleware/rateLimiter.js';
+import { createApiError } from '../middleware/errorHandler.js';
 
 const router = express.Router();
 router.use(inviteLimiter);
@@ -11,18 +12,47 @@ router.use(inviteLimiter);
 const inviteSchema = z.object({
   email: z.string().email('Please provide a valid email address'),
   role: z.enum(['admin', 'employee']).default('employee')
+}).strict();
+
+// GET /api/invitations - List invitations for current tenant (Admin only)
+router.get('/', authenticate, requireRole('admin'), async (req, res, next) => {
+  try {
+    if (!req.user || !req.user.tenant_id) {
+      return next(createApiError('Tenant context missing', 400, 'TENANT_REQUIRED'));
+    }
+
+    const { data: invitations, error } = await supabase
+      .from('invitations')
+      .select('id, email, role, status, expires_at, created_at, token')
+      .eq('tenant_id', req.user.tenant_id)
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+
+    const rawOrigin = process.env.CLIENT_URL || process.env.APP_URL || req.headers.origin || 'http://localhost:5173';
+    const clientUrl = rawOrigin.replace(/\/+$/, '');
+
+    const enriched = (invitations || []).map(inv => ({
+      ...inv,
+      joinUrl: `${clientUrl}/join/${inv.token}`
+    }));
+
+    res.json({ success: true, data: enriched });
+  } catch (err) {
+    next(err);
+  }
 });
 
 // POST /api/invitations - Generate an invite (Admin only)
 router.post('/', authenticate, requireRole('admin'), async (req, res, next) => {
   try {
     if (!req.user || !req.user.tenant_id) {
-      return res.status(400).json({ success: false, error: 'Tenant context missing' });
+      return next(createApiError('Tenant context missing', 400, 'TENANT_REQUIRED'));
     }
 
     const result = inviteSchema.safeParse(req.body);
     if (!result.success) {
-      return res.status(400).json({ success: false, error: result.error.errors[0].message });
+      return next(result.error);
     }
 
     const { email, role } = result.data;
@@ -54,7 +84,28 @@ router.post('/', authenticate, requireRole('admin'), async (req, res, next) => {
   }
 });
 
-// GET /api/invitations/:token - Validate an invite link
+// DELETE /api/invitations/:id - Revoke an invitation (Admin only)
+router.delete('/:id', authenticate, requireRole('admin'), async (req, res, next) => {
+  try {
+    if (!req.user || !req.user.tenant_id) {
+      return next(createApiError('Tenant context missing', 400, 'TENANT_REQUIRED'));
+    }
+
+    const { error } = await supabase
+      .from('invitations')
+      .delete()
+      .eq('id', req.params.id)
+      .eq('tenant_id', req.user.tenant_id);
+
+    if (error) throw error;
+
+    res.json({ success: true, message: 'Invitation revoked successfully' });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// GET /api/invitations/:token - Validate an invite link (Public)
 router.get('/:token', async (req, res, next) => {
   try {
     const { token } = req.params;
@@ -67,17 +118,17 @@ router.get('/:token', async (req, res, next) => {
 
     if (error) throw error;
     if (!invite) {
-      return res.status(404).json({ success: false, error: 'Invalid invitation link' });
+      return next(createApiError('Invalid invitation link', 404, 'NOT_FOUND'));
     }
 
     if (invite.status !== 'pending') {
-      return res.status(400).json({ success: false, error: `Invitation is already ${invite.status}` });
+      return next(createApiError(`Invitation is already ${invite.status}`, 400, 'INVITATION_INACTIVE'));
     }
 
     if (new Date(invite.expires_at) < new Date()) {
       // Auto-update to expired
       await supabase.from('invitations').update({ status: 'expired' }).eq('id', invite.id);
-      return res.status(400).json({ success: false, error: 'Invitation has expired' });
+      return next(createApiError('Invitation has expired', 400, 'INVITATION_EXPIRED'));
     }
 
     res.json({
@@ -85,7 +136,7 @@ router.get('/:token', async (req, res, next) => {
       data: {
         email: invite.email,
         role: invite.role,
-        tenant_name: invite.tenants.name
+        tenant_name: invite.tenants?.name || 'ProFix Handyman'
       }
     });
   } catch (err) {
@@ -106,16 +157,16 @@ router.post('/:token/accept', authenticate, async (req, res, next) => {
       .single();
 
     if (inviteError || !invite) {
-      return res.status(404).json({ success: false, error: 'Invalid invitation link' });
+      return next(createApiError('Invalid invitation link', 404, 'NOT_FOUND'));
     }
 
     if (invite.status !== 'pending' || new Date(invite.expires_at) < new Date()) {
-      return res.status(400).json({ success: false, error: 'Invitation is no longer valid' });
+      return next(createApiError('Invitation is no longer valid', 400, 'INVITATION_INVALID'));
     }
 
     // Verify the authenticated user's email matches the invite
     if (req.user.email !== invite.email) {
-      return res.status(403).json({ success: false, error: 'Authenticated email does not match the invitation email. Please sign out and use the correct account.' });
+      return next(createApiError('Authenticated email does not match the invitation email. Please sign out and use the correct account.', 403, 'EMAIL_MISMATCH'));
     }
 
     // Link the user to the tenant
@@ -124,9 +175,8 @@ router.post('/:token/accept', authenticate, async (req, res, next) => {
       .insert([{ tenant_id: invite.tenant_id, user_id: req.user.id, role: invite.role }]);
 
     if (memberError) {
-      // Might be a unique constraint violation if they are already in the tenant
       if (memberError.code === '23505') {
-        return res.status(400).json({ success: false, error: 'You are already a member of this workspace' });
+        return next(createApiError('You are already a member of this workspace', 400, 'ALREADY_MEMBER'));
       }
       throw memberError;
     }

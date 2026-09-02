@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { supabase } from '../config/supabase.js';
 import { authenticate } from '../middleware/auth.js';
 import { authLimiter } from '../middleware/rateLimiter.js';
+import { createApiError } from '../middleware/errorHandler.js';
 
 const router = express.Router();
 router.use(authLimiter);
@@ -297,6 +298,159 @@ router.delete('/workspaces/:id', authenticate, async (req, res, next) => {
       message: 'Workspace permanently deleted'
     });
 
+  } catch (err) {
+    next(err);
+  }
+});
+
+// GET /api/auth/workspaces/:id/members - List members of a workspace
+router.get('/workspaces/:id/members', authenticate, async (req, res, next) => {
+  try {
+    const tenant_id = req.params.id;
+
+    // Verify requesting user is a member of this workspace
+    const { data: memberCheck, error: checkError } = await supabase
+      .from('tenant_members')
+      .select('role')
+      .eq('tenant_id', tenant_id)
+      .eq('user_id', req.user.id)
+      .maybeSingle();
+
+    if (checkError || !memberCheck) {
+      return next(createApiError('Access denied: You are not a member of this workspace', 403, 'FORBIDDEN'));
+    }
+
+    const { data: members, error } = await supabase
+      .from('tenant_members')
+      .select('id, user_id, role, status, created_at, users(id, email, full_name, first_name, last_name, phone, avatar_url)')
+      .eq('tenant_id', tenant_id)
+      .order('created_at', { ascending: true });
+
+    if (error) throw error;
+
+    const formatted = (members || []).map(m => {
+      const u = m.users || {};
+      const name = u.full_name || [u.first_name, u.last_name].filter(Boolean).join(' ') || u.email || 'Team Member';
+      return {
+        membership_id: m.id,
+        user_id: m.user_id,
+        role: m.role,
+        status: m.status,
+        joined_at: m.created_at,
+        email: u.email || 'N/A',
+        name,
+        phone: u.phone || null,
+        avatar_url: u.avatar_url || null
+      };
+    });
+
+    res.json({ success: true, data: formatted });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// PATCH /api/auth/workspaces/:id/members/:userId - Update member role (Admin only)
+router.patch('/workspaces/:id/members/:userId', authenticate, async (req, res, next) => {
+  try {
+    const { id: tenant_id, userId: target_user_id } = req.params;
+    const { role } = req.body;
+
+    // Verify caller is admin of this workspace
+    const { data: callerMember, error: callerErr } = await supabase
+      .from('tenant_members')
+      .select('role')
+      .eq('tenant_id', tenant_id)
+      .eq('user_id', req.user.id)
+      .eq('role', 'admin')
+      .maybeSingle();
+
+    if (callerErr || !callerMember) {
+      return next(createApiError('Only administrators can modify member roles', 403, 'FORBIDDEN'));
+    }
+
+    if (!['admin', 'employee'].includes(role)) {
+      return next(createApiError('Role must be admin or employee', 400, 'VALIDATION_ERROR'));
+    }
+
+    // If demoting an admin, ensure at least one other admin remains
+    if (role === 'employee') {
+      const { data: admins, error: adminErr } = await supabase
+        .from('tenant_members')
+        .select('id, user_id')
+        .eq('tenant_id', tenant_id)
+        .eq('role', 'admin')
+        .eq('status', 'active');
+
+      if (adminErr) throw adminErr;
+      if (admins && admins.length <= 1 && admins.some(a => a.user_id === target_user_id)) {
+        return next(createApiError('Cannot demote the only administrator of the workspace', 400, 'LAST_ADMIN_PROTECTED'));
+      }
+    }
+
+    const { data: updated, error: updateErr } = await supabase
+      .from('tenant_members')
+      .update({ role })
+      .eq('tenant_id', tenant_id)
+      .eq('user_id', target_user_id)
+      .select()
+      .single();
+
+    if (updateErr) throw updateErr;
+
+    res.json({ success: true, data: updated, message: 'Member role updated successfully' });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// DELETE /api/auth/workspaces/:id/members/:userId - Remove member from workspace (Admin only)
+router.delete('/workspaces/:id/members/:userId', authenticate, async (req, res, next) => {
+  try {
+    const { id: tenant_id, userId: target_user_id } = req.params;
+
+    // Verify caller is admin of this workspace
+    const { data: callerMember, error: callerErr } = await supabase
+      .from('tenant_members')
+      .select('role')
+      .eq('tenant_id', tenant_id)
+      .eq('user_id', req.user.id)
+      .eq('role', 'admin')
+      .maybeSingle();
+
+    if (callerErr || !callerMember) {
+      return next(createApiError('Only administrators can remove team members', 403, 'FORBIDDEN'));
+    }
+
+    // Prevent removing the sole admin
+    const { data: admins, error: adminErr } = await supabase
+      .from('tenant_members')
+      .select('id, user_id')
+      .eq('tenant_id', tenant_id)
+      .eq('role', 'admin')
+      .eq('status', 'active');
+
+    if (adminErr) throw adminErr;
+    if (admins && admins.length <= 1 && admins.some(a => a.user_id === target_user_id)) {
+      return next(createApiError('Cannot remove the only administrator of the workspace', 400, 'LAST_ADMIN_PROTECTED'));
+    }
+
+    const { error: deleteErr } = await supabase
+      .from('tenant_members')
+      .delete()
+      .eq('tenant_id', tenant_id)
+      .eq('user_id', target_user_id);
+
+    if (deleteErr) throw deleteErr;
+
+    // If user's active tenant was this one, reset it
+    await supabase
+      .from('users')
+      .update({ last_active_tenant_id: null })
+      .eq('id', target_user_id)
+      .eq('last_active_tenant_id', tenant_id);
+
+    res.json({ success: true, message: 'Member removed from workspace' });
   } catch (err) {
     next(err);
   }

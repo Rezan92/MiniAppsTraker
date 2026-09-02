@@ -45,11 +45,15 @@ const jobHoursSchema = z.object({
 
 router.get('/', async (req, res, next) => {
   try {
-    const { client_id, property_id, status } = req.query;
+    const { client_id, property_id, status, limit = 50, page = 1, offset } = req.query;
+    const parsedLimit = Math.min(Math.max(parseInt(limit, 10) || 50, 1), 200);
+    const parsedOffset = offset !== undefined ? Math.max(parseInt(offset, 10) || 0, 0) : (Math.max(parseInt(page, 10) || 1, 1) - 1) * parsedLimit;
+
     let query = supabase
       .from('jobs')
       .select('*, clients(name), rental_properties(name, address), invoices(id, status, invoice_number)')
-      .eq('tenant_id', req.user.tenant_id);
+      .eq('tenant_id', req.user.tenant_id)
+      .range(parsedOffset, parsedOffset + parsedLimit - 1);
 
     if (client_id) query = query.eq('client_id', client_id);
     if (property_id) query = query.eq('property_id', property_id);

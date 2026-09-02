@@ -84,13 +84,16 @@ async function enforceInvoiceEditability(invoiceId, tenantId) {
 
 router.get('/', async (req, res, next) => {
   try {
-    const { status, client_id, property_id, from_date, to_date, job_id } = req.query;
+    const { status, client_id, property_id, from_date, to_date, job_id, limit = 50, page = 1, offset } = req.query;
+    const parsedLimit = Math.min(Math.max(parseInt(limit, 10) || 50, 1), 200);
+    const parsedOffset = offset !== undefined ? Math.max(parseInt(offset, 10) || 0, 0) : (Math.max(parseInt(page, 10) || 1, 1) - 1) * parsedLimit;
     
     let query = supabase
       .from('invoices')
       .select('*, clients(name, email, phone)')
       .eq('tenant_id', req.user.tenant_id)
-      .order('created_at', { ascending: false });
+      .order('created_at', { ascending: false })
+      .range(parsedOffset, parsedOffset + parsedLimit - 1);
 
     if (status) query = query.eq('status', status);
     if (client_id) query = query.eq('client_id', client_id);
@@ -102,8 +105,7 @@ router.get('/', async (req, res, next) => {
     const { data, error } = await query;
     if (error) throw error;
 
-    // Totals (labor_amount, materials_amount, total_amount) are stored directly in DB columns on save
-    res.json({ success: true, data });
+    res.json({ success: true, data: data || [] });
   } catch (err) {
     next(err);
   }

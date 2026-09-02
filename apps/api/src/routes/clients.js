@@ -24,11 +24,15 @@ router.get('/', async (req, res, next) => {
       return next(createApiError('Tenant context missing', 400, 'TENANT_REQUIRED'));
     }
 
-    const { search } = req.query;
+    const { search, limit = 50, page = 1, offset } = req.query;
+    const parsedLimit = Math.min(Math.max(parseInt(limit, 10) || 50, 1), 200);
+    const parsedOffset = offset !== undefined ? Math.max(parseInt(offset, 10) || 0, 0) : (Math.max(parseInt(page, 10) || 1, 1) - 1) * parsedLimit;
+
     let query = supabase
       .from('clients')
       .select('*')
-      .eq('tenant_id', req.user.tenant_id);
+      .eq('tenant_id', req.user.tenant_id)
+      .range(parsedOffset, parsedOffset + parsedLimit - 1);
 
     if (search) {
       query = query.or(`name.ilike.%${search}%,address.ilike.%${search}%`);

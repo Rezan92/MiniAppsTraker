@@ -134,7 +134,8 @@ This document serves as the comprehensive architectural audit, security review, 
 | 9 | Route-Level Lazy Loading (`React.lazy`) | Performance | **P2 (Medium)** | Low | High | **Completed** | `apps/web/src/App.jsx` |
 | 10 | Tailwind Design System Token Alignment | UX / Styling | **P2 (Medium)** | Low | Medium | **Completed** | `apps/web/src/components/layout/` |
 | 11 | TanStack Query Global Stale Times | Performance | **P2 (Medium)** | Low | Medium | **Completed** | `apps/web/src/main.jsx` |
-| 12 | Print Stylesheet Modularization | CSS Architecture | **P3 (Low)** | Low | Low | *Pending* | `apps/web/src/components/invoices/` |
-| 13 | API Query Pagination (`limit`/`offset`) | Performance | **P3 (Low)** | Medium | Medium | *Pending* | `apps/api/src/routes/` |
+| 12 | Print Stylesheet Modularization | CSS Architecture | **P3 (Low)** | Low | Low | **Completed** | `apps/web/src/components/invoices/` |
+| 13 | API Query Pagination (`limit`/`offset`) | Performance | **P3 (Low)** | Medium | Medium | **Completed** | `apps/api/src/routes/` |
+| 14 | Team Management & Teammate Invitations Hub | Settings & Team | **P1 (High)** | Medium | High | **Completed** | `apps/web/src/components/settings/` |
 
 ---

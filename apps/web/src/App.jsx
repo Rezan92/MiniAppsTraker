@@ -25,6 +25,7 @@ const InvoiceBuilder = React.lazy(() => import('./components/invoices/InvoiceBui
 const InvoiceDetails = React.lazy(() => import('./components/invoices/InvoiceDetails').then(m => ({ default: m.InvoiceDetails })));
 const SettingsLayout = React.lazy(() => import('./components/settings/SettingsLayout').then(m => ({ default: m.SettingsLayout })));
 const CompanyProfile = React.lazy(() => import('./components/settings/CompanyProfile').then(m => ({ default: m.CompanyProfile })));
+const TeamManagement = React.lazy(() => import('./components/settings/TeamManagement').then(m => ({ default: m.TeamManagement })));
 const Unauthorized = React.lazy(() => import('./components/errors/Unauthorized').then(m => ({ default: m.Unauthorized })));
 const NotFound = React.lazy(() => import('./components/errors/NotFound').then(m => ({ default: m.NotFound })));
 
@@ -60,7 +61,7 @@ const MainApp = () => {
           <Route path="settings" element={<SettingsLayout />}>
             <Route index element={<Navigate to="company" replace />} />
             <Route path="company" element={<AdminRoute><CompanyProfile /></AdminRoute>} />
-            <Route path="team" element={<AdminRoute><div className="p-8">Team Management UI Pending (Task 15.2)</div></AdminRoute>} />
+            <Route path="team" element={<AdminRoute><TeamManagement /></AdminRoute>} />
             <Route path="services" element={<AdminRoute><div className="p-8">Service Configuration UI Pending (Task 15.3)</div></AdminRoute>} />
           </Route>
           <Route path="profile" element={<div className="p-8">My Account UI Pending (Task 15.4)</div>} />
