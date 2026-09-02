@@ -8,6 +8,7 @@ import { formatDate } from '../../utils/formatters';
 import { STATUS_COLORS } from '../../utils/constants';
 import { useInvoice, useInvoiceLogs, useUpdateInvoiceStatus, useDeleteInvoice, useUpdateInvoiceInternalNotes } from '../../hooks/api/useInvoices';
 import { ReasonModal } from './ReasonModal';
+import { NotFound } from '../errors/NotFound';
 
 export const InvoiceDetails = () => {
   const { id } = useParams();
@@ -81,24 +82,7 @@ export const InvoiceDetails = () => {
   }
 
   if (!invoice) {
-    return (
-      <div className="max-w-xl mx-auto px-4 py-16 text-center">
-        <div className="w-16 h-16 bg-red-50 text-red-500 rounded-full flex items-center justify-center mx-auto mb-4">
-          <span className="material-symbols-outlined text-3xl">receipt_long</span>
-        </div>
-        <h2 className="text-title-lg font-bold text-gray-900 mb-2">Invoice Not Found</h2>
-        <p className="text-body-md text-gray-600 mb-6">
-          The invoice you are looking for does not exist, may have been deleted, or belongs to another workspace.
-        </p>
-        <button
-          onClick={() => navigate('/invoices')}
-          className="inline-flex items-center gap-2 px-5 py-2.5 bg-primary text-white text-sm font-semibold rounded-lg hover:bg-primary-hover shadow-sm transition-colors cursor-pointer"
-        >
-          <span className="material-symbols-outlined text-[18px]">arrow_back</span>
-          Back to Invoices
-        </button>
-      </div>
-    );
+    return <NotFound />;
   }
 
   const isDraft = invoice.status === 'draft';
