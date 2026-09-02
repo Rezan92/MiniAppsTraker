@@ -9,11 +9,33 @@ const router = express.Router();
 router.use(authLimiter);
 
 // GET /api/auth/me
-router.get('/me', authenticate, (req, res) => {
-  res.json({
-    success: true,
-    data: req.user
-  });
+router.get('/me', authenticate, async (req, res, next) => {
+  try {
+    // Check if this user has any pending invitations matching their email
+    const { data: pendingInvites } = await supabase
+      .from('invitations')
+      .select('id, token, role, status, expires_at, created_at, tenants(id, name)')
+      .eq('email', req.user.email)
+      .eq('status', 'pending');
+
+    const validInvites = (pendingInvites || []).filter(inv => !inv.expires_at || new Date(inv.expires_at) > new Date());
+
+    res.json({
+      success: true,
+      data: {
+        ...req.user,
+        pending_invitations: validInvites.map(inv => ({
+          id: inv.id,
+          token: inv.token,
+          role: inv.role,
+          tenant_id: inv.tenants?.id,
+          tenant_name: inv.tenants?.name || 'Workspace'
+        }))
+      }
+    });
+  } catch (err) {
+    next(err);
+  }
 });
 
 // GET /api/auth/workspaces
