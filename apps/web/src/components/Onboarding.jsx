@@ -1,52 +1,41 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
+import { FormField } from './common/FormField';
+import { apiClient } from '../lib/apiClient';
+import { onboardingSchema } from '../schemas/onboardingSchema';
+import { translateApiError } from '../utils/errorTranslator';
 
 export const Onboarding = () => {
-  const { session, userData, refreshUserData, signOut } = useAuth();
+  const { refreshUserData, signOut } = useAuth();
   const navigate = useNavigate();
   const { showSuccess, showError } = useToast();
-  
-  const [formData, setFormData] = useState({
-    name: '',
-    phone: '',
-    address: ''
+
+  const {
+    register,
+    handleSubmit,
+    formState: { errors, isSubmitting }
+  } = useForm({
+    resolver: zodResolver(onboardingSchema),
+    mode: 'onChange',
+    defaultValues: {
+      name: '',
+      phone: '',
+      address: ''
+    }
   });
-  const [loading, setLoading] = useState(false);
 
-
-  const handleChange = (e) => {
-    setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setLoading(true);
-
+  const onSubmit = async (data) => {
     try {
-      const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:4000'}/api/auth/onboarding`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session.access_token}`
-        },
-        body: JSON.stringify(formData)
-      });
-
-      const json = await res.json();
-      
-      if (!res.ok || !json.success) {
-        throw new Error(json.error || 'Failed to complete onboarding');
-      }
-
+      await apiClient.post('/api/auth/onboarding', data);
       showSuccess('Your business profile has been successfully set up.');
       await refreshUserData();
       navigate('/');
     } catch (err) {
-      showError(err.message);
-    } finally {
-      setLoading(false);
+      showError(translateApiError(err));
     }
   };
 
@@ -64,53 +53,52 @@ export const Onboarding = () => {
             <p className="font-body-md text-body-md text-on-surface-variant">Set up your business profile to get started.</p>
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-              <label className="block font-label-md text-label-md text-on-surface mb-xs" htmlFor="name">Business Name *</label>
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+            <FormField label="Business Name" required error={errors.name}>
               <input 
                 id="name" 
-                name="name" 
                 type="text" 
-                required 
                 placeholder="e.g. ProFix Handyman LLC"
-                className="w-full px-4 py-3 border border-outline-variant rounded-DEFAULT bg-surface-container-lowest font-body-md text-on-surface focus:outline-none focus:ring-0 focus:border-primary focus:border-[2px] transition-all min-h-[44px]"
-                value={formData.name}
-                onChange={handleChange}
+                {...register('name')}
+                className={`w-full px-4 py-3 border rounded-DEFAULT bg-surface-container-lowest font-body-md text-on-surface focus:outline-none focus:ring-0 focus:border-primary focus:border-[2px] transition-all min-h-[44px] ${
+                  errors.name ? 'border-red-500' : 'border-outline-variant'
+                }`}
               />
-            </div>
+            </FormField>
             
-            <div>
-              <label className="block font-label-md text-label-md text-on-surface mb-xs" htmlFor="phone">Business Phone</label>
+            <FormField label="Business Phone" error={errors.phone}>
               <input 
                 id="phone" 
-                name="phone" 
                 type="tel" 
                 placeholder="(555) 123-4567"
-                className="w-full px-4 py-3 border border-outline-variant rounded-DEFAULT bg-surface-container-lowest font-body-md text-on-surface focus:outline-none focus:ring-0 focus:border-primary focus:border-[2px] transition-all min-h-[44px]"
-                value={formData.phone}
-                onChange={handleChange}
+                {...register('phone')}
+                className={`w-full px-4 py-3 border rounded-DEFAULT bg-surface-container-lowest font-body-md text-on-surface focus:outline-none focus:ring-0 focus:border-primary focus:border-[2px] transition-all min-h-[44px] ${
+                  errors.phone ? 'border-red-500' : 'border-outline-variant'
+                }`}
               />
-            </div>
+            </FormField>
 
-            <div className="mb-6">
-              <label className="block font-label-md text-label-md text-on-surface mb-xs" htmlFor="address">Business Address</label>
+            <FormField label="Business Address" error={errors.address} className="mb-6">
               <input 
                 id="address" 
-                name="address" 
                 type="text" 
                 placeholder="123 Main St, City, ST"
-                className="w-full px-4 py-3 border border-outline-variant rounded-DEFAULT bg-surface-container-lowest font-body-md text-on-surface focus:outline-none focus:ring-0 focus:border-primary focus:border-[2px] transition-all min-h-[44px]"
-                value={formData.address}
-                onChange={handleChange}
+                {...register('address')}
+                className={`w-full px-4 py-3 border rounded-DEFAULT bg-surface-container-lowest font-body-md text-on-surface focus:outline-none focus:ring-0 focus:border-primary focus:border-[2px] transition-all min-h-[44px] ${
+                  errors.address ? 'border-red-500' : 'border-outline-variant'
+                }`}
               />
-            </div>
+            </FormField>
 
             <button 
               type="submit" 
-              disabled={loading || !formData.name}
-              className="w-full bg-primary text-on-primary font-title-md text-title-md py-3 px-4 rounded-DEFAULT hover:bg-primary-container transition-colors min-h-[44px] flex items-center justify-center disabled:opacity-50 mt-4"
+              disabled={isSubmitting}
+              className="w-full bg-primary text-on-primary font-title-md text-title-md py-3 px-4 rounded-DEFAULT hover:bg-primary-container transition-colors min-h-[44px] flex items-center justify-center disabled:opacity-50 mt-4 cursor-pointer gap-2"
             >
-              {loading ? 'Creating...' : 'Create Workspace'}
+              {isSubmitting && (
+                <div className="inline-block animate-spin rounded-full h-4 w-4 border-2 border-black border-t-transparent"></div>
+              )}
+              <span>{isSubmitting ? 'Creating...' : 'Create Workspace'}</span>
             </button>
           </form>
 
@@ -127,7 +115,7 @@ export const Onboarding = () => {
                   await signOut();
                   window.location.href = '/login';
                 }}
-                className="w-full text-on-surface border border-outline-variant hover:bg-surface-container-high transition-colors font-title-sm py-2 px-4 rounded-DEFAULT flex items-center justify-center gap-2"
+                className="w-full text-on-surface border border-outline-variant hover:bg-surface-container-high transition-colors font-title-sm py-2 px-4 rounded-DEFAULT flex items-center justify-center gap-2 cursor-pointer"
               >
                 <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>logout</span>
                 Log Out

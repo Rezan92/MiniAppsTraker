@@ -1,7 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
+import { useInvitation, useAcceptInvitation } from '../hooks/api/useInvitations';
+import { translateApiError } from '../utils/errorTranslator';
 
 export const Join = () => {
   const { token } = useParams();
@@ -9,55 +11,20 @@ export const Join = () => {
   const navigate = useNavigate();
   const { showSuccess, showError } = useToast();
   
-  const [inviteData, setInviteData] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [accepting, setAccepting] = useState(false);
-
-  useEffect(() => {
-    const fetchInvite = async () => {
-      try {
-        const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:4000'}/api/invitations/${token}`);
-        const json = await res.json();
-        
-        if (!res.ok || !json.success) {
-          throw new Error(json.error || 'Invalid invitation link');
-        }
-        
-        setInviteData(json.data);
-      } catch (err) {
-        setError(err.message);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchInvite();
-  }, [token]);
+  const { data: inviteData, isLoading: loading, error: queryError } = useInvitation(token);
+  const acceptMutation = useAcceptInvitation();
 
   const handleAccept = async () => {
-    setAccepting(true);
-    try {
-      const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:4000'}/api/invitations/${token}/accept`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${session.access_token}`
-        }
-      });
-      const json = await res.json();
-
-      if (!res.ok || !json.success) {
-        throw new Error(json.error || 'Failed to accept invitation');
+    acceptMutation.mutate(token, {
+      onSuccess: async () => {
+        showSuccess('Successfully joined workspace!');
+        await refreshUserData();
+        window.location.href = '/?toast=joined_workspace';
       }
-
-      await refreshUserData();
-      // Hard redirect to clear any previous tenant cache
-      window.location.href = '/?toast=joined_workspace'; 
-    } catch (err) {
-      showError(err.message);
-    } finally {
-      setAccepting(false);
-    }
+    });
   };
+
+  const error = queryError ? translateApiError(queryError) : null;
 
   if (loading) {
     return (

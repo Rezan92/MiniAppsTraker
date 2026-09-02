@@ -56,7 +56,7 @@ export const DashboardLayout = ({ children }) => {
   return (
     <div className="antialiased min-h-screen flex font-body-md text-body-md text-on-surface bg-background">
       {/* SideNavBar */}
-      <nav className="hidden md:flex bg-[#1F2937] text-white font-body-md text-body-md docked left-0 h-full w-[280px] border-r border-[#374151] flat no shadows fixed top-0 flex-col p-4 z-40">
+      <nav className="hidden md:flex bg-inverse-surface text-white font-body-md text-body-md docked left-0 h-full w-[280px] border-r border-on-surface-variant flat no shadows fixed top-0 flex-col p-4 z-40">
         <div className="mb-8 px-2 mt-4">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 bg-primary rounded flex items-center justify-center font-headline-md font-bold text-black shrink-0">P</div>
@@ -130,7 +130,7 @@ export const DashboardLayout = ({ children }) => {
         </ul>
         
         <button 
-          onClick={() => setJobModalOpen(true)}
+          onClick={() => navigate('/jobs')}
           className="w-full flex items-center justify-center gap-2 bg-primary hover:bg-opacity-90 text-black py-2.5 rounded font-body-md font-bold transition-all shadow-[0_0_15px_rgba(245,158,11,0.2)] active:scale-95 duration-150 cursor-pointer"
         >
           <span className="material-symbols-outlined text-black" style={{ fontSize: '18px' }}>add</span>
@@ -139,7 +139,7 @@ export const DashboardLayout = ({ children }) => {
       </nav>
 
       {/* Main Content Area */}
-      <main className="flex-1 md:ml-[280px] flex flex-col h-screen bg-[#F9FAFB] relative overflow-hidden">
+      <main className="flex-1 md:ml-[280px] flex flex-col h-screen bg-surface-bright relative overflow-hidden">
         
         {/* TopAppBar */}
         <header className="bg-white border-b border-gray-200 flex justify-between items-center px-6 py-4 sticky top-0 z-30">

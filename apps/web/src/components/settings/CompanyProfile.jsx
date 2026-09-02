@@ -1,89 +1,90 @@
 import React, { useState, useEffect } from 'react';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
 import { useAuth } from '../../contexts/AuthContext';
 import { useToast } from '../../contexts/ToastContext';
+import { FormField } from '../common/FormField';
 import { DeleteWorkspaceModal } from './DeleteWorkspaceModal';
+import { companyProfileSchema } from '../../schemas/companyProfileSchema';
+import { useWorkspaceDetails, useUpdateWorkspaceDetails } from '../../hooks/api/useWorkspaceDetails';
 
 export const CompanyProfile = () => {
-  const { userData, session, refreshUserData } = useAuth();
-  const { showSuccess, showError } = useToast();
-  
+  const { userData, refreshUserData } = useAuth();
+  const { showSuccess } = useToast();
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  
-  const [formData, setFormData] = useState({
-    name: '',
-    address: '',
-    phone: '',
-    timezone: 'UTC',
-    business_tagline: '',
-    payment_method: '',
-    payment_details: ''
-  });
 
   const isAdmin = userData?.role === 'admin';
+  const tenantId = userData?.tenant_id;
+
+  const { data: workspace, isLoading } = useWorkspaceDetails(tenantId);
+  const updateMutation = useUpdateWorkspaceDetails();
+
+  const {
+    register,
+    handleSubmit,
+    reset,
+    formState: { errors, isSubmitting, isDirty }
+  } = useForm({
+    resolver: zodResolver(companyProfileSchema),
+    mode: 'onChange',
+    defaultValues: {
+      name: '',
+      phone: '',
+      address: '',
+      timezone: 'UTC',
+      business_tagline: '',
+      payment_method: '',
+      payment_details: ''
+    }
+  });
 
   useEffect(() => {
-    const fetchWorkspace = async () => {
-      if (!userData?.tenant_id) return;
-      try {
-        const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:4000'}/api/auth/workspaces/${userData.tenant_id}`, {
-          headers: { 'Authorization': `Bearer ${session.access_token}` }
-        });
-        const json = await res.json();
-        if (res.ok && json.success) {
-          setFormData({
-            name: json.data.name || '',
-            address: json.data.address || '',
-            phone: json.data.phone || '',
-            timezone: json.data.timezone || 'UTC',
-            business_tagline: json.data.business_tagline || '',
-            payment_method: json.data.payment_method || '',
-            payment_details: json.data.payment_details || ''
-          });
-        }
-      } catch (err) {
-        console.error('Failed to load workspace:', err);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchWorkspace();
-  }, [userData?.tenant_id, session]);
-
-  const handleSave = async (e) => {
-    e.preventDefault();
-    if (!isAdmin) return;
-    setSaving(true);
-    try {
-      const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:4000'}/api/auth/workspaces/${userData.tenant_id}`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session.access_token}`
-        },
-        body: JSON.stringify(formData)
+    if (workspace) {
+      reset({
+        name: workspace.name || '',
+        phone: workspace.phone || '',
+        address: workspace.address || '',
+        timezone: workspace.timezone || 'UTC',
+        business_tagline: workspace.business_tagline || '',
+        payment_method: workspace.payment_method || '',
+        payment_details: workspace.payment_details || ''
       });
-      const json = await res.json();
-      if (!res.ok || !json.success) {
-        throw new Error(json.error || 'Failed to update workspace');
+    }
+  }, [workspace, reset]);
+
+  const onSubmit = async (data) => {
+    if (!isAdmin || !tenantId) return;
+    updateMutation.mutate(
+      { tenantId, ...data },
+      {
+        onSuccess: async () => {
+          await refreshUserData();
+        }
       }
-      showSuccess('Company profile updated');
-      await refreshUserData();
-    } catch (err) {
-      showError(err.message);
-    } finally {
-      setSaving(false);
+    );
+  };
+
+  const handleCancel = () => {
+    if (workspace) {
+      reset({
+        name: workspace.name || '',
+        phone: workspace.phone || '',
+        address: workspace.address || '',
+        timezone: workspace.timezone || 'UTC',
+        business_tagline: workspace.business_tagline || '',
+        payment_method: workspace.payment_method || '',
+        payment_details: workspace.payment_details || ''
+      });
     }
   };
 
-  const handleChange = (e) => {
-    setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
-  };
-
-  if (loading) {
-    return <div className="p-8 text-on-surface-variant">Loading profile...</div>;
+  if (isLoading) {
+    return (
+      <div className="p-8 text-center text-on-surface-variant flex items-center justify-center gap-2">
+        <div className="inline-block animate-spin rounded-full h-5 w-5 border-2 border-primary border-t-transparent"></div>
+        <span>Loading company profile...</span>
+      </div>
+    );
   }
 
   return (
@@ -93,7 +94,7 @@ export const CompanyProfile = () => {
         <p className="font-body-md text-body-md text-on-surface-variant mb-6">Manage your business details and workspace settings.</p>
       </div>
 
-      <form onSubmit={handleSave} className="bg-surface-container-lowest border border-outline-variant rounded-xl p-6 shadow-sm">
+      <form onSubmit={handleSubmit(onSubmit)} className="bg-surface-container-lowest border border-outline-variant rounded-xl p-6 shadow-sm">
         <h3 className="font-title-md text-title-md text-on-surface mb-6 border-b border-outline-variant pb-4">Basic Information</h3>
         
         <div className="space-y-6">
@@ -104,13 +105,13 @@ export const CompanyProfile = () => {
               <input 
                 type="text" 
                 readOnly
-                value={userData?.tenant_id || ''}
+                value={tenantId || ''}
                 className="w-full md:w-1/2 px-4 py-3 border border-outline-variant rounded-DEFAULT bg-surface-container-high font-body-sm text-on-surface-variant font-mono cursor-not-allowed"
               />
               <button
                 type="button"
                 onClick={() => {
-                  navigator.clipboard.writeText(userData?.tenant_id || '');
+                  navigator.clipboard.writeText(tenantId || '');
                   showSuccess('Workspace ID copied to clipboard');
                 }}
                 className="p-3 border border-outline-variant rounded-DEFAULT hover:bg-surface-container-high transition-colors text-on-surface-variant cursor-pointer flex items-center justify-center"
@@ -131,56 +132,50 @@ export const CompanyProfile = () => {
               </div>
               <div className="text-sm text-on-surface-variant">
                 <p>Upload functionality coming soon.</p>
-                {/* // TODO: Wire to Supabase Storage — Epic TBD */}
               </div>
             </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-              <label className="block font-label-md text-label-md text-on-surface mb-xs">Business Name <span className="text-red-500">*</span></label>
+            <FormField label="Business Name" required error={errors.name}>
               <input 
                 type="text" 
-                name="name"
-                required
                 disabled={!isAdmin}
-                value={formData.name}
-                onChange={handleChange}
-                className="w-full px-4 py-3 border border-outline-variant rounded-DEFAULT bg-surface-container-lowest font-body-md text-on-surface focus:ring-1 focus:ring-primary focus:border-primary transition-all disabled:opacity-60"
+                {...register('name')}
+                className={`w-full px-4 py-3 border rounded-DEFAULT bg-surface-container-lowest font-body-md text-on-surface focus:ring-1 focus:ring-primary focus:border-primary transition-all disabled:opacity-60 ${
+                  errors.name ? 'border-red-500' : 'border-outline-variant'
+                }`}
               />
-            </div>
+            </FormField>
             
-            <div>
-              <label className="block font-label-md text-label-md text-on-surface mb-xs">Phone Number</label>
+            <FormField label="Phone Number" error={errors.phone}>
               <input 
                 type="tel" 
-                name="phone"
                 disabled={!isAdmin}
-                value={formData.phone}
-                onChange={handleChange}
-                className="w-full px-4 py-3 border border-outline-variant rounded-DEFAULT bg-surface-container-lowest font-body-md text-on-surface focus:ring-1 focus:ring-primary focus:border-primary transition-all disabled:opacity-60"
+                {...register('phone')}
+                placeholder="e.g. 555-0199"
+                className={`w-full px-4 py-3 border rounded-DEFAULT bg-surface-container-lowest font-body-md text-on-surface focus:ring-1 focus:ring-primary focus:border-primary transition-all disabled:opacity-60 ${
+                  errors.phone ? 'border-red-500' : 'border-outline-variant'
+                }`}
               />
-            </div>
+            </FormField>
 
-            <div className="md:col-span-2">
-              <label className="block font-label-md text-label-md text-on-surface mb-xs">Address</label>
+            <FormField label="Address" error={errors.address} className="md:col-span-2">
               <input 
                 type="text" 
-                name="address"
                 disabled={!isAdmin}
-                value={formData.address}
-                onChange={handleChange}
-                className="w-full px-4 py-3 border border-outline-variant rounded-DEFAULT bg-surface-container-lowest font-body-md text-on-surface focus:ring-1 focus:ring-primary focus:border-primary transition-all disabled:opacity-60"
+                {...register('address')}
+                placeholder="e.g. 123 Main St, Suite 100"
+                className={`w-full px-4 py-3 border rounded-DEFAULT bg-surface-container-lowest font-body-md text-on-surface focus:ring-1 focus:ring-primary focus:border-primary transition-all disabled:opacity-60 ${
+                  errors.address ? 'border-red-500' : 'border-outline-variant'
+                }`}
               />
-            </div>
+            </FormField>
 
-            <div>
-              <label className="block font-label-md text-label-md text-on-surface mb-xs">Timezone</label>
+            <FormField label="Timezone" error={errors.timezone}>
               <select
-                name="timezone"
                 disabled={!isAdmin}
-                value={formData.timezone}
-                onChange={handleChange}
+                {...register('timezone')}
                 className="w-full px-4 py-3 border border-outline-variant rounded-DEFAULT bg-surface-container-lowest font-body-md text-on-surface focus:ring-1 focus:ring-primary focus:border-primary transition-all disabled:opacity-60"
               >
                 <option value="UTC">UTC</option>
@@ -189,51 +184,42 @@ export const CompanyProfile = () => {
                 <option value="America/Denver">Mountain Time (US & Canada)</option>
                 <option value="America/Los_Angeles">Pacific Time (US & Canada)</option>
               </select>
-            </div>
+            </FormField>
           </div>
           
           {/* Invoice & Payment Settings */}
           <div className="pt-6 border-t border-outline-variant mt-6">
             <h4 className="font-title-sm text-title-sm text-on-surface mb-4">Invoice & Payment Settings</h4>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="md:col-span-2">
-                <label className="block font-label-md text-label-md text-on-surface mb-xs">Business Tagline (Printed on Invoices)</label>
+              <FormField label="Business Tagline (Printed on Invoices)" error={errors.business_tagline} className="md:col-span-2">
                 <input 
                   type="text" 
-                  name="business_tagline"
                   disabled={!isAdmin}
-                  value={formData.business_tagline}
-                  onChange={handleChange}
+                  {...register('business_tagline')}
                   placeholder="e.g. Quality work at a fair price"
                   className="w-full px-4 py-3 border border-outline-variant rounded-DEFAULT bg-surface-container-lowest font-body-md text-on-surface focus:ring-1 focus:ring-primary focus:border-primary transition-all disabled:opacity-60"
                 />
-              </div>
+              </FormField>
 
-              <div>
-                <label className="block font-label-md text-label-md text-on-surface mb-xs">Payment Method Name</label>
+              <FormField label="Payment Method Name" error={errors.payment_method}>
                 <input 
                   type="text" 
-                  name="payment_method"
                   disabled={!isAdmin}
-                  value={formData.payment_method}
-                  onChange={handleChange}
+                  {...register('payment_method')}
                   placeholder="e.g. Bank Transfer, Venmo, Check"
                   className="w-full px-4 py-3 border border-outline-variant rounded-DEFAULT bg-surface-container-lowest font-body-md text-on-surface focus:ring-1 focus:ring-primary focus:border-primary transition-all disabled:opacity-60"
                 />
-              </div>
+              </FormField>
 
-              <div>
-                <label className="block font-label-md text-label-md text-on-surface mb-xs">Payment Details</label>
+              <FormField label="Payment Details" error={errors.payment_details}>
                 <input 
                   type="text" 
-                  name="payment_details"
                   disabled={!isAdmin}
-                  value={formData.payment_details}
-                  onChange={handleChange}
+                  {...register('payment_details')}
                   placeholder="e.g. Routing/Account # or @username"
                   className="w-full px-4 py-3 border border-outline-variant rounded-DEFAULT bg-surface-container-lowest font-body-md text-on-surface focus:ring-1 focus:ring-primary focus:border-primary transition-all disabled:opacity-60"
                 />
-              </div>
+              </FormField>
             </div>
           </div>
         </div>
@@ -242,18 +228,21 @@ export const CompanyProfile = () => {
           <div className="mt-8 flex justify-end gap-3 pt-6 border-t border-outline-variant">
             <button 
               type="button" 
-              onClick={() => fetchWorkspace()}
-              disabled={saving}
+              onClick={handleCancel}
+              disabled={isSubmitting || updateMutation.isPending || !isDirty}
               className="px-6 py-2 border border-outline-variant text-on-surface font-title-sm rounded-DEFAULT hover:bg-surface-container-high transition-colors cursor-pointer disabled:opacity-50"
             >
               Cancel
             </button>
             <button 
               type="submit" 
-              disabled={saving}
-              className="px-6 py-2 bg-primary text-on-primary font-title-sm rounded-DEFAULT hover:opacity-90 transition-opacity shadow-sm cursor-pointer disabled:opacity-50"
+              disabled={isSubmitting || updateMutation.isPending}
+              className="px-6 py-2 bg-primary text-on-primary font-title-sm rounded-DEFAULT hover:opacity-90 transition-opacity shadow-sm cursor-pointer disabled:opacity-50 flex items-center gap-2"
             >
-              {saving ? 'Saving...' : 'Save Changes'}
+              {(isSubmitting || updateMutation.isPending) && (
+                <div className="inline-block animate-spin rounded-full h-4 w-4 border-2 border-black border-t-transparent"></div>
+              )}
+              <span>{isSubmitting || updateMutation.isPending ? 'Saving...' : 'Save Changes'}</span>
             </button>
           </div>
         )}
@@ -290,8 +279,8 @@ export const CompanyProfile = () => {
         <DeleteWorkspaceModal 
           isOpen={deleteModalOpen} 
           onClose={() => setDeleteModalOpen(false)} 
-          tenantName={formData.name || userData?.tenant_name}
-          tenantId={userData?.tenant_id}
+          tenantName={workspace?.name || userData?.tenant_name}
+          tenantId={tenantId}
         />
       )}
     </div>
