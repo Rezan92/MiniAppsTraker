@@ -2,8 +2,10 @@ import express from 'express';
 import { z } from 'zod';
 import { supabase } from '../config/supabase.js';
 import { authenticate } from '../middleware/auth.js';
+import { authLimiter } from '../middleware/rateLimiter.js';
 
 const router = express.Router();
+router.use(authLimiter);
 
 // GET /api/auth/me
 router.get('/me', authenticate, (req, res) => {

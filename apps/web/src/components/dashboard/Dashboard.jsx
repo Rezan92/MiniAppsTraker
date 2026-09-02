@@ -2,8 +2,10 @@ import React, { useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
-import { CreateClientModal } from '../shared/CreateClientModal';
-import { CreateJobModal } from '../shared/CreateJobModal';
+import { AddClientModal } from '../clients/AddClientModal';
+import { AddJobModal } from '../jobs/AddJobModal';
+import { useClients, useCreateClient } from '../../hooks/api/useClients';
+import { useCreateJob } from '../../hooks/api/useJobs';
 import { INVOICE_STATUSES, JOB_STATUSES, STATUS_COLORS } from '../../utils/constants';
 
 export const Dashboard = () => {
@@ -14,6 +16,28 @@ export const Dashboard = () => {
   const [jobModalOpen, setJobModalOpen] = useState(false);
   const [activeTab, setActiveTab] = useState('all');
   const [jobTab, setJobTab] = useState('all');
+
+  const createClientMutation = useCreateClient();
+  const createJobMutation = useCreateJob();
+  const { data: clientsData = [] } = useClients();
+
+  const handleCreateClient = (data) => {
+    createClientMutation.mutate(data, {
+      onSuccess: () => {
+        setClientModalOpen(false);
+        refetch();
+      }
+    });
+  };
+
+  const handleCreateJob = (data) => {
+    createJobMutation.mutate(data, {
+      onSuccess: () => {
+        setJobModalOpen(false);
+        refetch();
+      }
+    });
+  };
 
   const { data: summary, isLoading, error, refetch } = useQuery({
     queryKey: ['dashboardSummary', userData?.tenant_id],
@@ -312,8 +336,17 @@ export const Dashboard = () => {
         </div>
       </div>
 
-      <CreateClientModal open={clientModalOpen} onClose={() => { setClientModalOpen(false); refetch(); }} />
-      <CreateJobModal open={jobModalOpen} onClose={() => { setJobModalOpen(false); refetch(); }} />
+      <AddClientModal 
+        open={clientModalOpen} 
+        onClose={() => setClientModalOpen(false)} 
+        onSubmit={handleCreateClient}
+      />
+      <AddJobModal 
+        open={jobModalOpen} 
+        onClose={() => setJobModalOpen(false)} 
+        onSubmit={handleCreateJob}
+        clients={clientsData}
+      />
     </div>
   );
 };

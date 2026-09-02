@@ -2,22 +2,22 @@ import express from 'express';
 import { z } from 'zod';
 import { supabase } from '../config/supabase.js';
 import { authenticate } from '../middleware/auth.js';
+import { requireRole } from '../middleware/rbac.js';
+import { inviteLimiter } from '../middleware/rateLimiter.js';
 
 const router = express.Router();
+router.use(inviteLimiter);
 
 const inviteSchema = z.object({
-  email: z.string().email(),
+  email: z.string().email('Please provide a valid email address'),
   role: z.enum(['admin', 'employee']).default('employee')
 });
 
 // POST /api/invitations - Generate an invite (Admin only)
-router.post('/', authenticate, async (req, res, next) => {
+router.post('/', authenticate, requireRole('admin'), async (req, res, next) => {
   try {
     if (!req.user || !req.user.tenant_id) {
       return res.status(400).json({ success: false, error: 'Tenant context missing' });
-    }
-    if (req.user.role !== 'admin') {
-      return res.status(403).json({ success: false, error: 'Only admins can send invitations' });
     }
 
     const result = inviteSchema.safeParse(req.body);
@@ -35,11 +35,20 @@ router.post('/', authenticate, async (req, res, next) => {
 
     if (error) throw error;
 
-    // Simulate sending email by logging to console
-    const joinUrl = `http://localhost:5173/join/${invite.token}`;
+    // Dynamically resolve client application URL
+    const rawOrigin = process.env.CLIENT_URL || process.env.APP_URL || req.headers.origin || 'http://localhost:5173';
+    const clientUrl = rawOrigin.replace(/\/+$/, '');
+    const joinUrl = `${clientUrl}/join/${invite.token}`;
     console.log(`\n\n=== INVITATION EMAIL ===\nTo: ${email}\nLink: ${joinUrl}\n========================\n\n`);
 
-    res.json({ success: true, data: { message: 'Invitation sent successfully', token: invite.token } });
+    res.json({
+      success: true,
+      data: {
+        message: 'Invitation sent successfully',
+        token: invite.token,
+        joinUrl
+      }
+    });
   } catch (err) {
     next(err);
   }

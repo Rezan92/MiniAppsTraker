@@ -4,7 +4,6 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useToast } from '../../contexts/ToastContext';
 import { useWorkspace } from '../../contexts/WorkspaceContext';
 import { CreateWorkspaceModal } from './CreateWorkspaceModal';
-import { CreateJobModal } from '../shared/CreateJobModal';
 
 export const DashboardLayout = ({ children }) => {
   const { user, userData } = useAuth();
@@ -15,7 +14,6 @@ export const DashboardLayout = ({ children }) => {
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const [createModalOpen, setCreateModalOpen] = useState(false);
-  const [jobModalOpen, setJobModalOpen] = useState(false);
   const dropdownRef = useRef(null);
   const profileRef = useRef(null);
 
@@ -239,10 +237,6 @@ export const DashboardLayout = ({ children }) => {
       <CreateWorkspaceModal 
         isOpen={createModalOpen} 
         onClose={() => setCreateModalOpen(false)} 
-      />
-      <CreateJobModal 
-        open={jobModalOpen}
-        onClose={() => setJobModalOpen(false)}
       />
     </div>
   );
