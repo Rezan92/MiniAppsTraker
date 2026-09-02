@@ -58,3 +58,10 @@ Never perform inline floating-point arithmetic for invoice line items, tax, or j
 **Never trigger hard browser reloads (`window.location.reload()`) for workspace operations.**
 Workspace switching, creation, and deletion must execute smoothly in-memory via `useWorkspace()`, updating React context and purging TanStack Query cache keys without page flicker.
 
+## Rule 12: Deep Architectural Forethought & Precise Change Execution
+**Always think deeply and plan comprehensively before modifying, replacing, or refactoring code.**
+As a senior developer:
+- Never blindly replace blocks of code or make rushed changes without understanding all connected consumers, schemas, and type contracts.
+- Mentally trace data flows, side effects, and edge cases across frontend and backend before executing.
+- Ensure every line written or replaced is 100% intentional, accurate, robust, and aligned with project architectural rules.
+

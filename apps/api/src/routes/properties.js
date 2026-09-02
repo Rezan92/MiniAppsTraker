@@ -2,6 +2,7 @@ import express from 'express';
 import { z } from 'zod';
 import { supabase } from '../config/supabase.js';
 import { authenticate } from '../middleware/auth.js';
+import { createApiError } from '../middleware/errorHandler.js';
 
 const router = express.Router();
 router.use(authenticate);
@@ -13,12 +14,14 @@ const propertySchema = z.object({
   renter_name: z.string().optional().nullable(),
   renter_phone: z.string().optional().nullable(),
   notes: z.string().optional().nullable()
-});
+}).strict();
+
+const propertyUpdateSchema = propertySchema.omit({ client_id: true }).partial().strict();
 
 router.get('/', async (req, res, next) => {
   try {
     if (!req.user || !req.user.tenant_id) {
-      return res.status(400).json({ success: false, error: 'Tenant context missing' });
+      return next(createApiError('Tenant context missing', 400, 'TENANT_REQUIRED'));
     }
 
     const { client_id } = req.query;
@@ -41,11 +44,10 @@ router.get('/', async (req, res, next) => {
   }
 });
 
-// GET single property by ID
 router.get('/:id', async (req, res, next) => {
   try {
     if (!req.user || !req.user.tenant_id) {
-      return res.status(400).json({ success: false, error: 'Tenant context missing' });
+      return next(createApiError('Tenant context missing', 400, 'TENANT_REQUIRED'));
     }
 
     const { data, error } = await supabase
@@ -57,7 +59,7 @@ router.get('/:id', async (req, res, next) => {
 
     if (error) {
       if (error.code === 'PGRST116') {
-        return res.status(404).json({ success: false, error: 'Property not found' });
+        return next(createApiError('Property not found', 404, 'NOT_FOUND'));
       }
       return next(error);
     }
@@ -71,15 +73,12 @@ router.get('/:id', async (req, res, next) => {
 router.post('/', async (req, res, next) => {
   try {
     if (!req.user || !req.user.tenant_id) {
-      return res.status(400).json({ success: false, error: 'Tenant context missing' });
+      return next(createApiError('Tenant context missing', 400, 'TENANT_REQUIRED'));
     }
 
     const result = propertySchema.safeParse(req.body);
     if (!result.success) {
-      const err = new Error(result.error.issues[0].message);
-      err.status = 400;
-      err.code = 'VALIDATION_ERROR';
-      return next(err);
+      return next(result.error);
     }
 
     const { client_id, name, address, renter_name, renter_phone, notes } = result.data;
@@ -93,7 +92,7 @@ router.post('/', async (req, res, next) => {
       .single();
 
     if (clientError || !clientData) {
-      return res.status(404).json({ success: false, error: 'Client not found' });
+      return next(createApiError('Client not found', 404, 'NOT_FOUND'));
     }
 
     const { data, error } = await supabase
@@ -112,29 +111,24 @@ router.post('/', async (req, res, next) => {
 router.put('/:id', async (req, res, next) => {
   try {
     if (!req.user || !req.user.tenant_id) {
-      return res.status(400).json({ success: false, error: 'Tenant context missing' });
+      return next(createApiError('Tenant context missing', 400, 'TENANT_REQUIRED'));
     }
 
-    const result = propertySchema.safeParse(req.body);
+    const result = propertyUpdateSchema.safeParse(req.body);
     if (!result.success) {
-      const err = new Error(result.error.issues[0].message);
-      err.status = 400;
-      err.code = 'VALIDATION_ERROR';
-      return next(err);
+      return next(result.error);
     }
-
-    const { name, address, renter_name, renter_phone, notes } = result.data;
 
     const { data, error } = await supabase
       .from('rental_properties')
-      .update({ name, address, renter_name, renter_phone, notes })
+      .update(result.data)
       .eq('id', req.params.id)
       .eq('tenant_id', req.user.tenant_id)
       .select();
 
     if (error) return next(error);
     if (!data || data.length === 0) {
-      return res.status(404).json({ success: false, error: 'Property not found' });
+      return next(createApiError('Property not found', 404, 'NOT_FOUND'));
     }
 
     res.json({ success: true, data: data[0] });
@@ -146,16 +140,20 @@ router.put('/:id', async (req, res, next) => {
 router.delete('/:id', async (req, res, next) => {
   try {
     if (!req.user || !req.user.tenant_id) {
-      return res.status(400).json({ success: false, error: 'Tenant context missing' });
+      return next(createApiError('Tenant context missing', 400, 'TENANT_REQUIRED'));
     }
 
-    const { error } = await supabase
+    const { data, error } = await supabase
       .from('rental_properties')
       .delete()
       .eq('id', req.params.id)
-      .eq('tenant_id', req.user.tenant_id);
+      .eq('tenant_id', req.user.tenant_id)
+      .select();
 
     if (error) return next(error);
+    if (!data || data.length === 0) {
+      return next(createApiError('Property not found or already deleted', 404, 'NOT_FOUND'));
+    }
 
     res.json({ success: true });
   } catch (err) {

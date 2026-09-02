@@ -127,10 +127,10 @@ This document serves as the comprehensive architectural audit, security review, 
 | 2 | Rate Limiting on Public Auth & Invite Endpoints | Security | **P0 (Critical)** | Low | High | **Completed** | `apps/api/src/routes/` |
 | 3 | Unified RBAC Middleware (`requireRole`) | Security | **P0 (Critical)** | Low | High | **Completed** | `apps/api/src/middleware/rbac.js` |
 | 4 | Purge Duplicate `CreateJobModal` & `CreateClientModal` | Clean Code | **P1 (High)** | Low | High | **Completed** | `apps/web/src/components/shared/` |
-| 5 | Replace Direct `fetch()` with `useDashboardSummary` | Architecture | **P1 (High)** | Medium | High | *Pending* | `apps/web/src/components/dashboard/` |
-| 6 | Unified Backend API Response & Error Contract | Architecture | **P1 (High)** | Medium | High | *Pending* | `apps/api/src/` |
+| 5 | Replace Direct `fetch()` with `useDashboardSummary` | Architecture | **P1 (High)** | Medium | High | **Completed** | `apps/web/src/components/dashboard/` |
+| 6 | Unified Backend API Response & Error Contract | Architecture | **P1 (High)** | Medium | High | **Completed** | `apps/api/src/` |
 | 7 | Migrate Company Profile & Auth to React Hook Form | Code Quality | **P1 (High)** | Medium | High | *Pending* | `apps/web/src/components/settings/` |
-| 8 | Strict Payload Validation on PATCH Routes | Data Integrity | **P1 (High)** | Low | Medium | *Pending* | `apps/api/src/routes/` |
+| 8 | Strict Payload Validation on PATCH Routes | Data Integrity | **P1 (High)** | Low | Medium | **Completed** | `apps/api/src/routes/` |
 | 9 | Route-Level Lazy Loading (`React.lazy`) | Performance | **P2 (Medium)** | Low | High | *Pending* | `apps/web/src/App.jsx` |
 | 10 | Tailwind Design System Token Alignment | UX / Styling | **P2 (Medium)** | Low | Medium | *Pending* | `apps/web/src/components/layout/` |
 | 11 | TanStack Query Global Stale Times | Performance | **P2 (Medium)** | Low | Medium | *Pending* | `apps/web/src/main.jsx` |

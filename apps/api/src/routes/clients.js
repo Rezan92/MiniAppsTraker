@@ -2,6 +2,7 @@ import express from 'express';
 import { z } from 'zod';
 import { supabase } from '../config/supabase.js';
 import { authenticate } from '../middleware/auth.js';
+import { createApiError } from '../middleware/errorHandler.js';
 
 const router = express.Router();
 router.use(authenticate);
@@ -12,15 +13,15 @@ const clientSchema = z.object({
   company_name: z.string().optional().nullable(),
   email: z.string().email().optional().or(z.literal('')),
   phone: z.string().regex(/^\+?[\d\s\-\(\)]+$/, "Phone number must contain only numbers and formatting characters").optional().nullable(),
-  address: z.string().optional(),
-  notes: z.string().optional(),
+  address: z.string().optional().nullable(),
+  notes: z.string().optional().nullable(),
   status: z.enum(['active', 'inactive']).default('active')
-});
+}).strict();
 
 router.get('/', async (req, res, next) => {
   try {
     if (!req.user || !req.user.tenant_id) {
-      return res.status(400).json({ success: false, error: 'Tenant context missing' });
+      return next(createApiError('Tenant context missing', 400, 'TENANT_REQUIRED'));
     }
 
     const { search } = req.query;
@@ -45,7 +46,7 @@ router.get('/', async (req, res, next) => {
 router.get('/:id', async (req, res, next) => {
   try {
     if (!req.user || !req.user.tenant_id) {
-      return res.status(400).json({ success: false, error: 'Tenant context missing' });
+      return next(createApiError('Tenant context missing', 400, 'TENANT_REQUIRED'));
     }
 
     const { data, error } = await supabase
@@ -57,9 +58,9 @@ router.get('/:id', async (req, res, next) => {
 
     if (error) {
       if (error.code === 'PGRST116') {
-        return res.status(404).json({ success: false, error: 'Client not found' });
+        return next(createApiError('Client not found', 404, 'NOT_FOUND'));
       }
-      throw error;
+      return next(error);
     }
 
     res.json({ success: true, data });
@@ -71,15 +72,12 @@ router.get('/:id', async (req, res, next) => {
 router.post('/', async (req, res, next) => {
   try {
     if (!req.user || !req.user.tenant_id) {
-      return res.status(400).json({ success: false, error: 'Tenant context missing' });
+      return next(createApiError('Tenant context missing', 400, 'TENANT_REQUIRED'));
     }
 
     const result = clientSchema.safeParse(req.body);
     if (!result.success) {
-      const err = new Error(result.error.issues[0].message);
-      err.status = 400;
-      err.code = 'VALIDATION_ERROR';
-      return next(err);
+      return next(result.error);
     }
 
     const { name, client_type, company_name, email, phone, address, notes, status } = result.data;
@@ -93,7 +91,7 @@ router.post('/', async (req, res, next) => {
 
     if (error) return next(error);
     if (!data || data.length === 0) {
-      return res.status(500).json({ success: false, error: 'Failed to create client record' });
+      return next(createApiError('Failed to create client record', 500, 'DATABASE_ERROR'));
     }
 
     res.json({ success: true, data: data[0] });
@@ -105,15 +103,12 @@ router.post('/', async (req, res, next) => {
 router.put('/:id', async (req, res, next) => {
   try {
     if (!req.user || !req.user.tenant_id) {
-      return res.status(400).json({ success: false, error: 'Tenant context missing' });
+      return next(createApiError('Tenant context missing', 400, 'TENANT_REQUIRED'));
     }
 
     const result = clientSchema.safeParse(req.body);
     if (!result.success) {
-      const err = new Error(result.error.issues[0].message);
-      err.status = 400;
-      err.code = 'VALIDATION_ERROR';
-      return next(err);
+      return next(result.error);
     }
 
     const { name, client_type, company_name, email, phone, address, notes, status } = result.data;
@@ -129,7 +124,7 @@ router.put('/:id', async (req, res, next) => {
 
     if (error) return next(error);
     if (!data || data.length === 0) {
-      return res.status(404).json({ success: false, error: 'Client not found or update failed' });
+      return next(createApiError('Client not found or update failed', 404, 'NOT_FOUND'));
     }
 
     res.json({ success: true, data: data[0] });
@@ -141,7 +136,7 @@ router.put('/:id', async (req, res, next) => {
 router.delete('/:id', async (req, res, next) => {
   try {
     if (!req.user || !req.user.tenant_id) {
-      return res.status(400).json({ success: false, error: 'Tenant context missing' });
+      return next(createApiError('Tenant context missing', 400, 'TENANT_REQUIRED'));
     }
 
     const { data, error } = await supabase
@@ -153,7 +148,7 @@ router.delete('/:id', async (req, res, next) => {
 
     if (error) return next(error);
     if (!data || data.length === 0) {
-      return res.status(404).json({ success: false, error: 'Client not found or already deleted' });
+      return next(createApiError('Client not found or already deleted', 404, 'NOT_FOUND'));
     }
 
     res.json({ success: true });

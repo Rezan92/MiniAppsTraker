@@ -1,15 +1,15 @@
 import React, { useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
-import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { AddClientModal } from '../clients/AddClientModal';
 import { AddJobModal } from '../jobs/AddJobModal';
 import { useClients, useCreateClient } from '../../hooks/api/useClients';
 import { useCreateJob } from '../../hooks/api/useJobs';
+import { useDashboardSummary } from '../../hooks/api/useDashboard';
 import { INVOICE_STATUSES, JOB_STATUSES, STATUS_COLORS } from '../../utils/constants';
 
 export const Dashboard = () => {
-  const { session, userData } = useAuth();
+  const { userData } = useAuth();
   const navigate = useNavigate();
 
   const [clientModalOpen, setClientModalOpen] = useState(false);
@@ -20,6 +20,8 @@ export const Dashboard = () => {
   const createClientMutation = useCreateClient();
   const createJobMutation = useCreateJob();
   const { data: clientsData = [] } = useClients();
+
+  const { data: summary, isLoading, error, refetch } = useDashboardSummary(userData?.tenant_id);
 
   const handleCreateClient = (data) => {
     createClientMutation.mutate(data, {
@@ -38,19 +40,6 @@ export const Dashboard = () => {
       }
     });
   };
-
-  const { data: summary, isLoading, error, refetch } = useQuery({
-    queryKey: ['dashboardSummary', userData?.tenant_id],
-    queryFn: async () => {
-      const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:4000'}/api/dashboard/summary`, {
-        headers: { 'Authorization': `Bearer ${session.access_token}` }
-      });
-      const json = await res.json();
-      if (!res.ok || !json.success) throw new Error(json.error || 'Failed to fetch summary');
-      return json.data;
-    },
-    enabled: !!session && !!userData?.tenant_id
-  });
 
   const formatCurrency = (val) => {
     return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(val || 0);
