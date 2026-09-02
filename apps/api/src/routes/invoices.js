@@ -2,6 +2,7 @@ import express from 'express';
 import { z } from 'zod';
 import { supabase } from '../config/supabase.js';
 import { authenticate } from '../middleware/auth.js';
+import { createApiError } from '../middleware/errorHandler.js';
 import { calculateInvoiceFinancials } from '../services/pricingEngine.js';
 
 const router = express.Router();
@@ -124,7 +125,7 @@ router.get('/:id', async (req, res, next) => {
       .single();
 
     if (error) {
-      if (error.code === 'PGRST116') return res.status(404).json({ success: false, error: 'Invoice not found' });
+      if (error.code === 'PGRST116') return next(createApiError('Invoice not found', 404, 'NOT_FOUND'));
       throw error;
     }
 
@@ -138,7 +139,7 @@ router.post('/', async (req, res, next) => {
   try {
     const result = invoiceSchema.safeParse(req.body);
     if (!result.success) {
-      return res.status(400).json({ success: false, error: result.error.issues[0].message });
+      return next(result.error);
     }
 
     const { due_date, ...invoiceData } = result.data;
@@ -192,7 +193,7 @@ router.patch('/:id', async (req, res, next) => {
   try {
     const result = invoicePatchSchema.safeParse(req.body);
     if (!result.success) {
-      return res.status(400).json({ success: false, error: result.error.issues[0].message });
+      return next(result.error);
     }
 
     await enforceInvoiceEditability(req.params.id, req.user.tenant_id);
@@ -360,7 +361,7 @@ router.post('/:id/items', async (req, res, next) => {
   try {
     await enforceInvoiceEditability(req.params.id, req.user.tenant_id);
     const result = lineItemSchema.safeParse(req.body);
-    if (!result.success) return res.status(400).json({ success: false, error: result.error.errors[0].message });
+    if (!result.success) return next(result.error);
     
     const { source_type, source_id, description, amount, sort_order, is_billable, service_date, is_hidden } = result.data;
 
@@ -384,7 +385,7 @@ router.patch('/:id/items/:itemId', async (req, res, next) => {
   try {
     await enforceInvoiceEditability(req.params.id, req.user.tenant_id);
     const result = lineItemUpdateSchema.safeParse(req.body);
-    if (!result.success) return res.status(400).json({ success: false, error: result.error.errors[0].message });
+    if (!result.success) return next(result.error);
 
     const { data: item, error: itemError } = await supabase
       .from('invoice_line_items')
@@ -403,7 +404,7 @@ router.delete('/:id/items/:itemId', async (req, res, next) => {
   try {
     await enforceInvoiceEditability(req.params.id, req.user.tenant_id);
     const { data: item } = await supabase.from('invoice_line_items').select('source_id, source_type').eq('id', req.params.itemId).single();
-    if (!item) return res.status(404).json({ success: false, error: 'Item not found' });
+    if (!item) return next(createApiError('Item not found', 404, 'NOT_FOUND'));
 
     await supabase.from('invoice_line_items').delete().eq('id', req.params.itemId).eq('invoice_id', req.params.id);
 
@@ -428,7 +429,7 @@ router.patch('/:id/status', async (req, res, next) => {
   try {
     const result = statusSchema.safeParse(req.body);
     if (!result.success) {
-      return res.status(400).json({ success: false, error: result.error.issues[0].message });
+      return next(result.error);
     }
 
     const { status, reason } = result.data;
@@ -450,7 +451,7 @@ router.patch('/:id/status', async (req, res, next) => {
     if (status === 'draft' && existing.status !== 'draft') action = 'Reverted';
     
     if (['Reverted', 'Voided', 'Disputed'].includes(action) && !reason) {
-      return res.status(400).json({ success: false, error: 'A reason is required to revert, void, or dispute an invoice' });
+      return next(createApiError('A reason is required to revert, void, or dispute an invoice', 400, 'REASON_REQUIRED'));
     }
 
     const updateData = { status };
@@ -538,7 +539,7 @@ router.delete('/:id', async (req, res, next) => {
 
     if (checkError) throw checkError;
     if (existing.status !== 'draft') {
-      return res.status(403).json({ success: false, error: 'Only draft invoices can be deleted' });
+      return next(createApiError('Only draft invoices can be deleted', 403, 'INVOICE_NOT_DRAFT'));
     }
 
     const { data: items } = await supabase

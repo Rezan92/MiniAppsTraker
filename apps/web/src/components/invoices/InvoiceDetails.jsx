@@ -72,11 +72,33 @@ export const InvoiceDetails = () => {
   };
 
   if (isLoading) {
-    return <div className="p-8 text-center text-gray-500">Loading invoice details...</div>;
+    return (
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-16 text-center">
+        <div className="inline-block animate-spin rounded-full h-8 w-8 border-4 border-primary border-t-transparent mb-4"></div>
+        <p className="text-body-md text-gray-500 font-medium">Loading invoice details...</p>
+      </div>
+    );
   }
 
   if (!invoice) {
-    return <div className="p-8 text-center text-red-500">Invoice not found</div>;
+    return (
+      <div className="max-w-xl mx-auto px-4 py-16 text-center">
+        <div className="w-16 h-16 bg-red-50 text-red-500 rounded-full flex items-center justify-center mx-auto mb-4">
+          <span className="material-symbols-outlined text-3xl">receipt_long</span>
+        </div>
+        <h2 className="text-title-lg font-bold text-gray-900 mb-2">Invoice Not Found</h2>
+        <p className="text-body-md text-gray-600 mb-6">
+          The invoice you are looking for does not exist, may have been deleted, or belongs to another workspace.
+        </p>
+        <button
+          onClick={() => navigate('/invoices')}
+          className="inline-flex items-center gap-2 px-5 py-2.5 bg-primary text-white text-sm font-semibold rounded-lg hover:bg-primary-hover shadow-sm transition-colors cursor-pointer"
+        >
+          <span className="material-symbols-outlined text-[18px]">arrow_back</span>
+          Back to Invoices
+        </button>
+      </div>
+    );
   }
 
   const isDraft = invoice.status === 'draft';
