@@ -272,13 +272,13 @@ export const AI_TOOLS = [
     parameters: {
       type: 'OBJECT',
       properties: {
-        client_id: {
-          type: 'STRING',
-          description: 'UUID of the client to invoice (required)'
-        },
         job_id: {
           type: 'STRING',
-          description: 'Optional UUID of the job to bill for. If provided, automatically pulls unbilled hours and materials.'
+          description: 'UUID of the job to bill for. Automatically resolves the client, unbilled hours, and unbilled materials.'
+        },
+        client_id: {
+          type: 'STRING',
+          description: 'UUID of the client to invoice (optional if job_id is provided)'
         },
         labor_title: {
           type: 'STRING',
@@ -300,8 +300,7 @@ export const AI_TOOLS = [
           type: 'STRING',
           description: 'Optional invoice notes or payment instructions'
         }
-      },
-      required: ['client_id']
+      }
     }
   },
   {

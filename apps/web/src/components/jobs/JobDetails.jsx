@@ -96,6 +96,7 @@ export const JobDetails = () => {
     summary: {
       title: job?.title,
       clientName: job?.clients?.name,
+      clientId: job?.client_id,
       status: job?.status,
       rateType: job?.rate_type,
       hourlyRate: job?.hourly_rate,

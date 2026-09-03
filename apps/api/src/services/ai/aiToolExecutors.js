@@ -285,67 +285,77 @@ export async function executeAiTool(toolName, args = {}, { tenantId, userId }) {
       case 'draft_invoice': {
         const { client_id, job_id, labor_title, due_date, tax_rate_percent, markup_amount, notes } = args;
 
-        // 1. Verify client belongs to this tenant
-        const { data: client, error: clientErr } = await supabase
-          .from('clients')
-          .select('id, name')
-          .eq('id', client_id)
-          .eq('tenant_id', tenantId)
-          .single();
-
-        if (clientErr || !client) return { error: 'Client not found or unauthorized.' };
-
-        // 2. If job_id is provided, pull unbilled hours and materials
+        let targetClientId = client_id;
         let lineItems = [];
         let baseLabor = 0;
         let linkedJobTitle = labor_title || 'General Contracting Labor';
 
+        // 1. If job_id is provided, resolve job, client_id, labor rate, and unbilled items
         if (job_id) {
           const { data: job, error: jobErr } = await supabase
             .from('jobs')
-            .select('id, title, rate_type, hourly_rate, flat_rate')
+            .select('id, title, client_id, rate_type, hourly_rate, flat_rate')
             .eq('id', job_id)
             .eq('tenant_id', tenantId)
             .single();
 
-          if (!jobErr && job) {
-            linkedJobTitle = labor_title || job.title;
+          if (jobErr || !job) {
+            return { error: 'Job not found or unauthorized.' };
+          }
 
-            // Pull unbilled hours (scoped via job_id, no tenant_id column)
-            const { data: hoursList } = await supabase
-              .from('job_hours')
-              .select('*')
-              .eq('job_id', job_id)
-              .eq('billing_status', 'unbilled');
+          if (!targetClientId) {
+            targetClientId = job.client_id;
+          }
+          linkedJobTitle = labor_title || job.title;
 
-            // Pull unbilled materials (scoped via job_id, no tenant_id column)
-            const { data: materialsList } = await supabase
-              .from('job_materials')
-              .select('*')
-              .eq('job_id', job_id)
-              .eq('billing_status', 'unbilled');
+          // Pull unbilled hours (scoped via job_id, no tenant_id column)
+          const { data: hoursList } = await supabase
+            .from('job_hours')
+            .select('*')
+            .eq('job_id', job_id)
+            .eq('billing_status', 'unbilled');
 
-            // Calculate labor amount
-            if (job.rate_type === 'hourly') {
-              const rate = job.hourly_rate || resolveEffectiveHourlyRate({ isEmergency: false });
-              const totalHours = (hoursList || []).reduce((sum, h) => sum + Number(h.hours || 0), 0);
-              baseLabor = roundCurrency(totalHours * rate);
-            } else {
-              baseLabor = roundCurrency(job.flat_rate || 0);
-            }
+          // Pull unbilled materials (scoped via job_id, no tenant_id column)
+          const { data: materialsList } = await supabase
+            .from('job_materials')
+            .select('*')
+            .eq('job_id', job_id)
+            .eq('billing_status', 'unbilled');
 
-            // Build material line items
-            for (const m of (materialsList || [])) {
-              lineItems.push({
-                source_type: 'material',
-                source_id: m.id,
-                description: m.description,
-                amount: roundCurrency(m.cost),
-                is_billable: true
-              });
-            }
+          // Calculate labor amount
+          if (job.rate_type === 'hourly') {
+            const rate = job.hourly_rate || resolveEffectiveHourlyRate({ isEmergency: false });
+            const totalHours = (hoursList || []).reduce((sum, h) => sum + Number(h.hours || 0), 0);
+            baseLabor = roundCurrency(totalHours * rate);
+          } else {
+            baseLabor = roundCurrency(job.flat_rate || 0);
+          }
+
+          // Build material line items
+          for (const m of (materialsList || [])) {
+            lineItems.push({
+              source_type: 'material',
+              source_id: m.id,
+              description: m.description,
+              amount: roundCurrency(m.cost),
+              is_billable: true
+            });
           }
         }
+
+        if (!targetClientId) {
+          return { error: 'A valid client_id or job_id is required to draft an invoice.' };
+        }
+
+        // 2. Verify client belongs to this tenant
+        const { data: client, error: clientErr } = await supabase
+          .from('clients')
+          .select('id, name')
+          .eq('id', targetClientId)
+          .eq('tenant_id', tenantId)
+          .single();
+
+        if (clientErr || !client) return { error: 'Client not found or unauthorized.' };
 
         // 3. Deterministic financial calculations via pricingEngine.js (Rule 10)
         const financials = calculateInvoiceFinancials({
@@ -366,25 +376,22 @@ export async function executeAiTool(toolName, args = {}, { tenantId, userId }) {
         const invoiceNumber = `${nextNum}`;
         const defaultDueDate = due_date || new Date(Date.now() + 14 * 86400000).toISOString().split('T')[0];
 
-        // 5. Insert invoice
+        // 5. Insert invoice (strictly existing database columns)
         const { data: newInvoice, error: invErr } = await supabase
           .from('invoices')
           .insert([{
             tenant_id: tenantId,
-            client_id,
+            client_id: targetClientId,
             job_id: job_id || null,
             invoice_number: invoiceNumber,
             invoice_date: new Date().toISOString().split('T')[0],
             due_date: defaultDueDate,
             labor_title: linkedJobTitle,
+            labor_notes: notes || null,
             labor_amount: financials.laborAmount,
             materials_amount: financials.materialsAmount,
-            subtotal: financials.subtotal,
-            tax_rate_percent: tax_rate_percent || 0,
-            tax_amount: financials.taxAmount,
             total_amount: financials.totalAmount,
-            status: 'draft',
-            notes: notes || null
+            status: 'draft'
           }])
           .select()
           .single();
@@ -491,16 +498,13 @@ export async function executeAiTool(toolName, args = {}, { tenantId, userId }) {
 
         const financials = calculateInvoiceFinancials({
           baseLaborAmount: inv.labor_amount,
-          lineItems: allItems || [],
-          taxRatePercent: inv.tax_rate_percent || 0
+          lineItems: allItems || []
         });
 
         await supabase
           .from('invoices')
           .update({
             materials_amount: financials.materialsAmount,
-            subtotal: financials.subtotal,
-            tax_amount: financials.taxAmount,
             total_amount: financials.totalAmount
           })
           .eq('id', invoice_id);
