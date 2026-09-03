@@ -63,17 +63,39 @@ router.post('/chat', async (req, res, next) => {
     let currentTurn = 0;
     const maxTurns = 5;
 
+    let activeModel = targetModel;
+
     while (currentTurn < maxTurns) {
       currentTurn++;
 
-      const response = await ai.models.generateContent({
-        model: targetModel,
-        contents,
-        config: {
-          systemInstruction,
-          tools: [{ functionDeclarations: AI_TOOLS }]
+      let response;
+      try {
+        response = await ai.models.generateContent({
+          model: activeModel,
+          contents,
+          config: {
+            systemInstruction,
+            tools: [{ functionDeclarations: AI_TOOLS }]
+          }
+        });
+      } catch (callErr) {
+        // If Google API returns 404 or not found for a specific preview model, gracefully fall back to default
+        const isNotFound = callErr.message && (callErr.message.includes('not found') || callErr.message.includes('404') || callErr.status === 404);
+        if (isNotFound && activeModel !== DEFAULT_AI_MODEL) {
+          console.warn(`⚠️ [AI Engine] Model "${activeModel}" not available on Google API. Gracefully falling back to "${DEFAULT_AI_MODEL}".`);
+          activeModel = DEFAULT_AI_MODEL;
+          response = await ai.models.generateContent({
+            model: DEFAULT_AI_MODEL,
+            contents,
+            config: {
+              systemInstruction,
+              tools: [{ functionDeclarations: AI_TOOLS }]
+            }
+          });
+        } else {
+          throw callErr;
         }
-      });
+      }
 
       const candidate = response.candidates?.[0];
       const content = candidate?.content;
@@ -82,12 +104,13 @@ router.post('/chat', async (req, res, next) => {
       if (!functionCalls || functionCalls.length === 0) {
         // No function calls — Gemini provided a direct natural language response
         const replyText = content?.parts?.map(p => p.text).filter(Boolean).join('\n') || '';
-        console.log(`🤖 [AI Response] Reply: "${replyText.slice(0, 100)}..." | Mutations: ${triggeredMutations.length}`);
+        console.log(`🤖 [AI Response] Model: ${activeModel} | Reply: "${replyText.slice(0, 100)}..." | Mutations: ${triggeredMutations.length}`);
         return res.json({
           success: true,
           data: {
             reply: replyText,
-            triggered_mutations: triggeredMutations
+            triggered_mutations: triggeredMutations,
+            model_used: activeModel
           }
         });
       }
