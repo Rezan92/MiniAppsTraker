@@ -7,6 +7,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { NotFound } from '../errors/NotFound';
 import { PropertiesList } from './PropertiesList';
 import { InvoicesWidget } from '../common/InvoicesWidget';
+import { useScreenContext } from '../../contexts/AiContext';
 
 export const ClientDetails = () => {
   const { id } = useParams();
@@ -39,6 +40,21 @@ export const ClientDetails = () => {
     },
     enabled: !!session?.access_token && !!id
   });
+
+  // Register screen context envelope for AI Copilot
+  useScreenContext({
+    screen: 'ClientDetails',
+    entityId: id,
+    summary: {
+      name: client?.name,
+      company: client?.company_name,
+      email: client?.email,
+      phone: client?.phone,
+      status: client?.status,
+      propertiesCount: client?.properties?.length || 0,
+      jobsCount: jobs?.length || 0
+    }
+  }, [client, jobs, id]);
 
   useEffect(() => {
     if (client?.properties?.length === 1 && !jobFormData.property_id) {

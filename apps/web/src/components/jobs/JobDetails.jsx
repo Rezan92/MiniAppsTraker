@@ -11,6 +11,7 @@ import { NotFound } from '../errors/NotFound';
 import { translateApiError } from '../../utils/errorTranslator';
 import { STATUS_COLORS, JOB_STATUSES } from '../../utils/constants';
 import { StatusBadgeDropdown } from '../shared/StatusBadgeDropdown';
+import { useScreenContext } from '../../contexts/AiContext';
 
 export const JobDetails = () => {
   const { id } = useParams();
@@ -87,6 +88,22 @@ export const JobDetails = () => {
     },
     enabled: !!session?.access_token
   });
+
+  // Register screen context envelope for AI Copilot
+  useScreenContext({
+    screen: 'JobDetails',
+    entityId: id,
+    summary: {
+      title: job?.title,
+      clientName: job?.clients?.name,
+      status: job?.status,
+      rateType: job?.rate_type,
+      hourlyRate: job?.hourly_rate,
+      flatRate: job?.flat_rate,
+      totalHours: hours?.reduce((acc, h) => acc + Number(h.hours || 0), 0) || 0,
+      totalMaterialsCost: materials?.reduce((acc, m) => acc + Number(m.cost || 0), 0) || 0
+    }
+  }, [job, hours, materials, id]);
 
   const handleAddMaterial = async (submittedData) => {
     try {

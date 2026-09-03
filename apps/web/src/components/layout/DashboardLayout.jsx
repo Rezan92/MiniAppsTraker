@@ -4,6 +4,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useToast } from '../../contexts/ToastContext';
 import { useWorkspace } from '../../contexts/WorkspaceContext';
 import { CreateWorkspaceModal } from './CreateWorkspaceModal';
+import { AiCopilotWidget } from '../ai/AiCopilotWidget';
 
 export const DashboardLayout = ({ children }) => {
   const { user, userData } = useAuth();
@@ -238,6 +239,9 @@ export const DashboardLayout = ({ children }) => {
         isOpen={createModalOpen} 
         onClose={() => setCreateModalOpen(false)} 
       />
+
+      {/* Global AI Copilot Floating Widget */}
+      <AiCopilotWidget />
     </div>
   );
 };

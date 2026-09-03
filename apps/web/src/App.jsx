@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { ToastProvider } from './contexts/ToastContext';
 import { WorkspaceProvider } from './contexts/WorkspaceContext';
+import { AiContextProvider } from './contexts/AiContext';
 import { DashboardLayout } from './components/layout/DashboardLayout';
 import { ProtectedRoute } from './components/layout/ProtectedRoute';
 import { AdminRoute } from './components/layout/AdminRoute';
@@ -80,10 +81,12 @@ function App() {
       <AuthProvider>
         <ToastProvider>
           <WorkspaceProvider>
-            <BrowserRouter>
-              <NetworkBanner />
-              <MainApp />
-            </BrowserRouter>
+            <AiContextProvider>
+              <BrowserRouter>
+                <NetworkBanner />
+                <MainApp />
+              </BrowserRouter>
+            </AiContextProvider>
           </WorkspaceProvider>
         </ToastProvider>
       </AuthProvider>

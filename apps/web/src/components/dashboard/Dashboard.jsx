@@ -7,6 +7,7 @@ import { useClients, useCreateClient } from '../../hooks/api/useClients';
 import { useCreateJob } from '../../hooks/api/useJobs';
 import { useDashboardSummary } from '../../hooks/api/useDashboard';
 import { INVOICE_STATUSES, JOB_STATUSES, STATUS_COLORS } from '../../utils/constants';
+import { useScreenContext } from '../../contexts/AiContext';
 
 export const Dashboard = () => {
   const { userData } = useAuth();
@@ -22,6 +23,16 @@ export const Dashboard = () => {
   const { data: clientsData = [] } = useClients();
 
   const { data: summary, isLoading, error, refetch } = useDashboardSummary(userData?.tenant_id);
+
+  // Register screen context envelope for AI Copilot
+  useScreenContext({
+    screen: 'Dashboard',
+    summary: {
+      activeClients: summary?.active_clients_count || 0,
+      totalRevenue: summary?.monthly_revenue || 0,
+      openJobsCount: summary?.open_jobs_count || 0
+    }
+  }, [summary]);
 
   const handleCreateClient = (data) => {
     createClientMutation.mutate(data, {
