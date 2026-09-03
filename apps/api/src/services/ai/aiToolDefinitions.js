@@ -263,5 +263,161 @@ export const AI_TOOLS = [
       },
       required: ['job_id', 'description', 'cost']
     }
+  },
+
+  // --- Invoicing & Billing Tools (Phase 3) ---
+  {
+    name: 'draft_invoice',
+    description: 'Generate a new draft invoice for a job or client. Automatically pulls and calculates all unbilled labor hours and materials using the centralized pricing engine.',
+    parameters: {
+      type: 'OBJECT',
+      properties: {
+        client_id: {
+          type: 'STRING',
+          description: 'UUID of the client to invoice (required)'
+        },
+        job_id: {
+          type: 'STRING',
+          description: 'Optional UUID of the job to bill for. If provided, automatically pulls unbilled hours and materials.'
+        },
+        labor_title: {
+          type: 'STRING',
+          description: 'Title or description of the primary labor service (e.g. "Drywall and Painting")'
+        },
+        due_date: {
+          type: 'STRING',
+          description: 'Due date in YYYY-MM-DD format (defaults to 14 days from today)'
+        },
+        tax_rate_percent: {
+          type: 'NUMBER',
+          description: 'Optional sales/service tax percentage (e.g. 8.25 for 8.25%)'
+        },
+        markup_amount: {
+          type: 'NUMBER',
+          description: 'Optional flat material markup fee in dollars (e.g. 25.00)'
+        },
+        notes: {
+          type: 'STRING',
+          description: 'Optional invoice notes or payment instructions'
+        }
+      },
+      required: ['client_id']
+    }
+  },
+  {
+    name: 'add_invoice_line_item',
+    description: 'Add an additional ad-hoc labor or material charge line item to an existing draft invoice.',
+    parameters: {
+      type: 'OBJECT',
+      properties: {
+        invoice_id: {
+          type: 'STRING',
+          description: 'UUID of the draft invoice'
+        },
+        description: {
+          type: 'STRING',
+          description: 'Description of the item or additional charge'
+        },
+        amount: {
+          type: 'NUMBER',
+          description: 'Dollar amount (positive number, e.g. 50.00)'
+        },
+        source_type: {
+          type: 'STRING',
+          enum: ['labor', 'material', 'ad_hoc'],
+          description: 'Category of the line item'
+        }
+      },
+      required: ['invoice_id', 'description', 'amount']
+    }
+  },
+  {
+    name: 'update_invoice_status',
+    description: 'Update the status of an invoice (e.g. mark as sent, paid, or voided).',
+    parameters: {
+      type: 'OBJECT',
+      properties: {
+        invoice_id: {
+          type: 'STRING',
+          description: 'UUID of the invoice'
+        },
+        status: {
+          type: 'STRING',
+          enum: ['draft', 'sent', 'in_progress', 'paid', 'overdue', 'voided'],
+          description: 'Target invoice status matching database check constraint'
+        }
+      },
+      required: ['invoice_id', 'status']
+    }
+  },
+  {
+    name: 'get_invoice_details',
+    description: 'Fetch detailed invoice data including line items, tax, client info, and payment balance.',
+    parameters: {
+      type: 'OBJECT',
+      properties: {
+        invoice_id: {
+          type: 'STRING',
+          description: 'UUID of the invoice to look up'
+        }
+      },
+      required: ['invoice_id']
+    }
+  },
+
+  // --- Destructive Action Interceptors (Human-in-the-Loop Safety) ---
+  {
+    name: 'request_delete_job',
+    description: 'Request deletion of a job. Does NOT delete immediately; creates a pending action confirmation card for contractor review and approval.',
+    parameters: {
+      type: 'OBJECT',
+      properties: {
+        job_id: {
+          type: 'STRING',
+          description: 'UUID of the job to delete'
+        },
+        reason: {
+          type: 'STRING',
+          description: 'Brief reason for deletion (e.g. "Cancelled by homeowner")'
+        }
+      },
+      required: ['job_id']
+    }
+  },
+  {
+    name: 'request_delete_client',
+    description: 'Request deletion of a client. Does NOT delete immediately; creates a pending action confirmation card for contractor review and approval.',
+    parameters: {
+      type: 'OBJECT',
+      properties: {
+        client_id: {
+          type: 'STRING',
+          description: 'UUID of the client to delete'
+        },
+        reason: {
+          type: 'STRING',
+          description: 'Brief reason for deletion'
+        }
+      },
+      required: ['client_id']
+    }
+  },
+  {
+    name: 'request_void_invoice',
+    description: 'Request voiding of a finalized or sent invoice. Does NOT void immediately; creates a pending confirmation card for contractor approval.',
+    parameters: {
+      type: 'OBJECT',
+      properties: {
+        invoice_id: {
+          type: 'STRING',
+          description: 'UUID of the invoice to void'
+        },
+        reason: {
+          type: 'STRING',
+          description: 'Reason for voiding the invoice'
+        }
+      },
+      required: ['invoice_id']
+    }
   }
 ];

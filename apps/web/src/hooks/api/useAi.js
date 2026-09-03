@@ -142,6 +142,8 @@ export const useAi = () => {
 
       const replyText = response?.reply || "I've completed that request.";
       const mutations = response?.triggered_mutations || [];
+      const confirmationData = response?.confirmationData || null;
+      const invoiceData = response?.invoiceData || null;
 
       // Trigger instant UI cache re-rendering
       handleTriggeredMutations(mutations);
@@ -151,7 +153,9 @@ export const useAi = () => {
         role: 'assistant',
         content: replyText,
         timestamp: new Date().toISOString(),
-        mutations
+        mutations,
+        confirmationData,
+        invoiceData
       };
 
       setConversations(prev => ({
@@ -179,6 +183,18 @@ export const useAi = () => {
     }
   }, [conversations, sessionKey, isLoading, screenContext, selectedModel, handleTriggeredMutations]);
 
+  const confirmPendingAction = useCallback(async (actionId, confirmed) => {
+    try {
+      const response = await apiClient.post('/api/ai/confirm-action', { actionId, confirmed });
+      if (response?.triggered_mutations) {
+        handleTriggeredMutations(response.triggered_mutations);
+      }
+      return response;
+    } catch (err) {
+      throw err;
+    }
+  }, [handleTriggeredMutations]);
+
   const clearChat = useCallback(() => {
     setConversations(prev => ({
       ...prev,
@@ -195,6 +211,7 @@ export const useAi = () => {
     setSelectedModel: handleSetModel,
     availableModels: AVAILABLE_MODELS,
     sendMessage,
+    confirmPendingAction,
     clearChat
   };
 };

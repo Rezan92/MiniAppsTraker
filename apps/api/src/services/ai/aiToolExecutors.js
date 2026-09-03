@@ -1,5 +1,7 @@
 import { supabase } from '../../config/supabase.js';
 import { resolveEffectiveHourlyRate } from '../masterRates.js';
+import { calculateInvoiceFinancials, roundCurrency } from '../pricingEngine.js';
+import { pendingActionManager } from './pendingActionManager.js';
 
 /**
  * Executes an AI tool call securely within tenant boundaries.
@@ -277,6 +279,398 @@ export async function executeAiTool(toolName, args = {}, { tenantId, userId }) {
           return { error: error.message };
         }
         return { result: data, mutation: 'materials', entityId: job_id };
+      }
+
+      // --- Invoicing & Billing Tools (Phase 3) ---
+      case 'draft_invoice': {
+        const { client_id, job_id, labor_title, due_date, tax_rate_percent, markup_amount, notes } = args;
+
+        // 1. Verify client belongs to this tenant
+        const { data: client, error: clientErr } = await supabase
+          .from('clients')
+          .select('id, name')
+          .eq('id', client_id)
+          .eq('tenant_id', tenantId)
+          .single();
+
+        if (clientErr || !client) return { error: 'Client not found or unauthorized.' };
+
+        // 2. If job_id is provided, pull unbilled hours and materials
+        let lineItems = [];
+        let baseLabor = 0;
+        let linkedJobTitle = labor_title || 'General Contracting Labor';
+
+        if (job_id) {
+          const { data: job, error: jobErr } = await supabase
+            .from('jobs')
+            .select('id, title, rate_type, hourly_rate, flat_rate')
+            .eq('id', job_id)
+            .eq('tenant_id', tenantId)
+            .single();
+
+          if (!jobErr && job) {
+            linkedJobTitle = labor_title || job.title;
+
+            // Pull unbilled hours (scoped via job_id, no tenant_id column)
+            const { data: hoursList } = await supabase
+              .from('job_hours')
+              .select('*')
+              .eq('job_id', job_id)
+              .eq('billing_status', 'unbilled');
+
+            // Pull unbilled materials (scoped via job_id, no tenant_id column)
+            const { data: materialsList } = await supabase
+              .from('job_materials')
+              .select('*')
+              .eq('job_id', job_id)
+              .eq('billing_status', 'unbilled');
+
+            // Calculate labor amount
+            if (job.rate_type === 'hourly') {
+              const rate = job.hourly_rate || resolveEffectiveHourlyRate({ isEmergency: false });
+              const totalHours = (hoursList || []).reduce((sum, h) => sum + Number(h.hours || 0), 0);
+              baseLabor = roundCurrency(totalHours * rate);
+            } else {
+              baseLabor = roundCurrency(job.flat_rate || 0);
+            }
+
+            // Build material line items
+            for (const m of (materialsList || [])) {
+              lineItems.push({
+                source_type: 'material',
+                source_id: m.id,
+                description: m.description,
+                amount: roundCurrency(m.cost),
+                is_billable: true
+              });
+            }
+          }
+        }
+
+        // 3. Deterministic financial calculations via pricingEngine.js (Rule 10)
+        const financials = calculateInvoiceFinancials({
+          baseLaborAmount: baseLabor,
+          lineItems,
+          markupAmount: markup_amount || 0,
+          taxRatePercent: tax_rate_percent || 0
+        });
+
+        // 4. Fetch sequential invoice number from tenant record
+        const { data: tenantData } = await supabase
+          .from('tenants')
+          .select('next_invoice_number')
+          .eq('id', tenantId)
+          .single();
+
+        const nextNum = tenantData?.next_invoice_number || 1001;
+        const invoiceNumber = `${nextNum}`;
+        const defaultDueDate = due_date || new Date(Date.now() + 14 * 86400000).toISOString().split('T')[0];
+
+        // 5. Insert invoice
+        const { data: newInvoice, error: invErr } = await supabase
+          .from('invoices')
+          .insert([{
+            tenant_id: tenantId,
+            client_id,
+            job_id: job_id || null,
+            invoice_number: invoiceNumber,
+            invoice_date: new Date().toISOString().split('T')[0],
+            due_date: defaultDueDate,
+            labor_title: linkedJobTitle,
+            labor_amount: financials.laborAmount,
+            materials_amount: financials.materialsAmount,
+            subtotal: financials.subtotal,
+            tax_rate_percent: tax_rate_percent || 0,
+            tax_amount: financials.taxAmount,
+            total_amount: financials.totalAmount,
+            status: 'draft',
+            notes: notes || null
+          }])
+          .select()
+          .single();
+
+        if (invErr) {
+          console.error('[AI Tool Executor] draft_invoice error:', invErr);
+          return { error: invErr.message };
+        }
+
+        // Increment tenant next_invoice_number
+        await supabase
+          .from('tenants')
+          .update({ next_invoice_number: nextNum + 1 })
+          .eq('id', tenantId);
+
+        // 6. Insert line items if any (note: invoice_line_items has no tenant_id column)
+        if (lineItems.length > 0) {
+          const itemsToInsert = lineItems.map((item, idx) => ({
+            invoice_id: newInvoice.id,
+            source_type: item.source_type,
+            source_id: item.source_id,
+            description: item.description,
+            amount: item.amount,
+            sort_order: idx,
+            is_billable: true
+          }));
+          await supabase.from('invoice_line_items').insert(itemsToInsert);
+
+          // Update billed status of materials
+          const matIds = lineItems.filter(i => i.source_type === 'material').map(i => i.source_id).filter(Boolean);
+          if (matIds.length > 0) {
+            await supabase
+              .from('job_materials')
+              .update({ billing_status: 'on_draft', invoice_id: newInvoice.id })
+              .in('id', matIds);
+          }
+        }
+
+        // Update billed status of hours if job was linked
+        if (job_id) {
+          await supabase
+            .from('job_hours')
+            .update({ billing_status: 'on_draft', invoice_id: newInvoice.id })
+            .eq('job_id', job_id)
+            .eq('billing_status', 'unbilled');
+        }
+
+        // 7. Insert audit log in invoice_logs
+        await supabase.from('invoice_logs').insert([{
+          tenant_id: tenantId,
+          invoice_id: newInvoice.id,
+          action: 'Created',
+          reason: 'Drafted via AI Copilot'
+        }]);
+
+        return {
+          result: {
+            invoiceId: newInvoice.id,
+            invoiceNumber: newInvoice.invoice_number,
+            clientName: client.name,
+            totalAmount: financials.totalAmount,
+            subtotal: financials.subtotal,
+            taxAmount: financials.taxAmount,
+            status: 'draft',
+            dueDate: defaultDueDate
+          },
+          mutation: 'invoices',
+          entityId: newInvoice.id
+        };
+      }
+
+      case 'add_invoice_line_item': {
+        const { invoice_id, description, amount, source_type } = args;
+
+        const { data: inv, error: invErr } = await supabase
+          .from('invoices')
+          .select('*')
+          .eq('id', invoice_id)
+          .eq('tenant_id', tenantId)
+          .single();
+
+        if (invErr || !inv) return { error: 'Invoice not found or unauthorized.' };
+        if (inv.status !== 'draft') return { error: 'Cannot modify non-draft invoices.' };
+
+        const { data: lineItem, error: itemErr } = await supabase
+          .from('invoice_line_items')
+          .insert([{
+            invoice_id,
+            source_type: source_type || 'ad_hoc',
+            description: description.trim(),
+            amount: roundCurrency(amount),
+            is_billable: true
+          }])
+          .select()
+          .single();
+
+        if (itemErr) return { error: itemErr.message };
+
+        // Recalculate totals
+        const { data: allItems } = await supabase
+          .from('invoice_line_items')
+          .select('*')
+          .eq('invoice_id', invoice_id);
+
+        const financials = calculateInvoiceFinancials({
+          baseLaborAmount: inv.labor_amount,
+          lineItems: allItems || [],
+          taxRatePercent: inv.tax_rate_percent || 0
+        });
+
+        await supabase
+          .from('invoices')
+          .update({
+            materials_amount: financials.materialsAmount,
+            subtotal: financials.subtotal,
+            tax_amount: financials.taxAmount,
+            total_amount: financials.totalAmount
+          })
+          .eq('id', invoice_id);
+
+        return { result: lineItem, mutation: 'invoices', entityId: invoice_id };
+      }
+
+      case 'update_invoice_status': {
+        const { invoice_id, status } = args;
+
+        const { data, error } = await supabase
+          .from('invoices')
+          .update({ status })
+          .eq('id', invoice_id)
+          .eq('tenant_id', tenantId)
+          .select()
+          .single();
+
+        if (error) return { error: error.message };
+
+        await supabase.from('invoice_logs').insert([{
+          tenant_id: tenantId,
+          invoice_id,
+          action: status,
+          reason: 'Updated via AI Copilot'
+        }]);
+
+        return { result: data, mutation: 'invoices', entityId: invoice_id };
+      }
+
+      case 'get_invoice_details': {
+        const { invoice_id } = args;
+
+        const { data, error } = await supabase
+          .from('invoices')
+          .select(`
+            *,
+            clients (id, name, email, phone),
+            jobs (id, title),
+            invoice_line_items (*)
+          `)
+          .eq('id', invoice_id)
+          .eq('tenant_id', tenantId)
+          .single();
+
+        if (error) return { error: error.message };
+        return { result: data };
+      }
+
+      // --- Destructive Action Safety Interceptors (Human-in-the-Loop) ---
+      case 'request_delete_job': {
+        const { job_id, reason } = args;
+
+        const { data: job, error: jobErr } = await supabase
+          .from('jobs')
+          .select('id, title, status, clients(name)')
+          .eq('id', job_id)
+          .eq('tenant_id', tenantId)
+          .single();
+
+        if (jobErr || !job) return { error: 'Job not found or unauthorized.' };
+
+        // Count cascade impact
+        const [hoursCount, matsCount] = await Promise.all([
+          supabase.from('job_hours').select('id', { count: 'exact', head: true }).eq('job_id', job_id),
+          supabase.from('job_materials').select('id', { count: 'exact', head: true }).eq('job_id', job_id)
+        ]);
+
+        const impactSummary = `Job "${job.title}" for ${job.clients?.name || 'client'} has ${hoursCount.count || 0} logged time entries and ${matsCount.count || 0} materials records.`;
+
+        const pendingAction = pendingActionManager.createAction({
+          tenantId,
+          userId,
+          actionType: 'delete_job',
+          targetId: job_id,
+          description: `Permanently delete Job "${job.title}"`,
+          impactSummary
+        });
+
+        return {
+          result: {
+            confirmation_required: true,
+            actionId: pendingAction.actionId,
+            actionType: 'delete_job',
+            targetId: job_id,
+            title: `Delete Job "${job.title}"`,
+            impactSummary,
+            reason: reason || 'Contractor requested deletion'
+          },
+          mutation: null
+        };
+      }
+
+      case 'request_delete_client': {
+        const { client_id, reason } = args;
+
+        const { data: client, error: clientErr } = await supabase
+          .from('clients')
+          .select('id, name')
+          .eq('id', client_id)
+          .eq('tenant_id', tenantId)
+          .single();
+
+        if (clientErr || !client) return { error: 'Client not found or unauthorized.' };
+
+        const { count: jobCount } = await supabase
+          .from('jobs')
+          .select('id', { count: 'exact', head: true })
+          .eq('client_id', client_id);
+
+        const impactSummary = `Client "${client.name}" has ${jobCount || 0} associated jobs.`;
+
+        const pendingAction = pendingActionManager.createAction({
+          tenantId,
+          userId,
+          actionType: 'delete_client',
+          targetId: client_id,
+          description: `Permanently delete Client "${client.name}"`,
+          impactSummary
+        });
+
+        return {
+          result: {
+            confirmation_required: true,
+            actionId: pendingAction.actionId,
+            actionType: 'delete_client',
+            targetId: client_id,
+            title: `Delete Client "${client.name}"`,
+            impactSummary,
+            reason: reason || 'Contractor requested deletion'
+          },
+          mutation: null
+        };
+      }
+
+      case 'request_void_invoice': {
+        const { invoice_id, reason } = args;
+
+        const { data: inv, error: invErr } = await supabase
+          .from('invoices')
+          .select('id, invoice_number, total_amount, status, clients(name)')
+          .eq('id', invoice_id)
+          .eq('tenant_id', tenantId)
+          .single();
+
+        if (invErr || !inv) return { error: 'Invoice not found or unauthorized.' };
+
+        const impactSummary = `Invoice #${inv.invoice_number} for $${Number(inv.total_amount).toFixed(2)} (${inv.clients?.name || 'client'}) will be marked as voided.`;
+
+        const pendingAction = pendingActionManager.createAction({
+          tenantId,
+          userId,
+          actionType: 'void_invoice',
+          targetId: invoice_id,
+          description: `Void Invoice #${inv.invoice_number}`,
+          impactSummary
+        });
+
+        return {
+          result: {
+            confirmation_required: true,
+            actionId: pendingAction.actionId,
+            actionType: 'void_invoice',
+            targetId: invoice_id,
+            title: `Void Invoice #${inv.invoice_number}`,
+            impactSummary,
+            reason: reason || 'Contractor requested void'
+          },
+          mutation: null
+        };
       }
 
       default:

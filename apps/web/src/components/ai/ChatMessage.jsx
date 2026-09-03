@@ -1,5 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
+import { ActionConfirmationCard } from './ActionConfirmationCard';
+import { InvoiceActionCard } from './InvoiceActionCard';
 
 export const ChatMessage = ({ message }) => {
   const isUser = message.role === 'user';
@@ -56,6 +58,15 @@ export const ChatMessage = ({ message }) => {
       >
         <div className="font-body-md text-sm">{formatText(message.content)}</div>
 
+        {/* Rich Action Cards (Phase 3) */}
+        {!isUser && message.confirmationData && (
+          <ActionConfirmationCard confirmationData={message.confirmationData} />
+        )}
+
+        {!isUser && message.invoiceData && (
+          <InvoiceActionCard invoiceData={message.invoiceData} />
+        )}
+
         {/* Action Link Badges if entities were created */}
         {!isUser && message.mutations && message.mutations.length > 0 && (
           <div className="mt-2.5 pt-2 border-t border-gray-100 flex flex-wrap gap-1.5">
@@ -81,6 +92,18 @@ export const ChatMessage = ({ message }) => {
                   >
                     <span className="material-symbols-outlined text-[14px]">person</span>
                     <span>View Client</span>
+                  </Link>
+                );
+              }
+              if (mut.type === 'invoices' && mut.entityId) {
+                return (
+                  <Link
+                    key={i}
+                    to={`/invoices/${mut.entityId}`}
+                    className="inline-flex items-center gap-1 px-2 py-0.5 bg-primary/10 hover:bg-primary/20 text-black rounded text-xs font-semibold transition-colors"
+                  >
+                    <span className="material-symbols-outlined text-[14px]">receipt_long</span>
+                    <span>View Invoice</span>
                   </Link>
                 );
               }

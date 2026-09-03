@@ -2,10 +2,12 @@ import express from 'express';
 import { z } from 'zod';
 import { authenticate } from '../middleware/auth.js';
 import { createApiError } from '../middleware/errorHandler.js';
+import { supabase } from '../config/supabase.js';
 import { ai, DEFAULT_AI_MODEL } from '../services/ai/geminiClient.js';
 import { AI_TOOLS } from '../services/ai/aiToolDefinitions.js';
 import { executeAiTool } from '../services/ai/aiToolExecutors.js';
 import { buildSystemInstruction } from '../services/ai/promptBuilder.js';
+import { pendingActionManager } from '../services/ai/pendingActionManager.js';
 
 const router = express.Router();
 router.use(authenticate);
@@ -52,6 +54,8 @@ router.post('/chat', async (req, res, next) => {
 
     const systemInstruction = buildSystemInstruction({ user: req.user, screenContext });
     const triggeredMutations = [];
+    let pendingConfirmation = null;
+    let invoiceCardData = null;
 
     // Format chat history for @google/genai
     const contents = messages.map(m => ({
@@ -110,6 +114,8 @@ router.post('/chat', async (req, res, next) => {
           data: {
             reply: replyText,
             triggered_mutations: triggeredMutations,
+            confirmationData: pendingConfirmation,
+            invoiceData: invoiceCardData,
             model_used: activeModel
           }
         });
@@ -140,6 +146,14 @@ router.post('/chat', async (req, res, next) => {
           });
         }
 
+        if (toolResult.result?.confirmation_required) {
+          pendingConfirmation = toolResult.result;
+        }
+
+        if (call.name === 'draft_invoice' && toolResult.result?.invoiceId) {
+          invoiceCardData = toolResult.result;
+        }
+
         toolResponseParts.push({
           functionResponse: {
             name: call.name,
@@ -159,10 +173,104 @@ router.post('/chat', async (req, res, next) => {
       success: true,
       data: {
         reply: "I processed your request, but hit the maximum tool interaction limit. Please check your latest entries.",
-        triggered_mutations: triggeredMutations
+        triggered_mutations: triggeredMutations,
+        confirmationData: pendingConfirmation,
+        invoiceData: invoiceCardData
       }
     });
 
+  } catch (err) {
+    next(err);
+  }
+});
+
+// POST /api/ai/confirm-action — Two-Phase Human-in-the-Loop Execution
+router.post('/confirm-action', async (req, res, next) => {
+  try {
+    const tenantId = req.user?.tenant_id;
+    if (!tenantId) {
+      return next(createApiError('Tenant context missing from authenticated session', 400, 'TENANT_REQUIRED'));
+    }
+
+    const { actionId, confirmed } = req.body;
+    if (!actionId) {
+      return next(createApiError('Missing actionId', 400, 'BAD_REQUEST'));
+    }
+
+    if (!confirmed) {
+      pendingActionManager.cancelAction(actionId, tenantId);
+      console.log(`🛡️ [AI Confirm Action] Action "${actionId}" cancelled by user.`);
+      return res.json({ success: true, message: 'Action cancelled by user.' });
+    }
+
+    const action = pendingActionManager.consumeAction(actionId, tenantId);
+    if (!action) {
+      return res.status(404).json({
+        success: false,
+        error: {
+          message: 'Confirmation token expired or already processed.',
+          code: 'ACTION_EXPIRED'
+        }
+      });
+    }
+
+    console.log(`🚨 [AI Confirm Action] Executing confirmed action:`, action.actionType, `Target:`, action.targetId);
+    let triggeredMutations = [];
+
+    switch (action.actionType) {
+      case 'delete_job': {
+        const { error } = await supabase
+          .from('jobs')
+          .delete()
+          .eq('id', action.targetId)
+          .eq('tenant_id', tenantId);
+
+        if (error) throw error;
+        triggeredMutations.push({ type: 'jobs', entityId: action.targetId });
+        break;
+      }
+
+      case 'delete_client': {
+        const { error } = await supabase
+          .from('clients')
+          .delete()
+          .eq('id', action.targetId)
+          .eq('tenant_id', tenantId);
+
+        if (error) throw error;
+        triggeredMutations.push({ type: 'clients', entityId: action.targetId });
+        break;
+      }
+
+      case 'void_invoice': {
+        const { error } = await supabase
+          .from('invoices')
+          .update({ status: 'voided' })
+          .eq('id', action.targetId)
+          .eq('tenant_id', tenantId);
+
+        if (error) throw error;
+
+        await supabase.from('invoice_logs').insert([{
+          tenant_id: tenantId,
+          invoice_id: action.targetId,
+          action: 'Voided',
+          reason: 'Voided via AI Action Confirmation'
+        }]);
+
+        triggeredMutations.push({ type: 'invoices', entityId: action.targetId });
+        break;
+      }
+
+      default:
+        return next(createApiError('Unknown action type', 400, 'INVALID_ACTION'));
+    }
+
+    res.json({
+      success: true,
+      message: `Successfully executed: ${action.description}`,
+      triggered_mutations: triggeredMutations
+    });
   } catch (err) {
     next(err);
   }

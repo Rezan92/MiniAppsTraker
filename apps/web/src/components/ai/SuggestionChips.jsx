@@ -8,6 +8,7 @@ export const SuggestionChips = ({ screenContext, onSelectPrompt }) => {
         return [
           "Log 2 hours for today",
           "Add $45 for materials",
+          "Draft invoice for this job",
           "Summarize this job",
           "Mark job as completed"
         ];
