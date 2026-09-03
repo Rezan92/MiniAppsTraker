@@ -10,12 +10,19 @@ export const AiContextProvider = ({ children }) => {
   const closeDrawer = useCallback(() => setIsOpen(false), []);
   const toggleDrawer = useCallback(() => setIsOpen(prev => !prev), []);
 
+  // Avoid redundant state updates and infinite re-render loops
   const setScreenContext = useCallback((contextEnvelope) => {
-    setScreenContextState(contextEnvelope);
+    setScreenContextState(prev => {
+      if (!contextEnvelope && !prev) return prev;
+      if (JSON.stringify(prev) === JSON.stringify(contextEnvelope)) {
+        return prev;
+      }
+      return contextEnvelope;
+    });
   }, []);
 
   const clearScreenContext = useCallback(() => {
-    setScreenContextState(null);
+    setScreenContextState(prev => (prev === null ? prev : null));
   }, []);
 
   return (
@@ -49,10 +56,15 @@ export const useAiContext = () => {
 export const useScreenContext = (envelope, deps = []) => {
   const { setScreenContext, clearScreenContext } = useAiContext();
 
+  // Update context when envelope or deps change
   useEffect(() => {
     if (envelope && envelope.screen) {
       setScreenContext(envelope);
     }
-    return () => clearScreenContext();
   }, deps);
+
+  // Clear context ONLY when the screen unmounts
+  useEffect(() => {
+    return () => clearScreenContext();
+  }, []);
 };

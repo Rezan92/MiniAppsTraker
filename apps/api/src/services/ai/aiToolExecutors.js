@@ -225,10 +225,9 @@ export async function executeAiTool(toolName, args = {}, { tenantId, userId }) {
         const { data, error } = await supabase
           .from('job_hours')
           .insert([{
-            tenant_id: tenantId,
             job_id,
             hours: parseFloat(hours),
-            date,
+            date: date || new Date().toISOString().split('T')[0],
             description: description.trim(),
             start_time: start_time || null,
             end_time: end_time || null,
@@ -237,7 +236,10 @@ export async function executeAiTool(toolName, args = {}, { tenantId, userId }) {
           .select()
           .single();
 
-        if (error) return { error: error.message };
+        if (error) {
+          console.error('[AI Tool Executor] log_job_hours error:', error);
+          return { error: error.message };
+        }
         return { result: data, mutation: 'hours', entityId: job_id };
       }
 
@@ -259,7 +261,6 @@ export async function executeAiTool(toolName, args = {}, { tenantId, userId }) {
         const { data, error } = await supabase
           .from('job_materials')
           .insert([{
-            tenant_id: tenantId,
             job_id,
             description: description.trim(),
             cost: parseFloat(cost),
@@ -271,7 +272,10 @@ export async function executeAiTool(toolName, args = {}, { tenantId, userId }) {
           .select()
           .single();
 
-        if (error) return { error: error.message };
+        if (error) {
+          console.error('[AI Tool Executor] log_job_materials error:', error);
+          return { error: error.message };
+        }
         return { result: data, mutation: 'materials', entityId: job_id };
       }
 

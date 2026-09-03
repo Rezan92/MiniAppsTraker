@@ -45,6 +45,9 @@ router.post('/chat', async (req, res, next) => {
     }
 
     const { messages, screenContext } = parseResult.data;
+    const lastUserMsg = messages[messages.length - 1]?.content;
+    console.log(`\n🤖 [AI Request] User: ${req.user.email} | Screen: ${screenContext?.screen || 'Global'} | Prompt: "${lastUserMsg}"`);
+
     const systemInstruction = buildSystemInstruction({ user: req.user, screenContext });
     const triggeredMutations = [];
 
@@ -77,6 +80,7 @@ router.post('/chat', async (req, res, next) => {
       if (!functionCalls || functionCalls.length === 0) {
         // No function calls — Gemini provided a direct natural language response
         const replyText = content?.parts?.map(p => p.text).filter(Boolean).join('\n') || '';
+        console.log(`🤖 [AI Response] Reply: "${replyText.slice(0, 100)}..." | Mutations: ${triggeredMutations.length}`);
         return res.json({
           success: true,
           data: {
@@ -92,10 +96,17 @@ router.post('/chat', async (req, res, next) => {
       // Execute each function call
       const toolResponseParts = [];
       for (const call of functionCalls) {
+        console.log(`⚙️ [AI Tool Call] Function: "${call.name}" | Args:`, JSON.stringify(call.args));
         const toolResult = await executeAiTool(call.name, call.args, {
           tenantId,
           userId: req.user.id
         });
+
+        if (toolResult.error) {
+          console.error(`❌ [AI Tool Failed] "${call.name}":`, toolResult.error);
+        } else {
+          console.log(`✅ [AI Tool Success] "${call.name}" | Mutation:`, toolResult.mutation || 'none');
+        }
 
         if (toolResult.mutation) {
           triggeredMutations.push({
