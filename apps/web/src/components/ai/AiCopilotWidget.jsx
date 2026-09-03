@@ -6,7 +6,15 @@ import { SuggestionChips } from './SuggestionChips';
 
 export const AiCopilotWidget = () => {
   const { isOpen, toggleDrawer, closeDrawer, screenContext } = useAiContext();
-  const { messages, isLoading, sendMessage, clearChat } = useAi();
+  const { 
+    messages, 
+    isLoading, 
+    sendMessage, 
+    clearChat, 
+    selectedModel, 
+    setSelectedModel, 
+    availableModels 
+  } = useAi();
   const [input, setInput] = useState('');
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
@@ -93,9 +101,18 @@ export const AiCopilotWidget = () => {
               <div>
                 <div className="flex items-center gap-2">
                   <h2 className="font-bold text-sm tracking-tight text-white">MiniApps Copilot</h2>
-                  <span className="text-[10px] bg-primary/20 text-primary border border-primary/30 px-1.5 py-0.2 rounded font-semibold uppercase">
-                    Gemini 2.5
-                  </span>
+                  <select
+                    value={selectedModel}
+                    onChange={(e) => setSelectedModel(e.target.value)}
+                    aria-label="Select Gemini Model"
+                    className="text-[10px] bg-gray-800 text-primary border border-primary/40 rounded px-1.5 py-0.5 font-semibold focus:outline-none focus:ring-1 focus:ring-primary cursor-pointer hover:bg-gray-700 transition-colors"
+                  >
+                    {availableModels.map((m) => (
+                      <option key={m.id} value={m.id} className="bg-gray-900 text-white font-normal">
+                        {m.label}
+                      </option>
+                    ))}
+                  </select>
                 </div>
                 <div className="text-[11px] text-gray-400 flex items-center gap-1 mt-0.5">
                   {screenContext?.screen ? (

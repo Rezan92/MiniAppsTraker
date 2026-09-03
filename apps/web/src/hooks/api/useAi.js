@@ -4,6 +4,13 @@ import { apiClient } from '../../lib/apiClient';
 import { useAiContext } from '../../contexts/AiContext';
 import { translateApiError } from '../../utils/errorTranslator';
 
+export const AVAILABLE_MODELS = [
+  { id: 'gemini-2.5-flash', label: 'Gemini 2.5 Flash' },
+  { id: 'gemini-2.5-pro', label: 'Gemini 2.5 Pro' },
+  { id: 'gemini-2.0-flash', label: 'Gemini 2.0 Flash' },
+  { id: 'gemini-2.0-flash-lite', label: 'Gemini 2.0 Flash-Lite' }
+];
+
 const INITIAL_ASSISTANT_MESSAGE = {
   id: 'welcome',
   role: 'assistant',
@@ -15,9 +22,38 @@ export const useAi = () => {
   const queryClient = useQueryClient();
   const { screenContext } = useAiContext();
 
-  const [messages, setMessages] = useState([INITIAL_ASSISTANT_MESSAGE]);
+  const [selectedModel, setSelectedModel] = useState(() => {
+    return localStorage.getItem('miniapps_ai_model') || 'gemini-2.5-flash';
+  });
+
+  const handleSetModel = useCallback((modelId) => {
+    setSelectedModel(modelId);
+    localStorage.setItem('miniapps_ai_model', modelId);
+  }, []);
+
+  // Compute active session key based on current screen and entity ID
+  const sessionKey = screenContext?.entityId
+    ? `${screenContext.screen}:${screenContext.entityId}`
+    : (screenContext?.screen || 'global');
+
+  // Conversations stored per screen / entity context
+  const [conversations, setConversations] = useState({
+    global: [INITIAL_ASSISTANT_MESSAGE]
+  });
+
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
+
+  const messages = conversations[sessionKey] || [
+    {
+      ...INITIAL_ASSISTANT_MESSAGE,
+      content: screenContext?.screen === 'JobDetails'
+        ? `Hello! I'm focused on ${screenContext.summary?.title || 'this job'}. You can ask me to log hours, record materials, or update status.`
+        : screenContext?.screen === 'ClientDetails'
+        ? `Hello! I'm focused on client ${screenContext.summary?.name || 'details'}. You can ask me to view their jobs or schedule new work.`
+        : INITIAL_ASSISTANT_MESSAGE.content
+    }
+  ];
 
   // Invalidate relevant React Query caches based on backend mutations
   const handleTriggeredMutations = useCallback((mutations = []) => {
@@ -75,8 +111,14 @@ export const useAi = () => {
       timestamp: new Date().toISOString()
     };
 
-    const updatedHistory = [...messages, userMsg];
-    setMessages(updatedHistory);
+    const currentHistory = conversations[sessionKey] || [INITIAL_ASSISTANT_MESSAGE];
+    const updatedHistory = [...currentHistory, userMsg];
+
+    setConversations(prev => ({
+      ...prev,
+      [sessionKey]: updatedHistory
+    }));
+
     setIsLoading(true);
     setError(null);
 
@@ -89,7 +131,8 @@ export const useAi = () => {
 
       const response = await apiClient.post('/api/ai/chat', {
         messages: apiMessages,
-        screenContext: screenContext || null
+        screenContext: screenContext || null,
+        model: selectedModel
       });
 
       const replyText = response?.reply || "I've completed that request.";
@@ -106,34 +149,46 @@ export const useAi = () => {
         mutations
       };
 
-      setMessages(prev => [...prev, assistantMsg]);
+      setConversations(prev => ({
+        ...prev,
+        [sessionKey]: [...(prev[sessionKey] || updatedHistory), assistantMsg]
+      }));
     } catch (err) {
       const errorMessage = translateApiError(err);
       setError(errorMessage);
-      setMessages(prev => [
+      setConversations(prev => ({
         ...prev,
-        {
-          id: `err_${Date.now()}`,
-          role: 'assistant',
-          content: errorMessage,
-          isError: true,
-          timestamp: new Date().toISOString()
-        }
-      ]);
+        [sessionKey]: [
+          ...(prev[sessionKey] || updatedHistory),
+          {
+            id: `err_${Date.now()}`,
+            role: 'assistant',
+            content: errorMessage,
+            isError: true,
+            timestamp: new Date().toISOString()
+          }
+        ]
+      }));
     } finally {
       setIsLoading(false);
     }
-  }, [messages, isLoading, screenContext, handleTriggeredMutations]);
+  }, [conversations, sessionKey, isLoading, screenContext, selectedModel, handleTriggeredMutations]);
 
   const clearChat = useCallback(() => {
-    setMessages([INITIAL_ASSISTANT_MESSAGE]);
+    setConversations(prev => ({
+      ...prev,
+      [sessionKey]: [INITIAL_ASSISTANT_MESSAGE]
+    }));
     setError(null);
-  }, []);
+  }, [sessionKey]);
 
   return {
     messages,
     isLoading,
     error,
+    selectedModel,
+    setSelectedModel: handleSetModel,
+    availableModels: AVAILABLE_MODELS,
     sendMessage,
     clearChat
   };

@@ -19,7 +19,8 @@ const chatRequestSchema = z.object({
     screen: z.string(),
     entityId: z.string().optional().nullable(),
     summary: z.record(z.any()).optional().nullable()
-  }).optional().nullable()
+  }).optional().nullable(),
+  model: z.string().optional()
 });
 
 router.post('/chat', async (req, res, next) => {
@@ -44,9 +45,10 @@ router.post('/chat', async (req, res, next) => {
       return next(parseResult.error);
     }
 
-    const { messages, screenContext } = parseResult.data;
+    const { messages, screenContext, model } = parseResult.data;
+    const targetModel = model || DEFAULT_AI_MODEL;
     const lastUserMsg = messages[messages.length - 1]?.content;
-    console.log(`\n🤖 [AI Request] User: ${req.user.email} | Screen: ${screenContext?.screen || 'Global'} | Prompt: "${lastUserMsg}"`);
+    console.log(`\n🤖 [AI Request] Model: ${targetModel} | User: ${req.user.email} | Screen: ${screenContext?.screen || 'Global'} | Prompt: "${lastUserMsg}"`);
 
     const systemInstruction = buildSystemInstruction({ user: req.user, screenContext });
     const triggeredMutations = [];
@@ -65,7 +67,7 @@ router.post('/chat', async (req, res, next) => {
       currentTurn++;
 
       const response = await ai.models.generateContent({
-        model: DEFAULT_AI_MODEL,
+        model: targetModel,
         contents,
         config: {
           systemInstruction,
