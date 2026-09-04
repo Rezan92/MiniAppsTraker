@@ -8,6 +8,7 @@ import { INVOICE_STATUSES, INVOICE_FILTER_TABS } from '../../utils/constants';
 import { StatusBadgeDropdown } from '../shared/StatusBadgeDropdown';
 import { useInvoices, useUpdateInvoiceStatus } from '../../hooks/api/useInvoices';
 import { useToast } from '../../contexts/ToastContext';
+import { useScreenContext } from '../../contexts/AiContext';
 import { ReasonModal } from './ReasonModal';
 
 export const InvoiceList = () => {
@@ -27,6 +28,19 @@ export const InvoiceList = () => {
 
   const { data: invoices = [], isLoading } = useInvoices();
   const statusMutation = useUpdateInvoiceStatus();
+
+  // Register screen context for AI Copilot
+  useScreenContext({
+    screen: 'InvoiceList',
+    entityId: null,
+    summary: {
+      totalInvoices: invoices.length,
+      draftInvoices: invoices.filter(i => i.status === 'draft').length,
+      paidInvoices: invoices.filter(i => i.status === 'paid').length,
+      sentInvoices: invoices.filter(i => i.status === 'sent').length,
+      overdueInvoices: invoices.filter(i => i.status === 'overdue').length
+    }
+  }, [invoices]);
 
   const handleStatusChange = (invoiceId, newStatus) => {
     if (['draft', 'voided', 'disputed'].includes(newStatus)) {

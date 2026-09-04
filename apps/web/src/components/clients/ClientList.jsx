@@ -6,6 +6,7 @@ import { ConfirmModal } from '../common/ConfirmModal';
 import { DataTable } from '../common/DataTable';
 import { useDebounce } from '../../hooks/useDebounce';
 import { useClients, useCreateClient, useUpdateClient, useDeleteClient } from '../../hooks/api/useClients';
+import { useScreenContext } from '../../contexts/AiContext';
 
 export const ClientList = () => {
   const navigate = useNavigate();
@@ -25,6 +26,16 @@ export const ClientList = () => {
   const createClientMutation = useCreateClient();
   const updateClientMutation = useUpdateClient();
   const deleteClientMutation = useDeleteClient();
+
+  // Register screen context for AI Copilot
+  useScreenContext({
+    screen: 'ClientList',
+    entityId: null,
+    summary: {
+      totalClients: clients.length,
+      activeClients: clients.filter(c => c.status === 'active').length
+    }
+  }, [clients]);
 
   useEffect(() => {
     if (openMenuId) {

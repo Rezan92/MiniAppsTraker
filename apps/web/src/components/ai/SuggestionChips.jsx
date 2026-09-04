@@ -37,6 +37,18 @@ export const SuggestionChips = ({ screenContext, onSelectPrompt }) => {
           "Schedule a new repair job",
           "List jobs in progress"
         ];
+      case 'ClientList':
+        return [
+          "Create a new client",
+          "How many active clients do we have?",
+          "Show residential clients"
+        ];
+      case 'InvoiceList':
+        return [
+          "Show all overdue invoices",
+          "How much total is unpaid?",
+          "Show draft invoices"
+        ];
       case 'Dashboard':
       default:
         return [

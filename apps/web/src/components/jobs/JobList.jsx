@@ -13,6 +13,7 @@ import { apiClient } from '../../lib/apiClient';
 import { useToast } from '../../contexts/ToastContext';
 import { useQueryClient } from '@tanstack/react-query';
 import { JOB_QUERY_KEYS } from '../../hooks/api/useJobs';
+import { useScreenContext } from '../../contexts/AiContext';
 
 export const JobList = () => {
   const navigate = useNavigate();
@@ -37,6 +38,18 @@ export const JobList = () => {
   const createJobMutation = useCreateJob();
   const updateJobMutation = useUpdateJob();
   const updateJobStatusMutation = useUpdateJobStatus();
+
+  // Register screen context for AI Copilot
+  useScreenContext({
+    screen: 'JobList',
+    entityId: null,
+    summary: {
+      totalJobs: jobs.length,
+      openJobs: jobs.filter(j => j.status === 'open').length,
+      inProgressJobs: jobs.filter(j => j.status === 'in_progress').length,
+      completedJobs: jobs.filter(j => j.status === 'completed').length
+    }
+  }, [jobs]);
 
   useEffect(() => {
     if (searchParams.get('add') === 'true') {

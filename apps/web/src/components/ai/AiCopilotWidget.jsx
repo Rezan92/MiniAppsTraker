@@ -51,6 +51,31 @@ export const AiCopilotWidget = () => {
     setInput('');
   };
 
+  const getScreenFocusLabel = (sc) => {
+    if (!sc?.screen) return 'Global Workspace Mode';
+    const { screen, summary, entityId } = sc;
+    switch (screen) {
+      case 'JobDetails':
+        return `Focus: Job ${summary?.title ? `"${summary.title}"` : `#${entityId?.slice(0, 8)}`}`;
+      case 'ClientDetails':
+        return `Focus: Client ${summary?.name ? `"${summary.name}"` : `#${entityId?.slice(0, 8)}`}`;
+      case 'InvoiceDetails':
+        return `Focus: Invoice #${summary?.invoiceNumber || entityId?.slice(0, 8)}`;
+      case 'InvoiceBuilder':
+        return 'Focus: Invoice Builder';
+      case 'JobList':
+        return `Focus: Jobs (${summary?.totalJobs ?? 0})`;
+      case 'ClientList':
+        return `Focus: Clients (${summary?.totalClients ?? 0})`;
+      case 'InvoiceList':
+        return `Focus: Invoices (${summary?.totalInvoices ?? 0})`;
+      case 'Dashboard':
+        return 'Focus: Dashboard';
+      default:
+        return `Focus: ${screen}`;
+    }
+  };
+
   const handleInputKeyDown = (e) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
@@ -94,13 +119,13 @@ export const AiCopilotWidget = () => {
           
           {/* Header */}
           <div className="p-4 border-b border-gray-100 flex items-center justify-between bg-gray-900 text-white">
-            <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-lg bg-primary text-black flex items-center justify-center shadow-xs">
+            <div className="flex items-center gap-2.5 min-w-0">
+              <div className="w-8 h-8 rounded-lg bg-primary text-black flex items-center justify-center shadow-xs shrink-0">
                 <span className="material-symbols-outlined text-[20px]">smart_toy</span>
               </div>
-              <div>
+              <div className="min-w-0">
                 <div className="flex items-center gap-2">
-                  <h2 className="font-bold text-sm tracking-tight text-white">MiniApps Copilot</h2>
+                  <h2 className="font-bold text-sm tracking-tight text-white shrink-0">MiniApps Copilot</h2>
                   <select
                     value={selectedModel}
                     onChange={(e) => setSelectedModel(e.target.value)}
@@ -114,12 +139,12 @@ export const AiCopilotWidget = () => {
                     ))}
                   </select>
                 </div>
-                <div className="text-[11px] text-gray-400 flex items-center gap-1 mt-0.5">
+                <div className="text-[11px] text-gray-400 flex items-center gap-1 mt-0.5 min-w-0">
                   {screenContext?.screen ? (
                     <>
-                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
-                      <span className="text-emerald-300 font-medium">
-                        Focus: {screenContext.screen} {screenContext.entityId ? `#${screenContext.entityId.slice(0, 8)}` : ''}
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shrink-0"></span>
+                      <span className="text-emerald-300 font-medium truncate" title={getScreenFocusLabel(screenContext)}>
+                        {getScreenFocusLabel(screenContext)}
                       </span>
                     </>
                   ) : (
