@@ -12,6 +12,19 @@ export const SuggestionChips = ({ screenContext, onSelectPrompt }) => {
           "Summarize this job",
           "Mark job as completed"
         ];
+      case 'InvoiceDetails':
+        return [
+          "Summarize this invoice",
+          "Mark invoice as sent",
+          "Record payment for this invoice",
+          "Void this invoice"
+        ];
+      case 'InvoiceBuilder':
+        return [
+          "Summarize unbilled work for this job",
+          "Add line item for labor",
+          "Add line item for materials"
+        ];
       case 'ClientDetails':
         return [
           "Show all jobs for this client",

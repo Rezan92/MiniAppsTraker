@@ -3,6 +3,7 @@ import { useNavigate, useParams, useSearchParams, useLocation } from 'react-rout
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../../contexts/AuthContext';
 import { useToast } from '../../contexts/ToastContext';
+import { useScreenContext } from '../../contexts/AiContext';
 import { translateApiError } from '../../utils/errorTranslator';
 import { Tooltip } from '../common/Tooltip';
 import { ConfirmModal } from '../common/ConfirmModal';
@@ -48,6 +49,17 @@ export const InvoiceBuilder = () => {
     property_id: presetPropertyId || '',
     breakdown_by_days: false
   });
+
+  // Register screen context for AI Copilot
+  useScreenContext({
+    screen: 'InvoiceBuilder',
+    entityId: id || 'new',
+    summary: {
+      isEditing,
+      fromJobId: formData.job_id || fromJobId,
+      clientId: formData.client_id
+    }
+  }, [id, isEditing, formData.job_id, formData.client_id, fromJobId]);
 
   const isDirty = useMemo(() => {
     if (!initialSnapshotRef.current) return false;

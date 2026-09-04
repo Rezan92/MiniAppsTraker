@@ -2,6 +2,38 @@ import { supabase } from '../../config/supabase.js';
 import { resolveEffectiveHourlyRate } from '../masterRates.js';
 import { calculateInvoiceFinancials, roundCurrency } from '../pricingEngine.js';
 import { pendingActionManager } from './pendingActionManager.js';
+import { entityResolver } from './entityResolver.js';
+
+// --- Safe Resolution Helpers ---
+async function resolveClientOrError(identifier, tenantId) {
+  const res = await entityResolver.resolveClient(identifier, tenantId);
+  if (res.status === 'not_found') return { error: `Client "${identifier}" not found.` };
+  if (res.status === 'ambiguous') {
+    const list = res.candidates.map(c => `"${c.name}"`).join(', ');
+    return { error: `Multiple clients match "${identifier}": ${list}. Please specify.` };
+  }
+  return { client: res.entity };
+}
+
+async function resolveJobOrError(identifier, tenantId, options = {}) {
+  const res = await entityResolver.resolveJob(identifier, tenantId, options);
+  if (res.status === 'not_found') return { error: `Job "${identifier}" not found.` };
+  if (res.status === 'ambiguous') {
+    const list = res.candidates.map(j => `"${j.title}"`).join(', ');
+    return { error: `Multiple jobs match "${identifier}": ${list}. Please specify.` };
+  }
+  return { job: res.entity };
+}
+
+async function resolveInvoiceOrError(identifier, tenantId) {
+  const res = await entityResolver.resolveInvoice(identifier, tenantId);
+  if (res.status === 'not_found') return { error: `Invoice "${identifier}" not found.` };
+  if (res.status === 'ambiguous') {
+    const list = res.candidates.map(i => `#${i.invoice_number} ("${i.labor_title || 'Invoice'}")`).join(', ');
+    return { error: `Multiple invoices match "${identifier}": ${list}. Please specify.` };
+  }
+  return { invoice: res.entity };
+}
 
 /**
  * Executes an AI tool call securely within tenant boundaries.
@@ -57,19 +89,18 @@ export async function executeAiTool(toolName, args = {}, { tenantId, userId }) {
 
       case 'get_client_details': {
         const { client_id } = args;
-        const [clientRes, propertiesRes, jobsRes] = await Promise.all([
-          supabase.from('clients').select('*').eq('id', client_id).eq('tenant_id', tenantId).single(),
-          supabase.from('rental_properties').select('*').eq('client_id', client_id).eq('tenant_id', tenantId),
-          supabase.from('jobs').select('id, title, status, start_date, rate_type').eq('client_id', client_id).eq('tenant_id', tenantId).order('created_at', { ascending: false }).limit(10)
-        ]);
+        const resolution = await resolveClientOrError(client_id, tenantId);
+        if (resolution.error) return { error: resolution.error };
+        const client = resolution.client;
 
-        if (clientRes.error || !clientRes.data) {
-          return { error: 'Client not found or access denied.' };
-        }
+        const [propertiesRes, jobsRes] = await Promise.all([
+          supabase.from('rental_properties').select('*').eq('client_id', client.id).eq('tenant_id', tenantId),
+          supabase.from('jobs').select('id, title, status, start_date, rate_type').eq('client_id', client.id).eq('tenant_id', tenantId).order('created_at', { ascending: false }).limit(10)
+        ]);
 
         return {
           result: {
-            client: clientRes.data,
+            client,
             properties: propertiesRes.data || [],
             recentJobs: jobsRes.data || []
           },
@@ -102,6 +133,10 @@ export async function executeAiTool(toolName, args = {}, { tenantId, userId }) {
 
       case 'update_client': {
         const { client_id, ...updates } = args;
+        const resolution = await resolveClientOrError(client_id, tenantId);
+        if (resolution.error) return { error: resolution.error };
+        const client = resolution.client;
+
         const payload = {};
         if (updates.name) payload.name = updates.name.trim();
         if (updates.email) payload.email = updates.email.trim().toLowerCase();
@@ -112,17 +147,23 @@ export async function executeAiTool(toolName, args = {}, { tenantId, userId }) {
         const { data, error } = await supabase
           .from('clients')
           .update(payload)
-          .eq('id', client_id)
+          .eq('id', client.id)
           .eq('tenant_id', tenantId)
           .select()
           .single();
 
         if (error) return { error: error.message };
-        return { result: data, mutation: 'clients', entityId: client_id };
+        return { result: data, mutation: 'clients', entityId: client.id };
       }
 
       case 'list_jobs': {
         const { status, client_id, limit = 20 } = args;
+        let resolvedClientId = null;
+        if (client_id) {
+          const clientRes = await entityResolver.resolveClient(client_id, tenantId);
+          if (clientRes.status === 'resolved') resolvedClientId = clientRes.entity.id;
+        }
+
         let dbQuery = supabase
           .from('jobs')
           .select('id, title, status, rate_type, hourly_rate, flat_rate, start_date, client_id, clients(name)')
@@ -131,7 +172,7 @@ export async function executeAiTool(toolName, args = {}, { tenantId, userId }) {
           .limit(Math.min(limit, 50));
 
         if (status) dbQuery = dbQuery.eq('status', status);
-        if (client_id) dbQuery = dbQuery.eq('client_id', client_id);
+        if (resolvedClientId) dbQuery = dbQuery.eq('client_id', resolvedClientId);
 
         const { data, error } = await dbQuery;
         if (error) return { error: error.message };
@@ -140,22 +181,21 @@ export async function executeAiTool(toolName, args = {}, { tenantId, userId }) {
 
       case 'get_job_details': {
         const { job_id } = args;
-        const [jobRes, hoursRes, materialsRes] = await Promise.all([
-          supabase.from('jobs').select('*, clients(name, email, phone)').eq('id', job_id).eq('tenant_id', tenantId).single(),
-          supabase.from('job_hours').select('*').eq('job_id', job_id).order('date', { ascending: false }),
-          supabase.from('job_materials').select('*').eq('job_id', job_id).order('created_at', { ascending: false })
-        ]);
+        const resolution = await resolveJobOrError(job_id, tenantId);
+        if (resolution.error) return { error: resolution.error };
+        const job = resolution.job;
 
-        if (jobRes.error || !jobRes.data) {
-          return { error: 'Job not found or access denied.' };
-        }
+        const [hoursRes, materialsRes] = await Promise.all([
+          supabase.from('job_hours').select('*').eq('job_id', job.id).order('date', { ascending: false }),
+          supabase.from('job_materials').select('*').eq('job_id', job.id).order('created_at', { ascending: false })
+        ]);
 
         const totalHours = (hoursRes.data || []).reduce((sum, h) => sum + Number(h.hours || 0), 0);
         const totalMaterialsCost = (materialsRes.data || []).reduce((sum, m) => sum + Number(m.cost || 0), 0);
 
         return {
           result: {
-            job: jobRes.data,
+            job,
             hours: hoursRes.data || [],
             materials: materialsRes.data || [],
             totals: {
@@ -169,7 +209,10 @@ export async function executeAiTool(toolName, args = {}, { tenantId, userId }) {
 
       case 'create_job': {
         const { client_id, title, rate_type, hourly_rate, flat_rate, start_date, status, notes } = args;
-        
+        const clientResolution = await resolveClientOrError(client_id, tenantId);
+        if (clientResolution.error) return { error: clientResolution.error };
+        const client = clientResolution.client;
+
         // Resolve rate type and effective hourly rate using masterRates
         const finalHourlyRate = rate_type === 'hourly' 
           ? (typeof hourly_rate === 'number' && hourly_rate > 0 ? hourly_rate : resolveEffectiveHourlyRate({ rateType: 'hourly' }))
@@ -179,7 +222,7 @@ export async function executeAiTool(toolName, args = {}, { tenantId, userId }) {
           .from('jobs')
           .insert([{
             tenant_id: tenantId,
-            client_id,
+            client_id: client.id,
             title: title.trim(),
             rate_type,
             hourly_rate: finalHourlyRate,
@@ -197,37 +240,32 @@ export async function executeAiTool(toolName, args = {}, { tenantId, userId }) {
 
       case 'update_job_status': {
         const { job_id, status } = args;
+        const resolution = await resolveJobOrError(job_id, tenantId);
+        if (resolution.error) return { error: resolution.error };
+        const job = resolution.job;
+
         const { data, error } = await supabase
           .from('jobs')
           .update({ status })
-          .eq('id', job_id)
+          .eq('id', job.id)
           .eq('tenant_id', tenantId)
           .select()
           .single();
 
         if (error) return { error: error.message };
-        return { result: data, mutation: 'jobs', entityId: job_id };
+        return { result: data, mutation: 'jobs', entityId: job.id };
       }
 
       case 'log_job_hours': {
         const { job_id, hours, date, description, start_time, end_time } = args;
-
-        // Verify job belongs to this tenant
-        const { data: job, error: jobErr } = await supabase
-          .from('jobs')
-          .select('id, title')
-          .eq('id', job_id)
-          .eq('tenant_id', tenantId)
-          .single();
-
-        if (jobErr || !job) {
-          return { error: 'Job not found or unauthorized.' };
-        }
+        const resolution = await resolveJobOrError(job_id, tenantId);
+        if (resolution.error) return { error: resolution.error };
+        const job = resolution.job;
 
         const { data, error } = await supabase
           .from('job_hours')
           .insert([{
-            job_id,
+            job_id: job.id,
             hours: parseFloat(hours),
             date: date || new Date().toISOString().split('T')[0],
             description: description.trim(),
@@ -242,28 +280,19 @@ export async function executeAiTool(toolName, args = {}, { tenantId, userId }) {
           console.error('[AI Tool Executor] log_job_hours error:', error);
           return { error: error.message };
         }
-        return { result: data, mutation: 'hours', entityId: job_id };
+        return { result: data, mutation: 'hours', entityId: job.id };
       }
 
       case 'log_job_materials': {
         const { job_id, description, cost, store, purchase_date, notes, is_from_stock } = args;
-
-        // Verify job belongs to this tenant
-        const { data: job, error: jobErr } = await supabase
-          .from('jobs')
-          .select('id, title')
-          .eq('id', job_id)
-          .eq('tenant_id', tenantId)
-          .single();
-
-        if (jobErr || !job) {
-          return { error: 'Job not found or unauthorized.' };
-        }
+        const resolution = await resolveJobOrError(job_id, tenantId);
+        if (resolution.error) return { error: resolution.error };
+        const job = resolution.job;
 
         const { data, error } = await supabase
           .from('job_materials')
           .insert([{
-            job_id,
+            job_id: job.id,
             description: description.trim(),
             cost: parseFloat(cost),
             store: store ? store.trim() : null,
@@ -278,57 +307,66 @@ export async function executeAiTool(toolName, args = {}, { tenantId, userId }) {
           console.error('[AI Tool Executor] log_job_materials error:', error);
           return { error: error.message };
         }
-        return { result: data, mutation: 'materials', entityId: job_id };
+        return { result: data, mutation: 'materials', entityId: job.id };
       }
 
-      // --- Invoicing & Billing Tools (Phase 3) ---
+      // --- Invoicing & Billing Tools (Phase 3 + Itemized Labor) ---
       case 'draft_invoice': {
         const { client_id, job_id, labor_title, due_date, tax_rate_percent, markup_amount, notes } = args;
 
-        let targetClientId = client_id;
+        let targetClientId = null;
+        let job = null;
         let lineItems = [];
         let baseLabor = 0;
         let linkedJobTitle = labor_title || 'General Contracting Labor';
 
-        // 1. If job_id is provided, resolve job, client_id, labor rate, and unbilled items
+        // 1. Resolve Job if provided
         if (job_id) {
-          const { data: job, error: jobErr } = await supabase
-            .from('jobs')
-            .select('id, title, client_id, rate_type, hourly_rate, flat_rate')
-            .eq('id', job_id)
-            .eq('tenant_id', tenantId)
-            .single();
-
-          if (jobErr || !job) {
-            return { error: 'Job not found or unauthorized.' };
-          }
-
-          if (!targetClientId) {
-            targetClientId = job.client_id;
-          }
+          const jobRes = await resolveJobOrError(job_id, tenantId);
+          if (jobRes.error) return { error: jobRes.error };
+          job = jobRes.job;
+          targetClientId = job.client_id;
           linkedJobTitle = labor_title || job.title;
 
           // Pull unbilled hours (scoped via job_id, no tenant_id column)
           const { data: hoursList } = await supabase
             .from('job_hours')
             .select('*')
-            .eq('job_id', job_id)
-            .eq('billing_status', 'unbilled');
+            .eq('job_id', job.id)
+            .eq('billing_status', 'unbilled')
+            .order('date', { ascending: true });
 
           // Pull unbilled materials (scoped via job_id, no tenant_id column)
           const { data: materialsList } = await supabase
             .from('job_materials')
             .select('*')
-            .eq('job_id', job_id)
-            .eq('billing_status', 'unbilled');
+            .eq('job_id', job.id)
+            .eq('billing_status', 'unbilled')
+            .order('purchase_date', { ascending: true });
 
-          // Calculate labor amount
+          // Calculate labor and generate itemized labor line items
           if (job.rate_type === 'hourly') {
             const rate = job.hourly_rate || resolveEffectiveHourlyRate({ isEmergency: false });
-            const totalHours = (hoursList || []).reduce((sum, h) => sum + Number(h.hours || 0), 0);
-            baseLabor = roundCurrency(totalHours * rate);
+            for (const h of (hoursList || [])) {
+              const hCost = roundCurrency(Number(h.hours || 0) * rate);
+              baseLabor = roundCurrency(baseLabor + hCost);
+              lineItems.push({
+                source_type: 'labor',
+                source_id: h.id,
+                description: h.description ? `${h.description} (${h.hours} hrs @ $${rate}/hr)` : `${h.hours} hrs worked @ $${rate}/hr`,
+                service_date: h.date,
+                amount: hCost,
+                is_billable: true
+              });
+            }
           } else {
             baseLabor = roundCurrency(job.flat_rate || 0);
+            lineItems.push({
+              source_type: 'labor',
+              description: linkedJobTitle || 'Flat Rate Project Labor',
+              amount: baseLabor,
+              is_billable: true
+            });
           }
 
           // Build material line items
@@ -343,19 +381,15 @@ export async function executeAiTool(toolName, args = {}, { tenantId, userId }) {
           }
         }
 
-        if (!targetClientId) {
-          return { error: 'A valid client_id or job_id is required to draft an invoice.' };
+        // 2. Resolve Client if client_id explicitly given or inferred
+        const clientQuery = client_id || targetClientId;
+        if (!clientQuery) {
+          return { error: 'A valid client or job is required to draft an invoice.' };
         }
 
-        // 2. Verify client belongs to this tenant
-        const { data: client, error: clientErr } = await supabase
-          .from('clients')
-          .select('id, name')
-          .eq('id', targetClientId)
-          .eq('tenant_id', tenantId)
-          .single();
-
-        if (clientErr || !client) return { error: 'Client not found or unauthorized.' };
+        const clientRes = await resolveClientOrError(clientQuery, tenantId);
+        if (clientRes.error) return { error: clientRes.error };
+        const client = clientRes.client;
 
         // 3. Deterministic financial calculations via pricingEngine.js (Rule 10)
         const financials = calculateInvoiceFinancials({
@@ -381,8 +415,8 @@ export async function executeAiTool(toolName, args = {}, { tenantId, userId }) {
           .from('invoices')
           .insert([{
             tenant_id: tenantId,
-            client_id: targetClientId,
-            job_id: job_id || null,
+            client_id: client.id,
+            job_id: job ? job.id : null,
             invoice_number: invoiceNumber,
             invoice_date: new Date().toISOString().split('T')[0],
             due_date: defaultDueDate,
@@ -407,13 +441,14 @@ export async function executeAiTool(toolName, args = {}, { tenantId, userId }) {
           .update({ next_invoice_number: nextNum + 1 })
           .eq('id', tenantId);
 
-        // 6. Insert line items if any (note: invoice_line_items has no tenant_id column)
+        // 6. Insert itemized line items (with service_date and is_billable)
         if (lineItems.length > 0) {
           const itemsToInsert = lineItems.map((item, idx) => ({
             invoice_id: newInvoice.id,
             source_type: item.source_type,
-            source_id: item.source_id,
+            source_id: item.source_id || null,
             description: item.description,
+            service_date: item.service_date || null,
             amount: item.amount,
             sort_order: idx,
             is_billable: true
@@ -431,11 +466,11 @@ export async function executeAiTool(toolName, args = {}, { tenantId, userId }) {
         }
 
         // Update billed status of hours if job was linked
-        if (job_id) {
+        if (job) {
           await supabase
             .from('job_hours')
             .update({ billing_status: 'on_draft', invoice_id: newInvoice.id })
-            .eq('job_id', job_id)
+            .eq('job_id', job.id)
             .eq('billing_status', 'unbilled');
         }
 
@@ -465,21 +500,16 @@ export async function executeAiTool(toolName, args = {}, { tenantId, userId }) {
 
       case 'add_invoice_line_item': {
         const { invoice_id, description, amount, source_type } = args;
+        const resolution = await resolveInvoiceOrError(invoice_id, tenantId);
+        if (resolution.error) return { error: resolution.error };
+        const inv = resolution.invoice;
 
-        const { data: inv, error: invErr } = await supabase
-          .from('invoices')
-          .select('*')
-          .eq('id', invoice_id)
-          .eq('tenant_id', tenantId)
-          .single();
-
-        if (invErr || !inv) return { error: 'Invoice not found or unauthorized.' };
         if (inv.status !== 'draft') return { error: 'Cannot modify non-draft invoices.' };
 
         const { data: lineItem, error: itemErr } = await supabase
           .from('invoice_line_items')
           .insert([{
-            invoice_id,
+            invoice_id: inv.id,
             source_type: source_type || 'ad_hoc',
             description: description.trim(),
             amount: roundCurrency(amount),
@@ -494,7 +524,7 @@ export async function executeAiTool(toolName, args = {}, { tenantId, userId }) {
         const { data: allItems } = await supabase
           .from('invoice_line_items')
           .select('*')
-          .eq('invoice_id', invoice_id);
+          .eq('invoice_id', inv.id);
 
         const financials = calculateInvoiceFinancials({
           baseLaborAmount: inv.labor_amount,
@@ -507,18 +537,21 @@ export async function executeAiTool(toolName, args = {}, { tenantId, userId }) {
             materials_amount: financials.materialsAmount,
             total_amount: financials.totalAmount
           })
-          .eq('id', invoice_id);
+          .eq('id', inv.id);
 
-        return { result: lineItem, mutation: 'invoices', entityId: invoice_id };
+        return { result: lineItem, mutation: 'invoices', entityId: inv.id };
       }
 
       case 'update_invoice_status': {
         const { invoice_id, status } = args;
+        const resolution = await resolveInvoiceOrError(invoice_id, tenantId);
+        if (resolution.error) return { error: resolution.error };
+        const inv = resolution.invoice;
 
         const { data, error } = await supabase
           .from('invoices')
           .update({ status })
-          .eq('id', invoice_id)
+          .eq('id', inv.id)
           .eq('tenant_id', tenantId)
           .select()
           .single();
@@ -527,16 +560,19 @@ export async function executeAiTool(toolName, args = {}, { tenantId, userId }) {
 
         await supabase.from('invoice_logs').insert([{
           tenant_id: tenantId,
-          invoice_id,
+          invoice_id: inv.id,
           action: status,
           reason: 'Updated via AI Copilot'
         }]);
 
-        return { result: data, mutation: 'invoices', entityId: invoice_id };
+        return { result: data, mutation: 'invoices', entityId: inv.id };
       }
 
       case 'get_invoice_details': {
         const { invoice_id } = args;
+        const resolution = await resolveInvoiceOrError(invoice_id, tenantId);
+        if (resolution.error) return { error: resolution.error };
+        const inv = resolution.invoice;
 
         const { data, error } = await supabase
           .from('invoices')
@@ -546,7 +582,7 @@ export async function executeAiTool(toolName, args = {}, { tenantId, userId }) {
             jobs (id, title),
             invoice_line_items (*)
           `)
-          .eq('id', invoice_id)
+          .eq('id', inv.id)
           .eq('tenant_id', tenantId)
           .single();
 
@@ -554,23 +590,40 @@ export async function executeAiTool(toolName, args = {}, { tenantId, userId }) {
         return { result: data };
       }
 
+      case 'search_invoices': {
+        const { query, status } = args;
+        const res = await entityResolver.resolveInvoice(query, tenantId);
+        if (res.status === 'resolved') {
+          return { result: [res.entity] };
+        }
+        if (res.status === 'ambiguous') {
+          return { result: res.candidates };
+        }
+
+        let dbQuery = supabase
+          .from('invoices')
+          .select('id, invoice_number, total_amount, status, due_date, labor_title, clients(name), jobs(title)')
+          .eq('tenant_id', tenantId)
+          .order('created_at', { ascending: false })
+          .limit(10);
+
+        if (status) dbQuery = dbQuery.eq('status', status);
+        const { data, error } = await dbQuery;
+        if (error) return { error: error.message };
+        return { result: data || [] };
+      }
+
       // --- Destructive Action Safety Interceptors (Human-in-the-Loop) ---
       case 'request_delete_job': {
         const { job_id, reason } = args;
-
-        const { data: job, error: jobErr } = await supabase
-          .from('jobs')
-          .select('id, title, status, clients(name)')
-          .eq('id', job_id)
-          .eq('tenant_id', tenantId)
-          .single();
-
-        if (jobErr || !job) return { error: 'Job not found or unauthorized.' };
+        const resolution = await resolveJobOrError(job_id, tenantId);
+        if (resolution.error) return { error: resolution.error };
+        const job = resolution.job;
 
         // Count cascade impact
         const [hoursCount, matsCount] = await Promise.all([
-          supabase.from('job_hours').select('id', { count: 'exact', head: true }).eq('job_id', job_id),
-          supabase.from('job_materials').select('id', { count: 'exact', head: true }).eq('job_id', job_id)
+          supabase.from('job_hours').select('id', { count: 'exact', head: true }).eq('job_id', job.id),
+          supabase.from('job_materials').select('id', { count: 'exact', head: true }).eq('job_id', job.id)
         ]);
 
         const impactSummary = `Job "${job.title}" for ${job.clients?.name || 'client'} has ${hoursCount.count || 0} logged time entries and ${matsCount.count || 0} materials records.`;
@@ -579,7 +632,7 @@ export async function executeAiTool(toolName, args = {}, { tenantId, userId }) {
           tenantId,
           userId,
           actionType: 'delete_job',
-          targetId: job_id,
+          targetId: job.id,
           description: `Permanently delete Job "${job.title}"`,
           impactSummary
         });
@@ -589,7 +642,7 @@ export async function executeAiTool(toolName, args = {}, { tenantId, userId }) {
             confirmation_required: true,
             actionId: pendingAction.actionId,
             actionType: 'delete_job',
-            targetId: job_id,
+            targetId: job.id,
             title: `Delete Job "${job.title}"`,
             impactSummary,
             reason: reason || 'Contractor requested deletion'
@@ -600,20 +653,14 @@ export async function executeAiTool(toolName, args = {}, { tenantId, userId }) {
 
       case 'request_delete_client': {
         const { client_id, reason } = args;
-
-        const { data: client, error: clientErr } = await supabase
-          .from('clients')
-          .select('id, name')
-          .eq('id', client_id)
-          .eq('tenant_id', tenantId)
-          .single();
-
-        if (clientErr || !client) return { error: 'Client not found or unauthorized.' };
+        const resolution = await resolveClientOrError(client_id, tenantId);
+        if (resolution.error) return { error: resolution.error };
+        const client = resolution.client;
 
         const { count: jobCount } = await supabase
           .from('jobs')
           .select('id', { count: 'exact', head: true })
-          .eq('client_id', client_id);
+          .eq('client_id', client.id);
 
         const impactSummary = `Client "${client.name}" has ${jobCount || 0} associated jobs.`;
 
@@ -621,7 +668,7 @@ export async function executeAiTool(toolName, args = {}, { tenantId, userId }) {
           tenantId,
           userId,
           actionType: 'delete_client',
-          targetId: client_id,
+          targetId: client.id,
           description: `Permanently delete Client "${client.name}"`,
           impactSummary
         });
@@ -631,7 +678,7 @@ export async function executeAiTool(toolName, args = {}, { tenantId, userId }) {
             confirmation_required: true,
             actionId: pendingAction.actionId,
             actionType: 'delete_client',
-            targetId: client_id,
+            targetId: client.id,
             title: `Delete Client "${client.name}"`,
             impactSummary,
             reason: reason || 'Contractor requested deletion'
@@ -642,15 +689,9 @@ export async function executeAiTool(toolName, args = {}, { tenantId, userId }) {
 
       case 'request_void_invoice': {
         const { invoice_id, reason } = args;
-
-        const { data: inv, error: invErr } = await supabase
-          .from('invoices')
-          .select('id, invoice_number, total_amount, status, clients(name)')
-          .eq('id', invoice_id)
-          .eq('tenant_id', tenantId)
-          .single();
-
-        if (invErr || !inv) return { error: 'Invoice not found or unauthorized.' };
+        const resolution = await resolveInvoiceOrError(invoice_id, tenantId);
+        if (resolution.error) return { error: resolution.error };
+        const inv = resolution.invoice;
 
         const impactSummary = `Invoice #${inv.invoice_number} for $${Number(inv.total_amount).toFixed(2)} (${inv.clients?.name || 'client'}) will be marked as voided.`;
 
@@ -658,7 +699,7 @@ export async function executeAiTool(toolName, args = {}, { tenantId, userId }) {
           tenantId,
           userId,
           actionType: 'void_invoice',
-          targetId: invoice_id,
+          targetId: inv.id,
           description: `Void Invoice #${inv.invoice_number}`,
           impactSummary
         });
@@ -668,7 +709,7 @@ export async function executeAiTool(toolName, args = {}, { tenantId, userId }) {
             confirmation_required: true,
             actionId: pendingAction.actionId,
             actionType: 'void_invoice',
-            targetId: invoice_id,
+            targetId: inv.id,
             title: `Void Invoice #${inv.invoice_number}`,
             impactSummary,
             reason: reason || 'Contractor requested void'

@@ -2,6 +2,7 @@ import React, { useRef, useState } from 'react';
 import { useParams, useNavigate, Link, useLocation } from 'react-router-dom';
 import { useReactToPrint } from 'react-to-print';
 import { useToast } from '../../contexts/ToastContext';
+import { useScreenContext } from '../../contexts/AiContext';
 import { InvoicePreview } from './InvoicePreview';
 import { DeleteInvoiceModal } from './DeleteInvoiceModal';
 import { formatDate } from '../../utils/formatters';
@@ -30,6 +31,20 @@ export const InvoiceDetails = () => {
   const statusMutation = useUpdateInvoiceStatus(id);
   const deleteMutation = useDeleteInvoice(id);
   const notesMutation = useUpdateInvoiceInternalNotes(id);
+
+  // Register screen context for AI Copilot
+  useScreenContext({
+    screen: 'InvoiceDetails',
+    entityId: id,
+    summary: {
+      invoiceNumber: invoice?.invoice_number,
+      clientName: invoice?.clients?.name,
+      status: invoice?.status,
+      totalAmount: invoice?.total_amount,
+      jobId: invoice?.job_id,
+      dueDate: invoice?.due_date
+    }
+  }, [invoice, id]);
 
   const generateFileName = () => {
     if (!invoice) return 'Invoice';

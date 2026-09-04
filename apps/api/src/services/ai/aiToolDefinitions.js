@@ -33,7 +33,7 @@ export const AI_TOOLS = [
       properties: {
         client_id: {
           type: 'STRING',
-          description: 'The UUID of the client'
+          description: 'UUID, full name, or company name of the client'
         }
       },
       required: ['client_id']
@@ -123,7 +123,7 @@ export const AI_TOOLS = [
       properties: {
         job_id: {
           type: 'STRING',
-          description: 'The UUID of the job'
+          description: 'UUID or title of the job'
         }
       },
       required: ['job_id']
@@ -137,7 +137,7 @@ export const AI_TOOLS = [
       properties: {
         client_id: {
           type: 'STRING',
-          description: 'The UUID of the client this job is for'
+          description: 'UUID, full name, or company name of the client this job is for'
         },
         title: {
           type: 'STRING',
@@ -181,7 +181,7 @@ export const AI_TOOLS = [
       properties: {
         job_id: {
           type: 'STRING',
-          description: 'The UUID of the job'
+          description: 'UUID or title of the job'
         },
         status: {
           type: 'STRING',
@@ -200,7 +200,7 @@ export const AI_TOOLS = [
       properties: {
         job_id: {
           type: 'STRING',
-          description: 'The UUID of the job worked on'
+          description: 'UUID or title of the job worked on'
         },
         hours: {
           type: 'NUMBER',
@@ -234,7 +234,7 @@ export const AI_TOOLS = [
       properties: {
         job_id: {
           type: 'STRING',
-          description: 'The UUID of the job'
+          description: 'UUID or title of the job'
         },
         description: {
           type: 'STRING',
@@ -357,10 +357,29 @@ export const AI_TOOLS = [
       properties: {
         invoice_id: {
           type: 'STRING',
-          description: 'UUID of the invoice to look up'
+          description: 'UUID, invoice number (e.g. "1027" or "INV-1027"), or job title of the invoice to look up'
         }
       },
       required: ['invoice_id']
+    }
+  },
+  {
+    name: 'search_invoices',
+    description: 'Search for invoices by invoice number, client name, or job title. Returns matching invoices with status and total amount.',
+    parameters: {
+      type: 'OBJECT',
+      properties: {
+        query: {
+          type: 'STRING',
+          description: 'Invoice number (e.g. "1027"), client name, or job title search keyword'
+        },
+        status: {
+          type: 'STRING',
+          enum: ['draft', 'sent', 'in_progress', 'paid', 'overdue', 'voided'],
+          description: 'Optional invoice status filter'
+        }
+      },
+      required: ['query']
     }
   },
 
@@ -373,7 +392,7 @@ export const AI_TOOLS = [
       properties: {
         job_id: {
           type: 'STRING',
-          description: 'UUID of the job to delete'
+          description: 'UUID or title of the job to delete (e.g. "Kitchen Remodel")'
         },
         reason: {
           type: 'STRING',
@@ -391,7 +410,7 @@ export const AI_TOOLS = [
       properties: {
         client_id: {
           type: 'STRING',
-          description: 'UUID of the client to delete'
+          description: 'UUID or name/company of the client to delete'
         },
         reason: {
           type: 'STRING',
@@ -409,7 +428,7 @@ export const AI_TOOLS = [
       properties: {
         invoice_id: {
           type: 'STRING',
-          description: 'UUID of the invoice to void'
+          description: 'UUID or human invoice number (e.g. "1027" or "INV-1027") of the invoice to void'
         },
         reason: {
           type: 'STRING',

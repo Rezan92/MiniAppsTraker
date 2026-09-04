@@ -22,6 +22,13 @@ const chatRequestSchema = z.object({
     entityId: z.string().optional().nullable(),
     summary: z.record(z.any()).optional().nullable()
   }).optional().nullable(),
+  activeFocus: z.object({
+    entityType: z.string().optional().nullable(),
+    entityId: z.string().optional().nullable(),
+    humanNumber: z.string().optional().nullable(),
+    title: z.string().optional().nullable(),
+    timestamp: z.number().optional().nullable()
+  }).optional().nullable(),
   model: z.string().optional()
 });
 
@@ -47,12 +54,13 @@ router.post('/chat', async (req, res, next) => {
       return next(parseResult.error);
     }
 
-    const { messages, screenContext, model } = parseResult.data;
+    const { messages, screenContext, activeFocus, model } = parseResult.data;
     const targetModel = model || DEFAULT_AI_MODEL;
     const lastUserMsg = messages[messages.length - 1]?.content;
     console.log(`\n🤖 [AI Request] Model: ${targetModel} | User: ${req.user.email} | Screen: ${screenContext?.screen || 'Global'} | Prompt: "${lastUserMsg}"`);
 
-    const systemInstruction = buildSystemInstruction({ user: req.user, screenContext });
+    let currentActiveFocus = activeFocus || null;
+    const systemInstruction = buildSystemInstruction({ user: req.user, screenContext, activeFocus: currentActiveFocus });
     const triggeredMutations = [];
     let pendingConfirmation = null;
     let invoiceCardData = null;
@@ -116,6 +124,7 @@ router.post('/chat', async (req, res, next) => {
             triggered_mutations: triggeredMutations,
             confirmationData: pendingConfirmation,
             invoiceData: invoiceCardData,
+            activeFocus: currentActiveFocus,
             model_used: activeModel
           }
         });
@@ -150,8 +159,48 @@ router.post('/chat', async (req, res, next) => {
           pendingConfirmation = toolResult.result;
         }
 
+        // Active Focus Tracking across turns
         if (call.name === 'draft_invoice' && toolResult.result?.invoiceId) {
           invoiceCardData = toolResult.result;
+          currentActiveFocus = {
+            entityType: 'invoice',
+            entityId: toolResult.result.invoiceId,
+            humanNumber: toolResult.result.invoiceNumber,
+            title: `Invoice #${toolResult.result.invoiceNumber}`,
+            timestamp: Date.now()
+          };
+        } else if (call.name === 'create_job' && toolResult.result?.id) {
+          currentActiveFocus = {
+            entityType: 'job',
+            entityId: toolResult.result.id,
+            humanNumber: null,
+            title: toolResult.result.title,
+            timestamp: Date.now()
+          };
+        } else if (call.name === 'create_client' && toolResult.result?.id) {
+          currentActiveFocus = {
+            entityType: 'client',
+            entityId: toolResult.result.id,
+            humanNumber: null,
+            title: toolResult.result.name,
+            timestamp: Date.now()
+          };
+        } else if (call.name === 'get_invoice_details' && toolResult.result?.id) {
+          currentActiveFocus = {
+            entityType: 'invoice',
+            entityId: toolResult.result.id,
+            humanNumber: toolResult.result.invoice_number,
+            title: `Invoice #${toolResult.result.invoice_number}`,
+            timestamp: Date.now()
+          };
+        } else if (call.name === 'get_job_details' && toolResult.result?.job?.id) {
+          currentActiveFocus = {
+            entityType: 'job',
+            entityId: toolResult.result.job.id,
+            humanNumber: null,
+            title: toolResult.result.job.title,
+            timestamp: Date.now()
+          };
         }
 
         toolResponseParts.push({
@@ -175,7 +224,8 @@ router.post('/chat', async (req, res, next) => {
         reply: "I processed your request, but hit the maximum tool interaction limit. Please check your latest entries.",
         triggered_mutations: triggeredMutations,
         confirmationData: pendingConfirmation,
-        invoiceData: invoiceCardData
+        invoiceData: invoiceCardData,
+        activeFocus: currentActiveFocus
       }
     });
 

@@ -48,6 +48,7 @@ export const useAi = () => {
 
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [activeFocus, setActiveFocus] = useState(null);
 
   const messages = conversations[sessionKey] || [
     {
@@ -56,6 +57,8 @@ export const useAi = () => {
         ? `Hello! I'm focused on ${screenContext.summary?.title || 'this job'}. You can ask me to log hours, record materials, or update status.`
         : screenContext?.screen === 'ClientDetails'
         ? `Hello! I'm focused on client ${screenContext.summary?.name || 'details'}. You can ask me to view their jobs or schedule new work.`
+        : screenContext?.screen === 'InvoiceDetails'
+        ? `Hello! I'm focused on Invoice #${screenContext.summary?.invoiceNumber || 'details'}. You can ask me to mark it as sent, record payment, or void it.`
         : INITIAL_ASSISTANT_MESSAGE.content
     }
   ];
@@ -137,6 +140,7 @@ export const useAi = () => {
       const response = await apiClient.post('/api/ai/chat', {
         messages: apiMessages,
         screenContext: screenContext || null,
+        activeFocus: activeFocus || null,
         model: selectedModel
       });
 
@@ -144,6 +148,10 @@ export const useAi = () => {
       const mutations = response?.triggered_mutations || [];
       const confirmationData = response?.confirmationData || null;
       const invoiceData = response?.invoiceData || null;
+
+      if (response?.activeFocus) {
+        setActiveFocus(response.activeFocus);
+      }
 
       // Trigger instant UI cache re-rendering
       handleTriggeredMutations(mutations);
@@ -181,7 +189,7 @@ export const useAi = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [conversations, sessionKey, isLoading, screenContext, selectedModel, handleTriggeredMutations]);
+  }, [conversations, sessionKey, isLoading, screenContext, selectedModel, activeFocus, handleTriggeredMutations]);
 
   const confirmPendingAction = useCallback(async (actionId, confirmed) => {
     try {
@@ -200,6 +208,7 @@ export const useAi = () => {
       ...prev,
       [sessionKey]: [INITIAL_ASSISTANT_MESSAGE]
     }));
+    setActiveFocus(null);
     setError(null);
   }, [sessionKey]);
 
@@ -208,6 +217,7 @@ export const useAi = () => {
     isLoading,
     error,
     selectedModel,
+    activeFocus,
     setSelectedModel: handleSetModel,
     availableModels: AVAILABLE_MODELS,
     sendMessage,
