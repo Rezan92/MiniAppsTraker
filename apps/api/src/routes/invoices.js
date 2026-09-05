@@ -444,6 +444,10 @@ router.patch('/:id/status', async (req, res, next) => {
 
     if (existError) throw existError;
 
+    if (status === 'voided' && ['draft', 'ready_to_send', 'disputed'].includes(existing.status)) {
+      return next(createApiError('Draft and disputed invoices cannot be voided. They should be deleted instead.', 400, 'INVOICE_NOT_VOIDABLE'));
+    }
+
     let action = 'Updated';
     if (status === 'sent') action = 'Sent';
     if (status === 'paid') action = 'Paid';
@@ -485,8 +489,22 @@ router.patch('/:id/status', async (req, res, next) => {
       if (lines) {
         const matIds = lines.filter(i => i.source_type === 'material' && i.source_id).map(i => i.source_id);
         const labIds = lines.filter(i => i.source_type === 'labor' && i.source_id).map(i => i.source_id);
-        if (matIds.length) await supabase.from('job_materials').update({ billing_status: 'unbilled' }).in('id', matIds);
-        if (labIds.length) await supabase.from('job_hours').update({ billing_status: 'unbilled' }).in('id', labIds);
+        if (matIds.length) await supabase.from('job_materials').update({ billing_status: 'unbilled', invoice_id: null }).in('id', matIds);
+        if (labIds.length) await supabase.from('job_hours').update({ billing_status: 'unbilled', invoice_id: null }).in('id', labIds);
+      }
+      await Promise.all([
+        supabase.from('job_hours').update({ billing_status: 'unbilled', invoice_id: null }).eq('invoice_id', req.params.id),
+        supabase.from('job_materials').update({ billing_status: 'unbilled', invoice_id: null }).eq('invoice_id', req.params.id)
+      ]);
+    }
+
+    if (status === 'draft' || status === 'ready_to_send') {
+      const { data: lines } = await supabase.from('invoice_line_items').select('source_id, source_type').eq('invoice_id', req.params.id);
+      if (lines) {
+        const matIds = lines.filter(i => i.source_type === 'material' && i.source_id).map(i => i.source_id);
+        const labIds = lines.filter(i => i.source_type === 'labor' && i.source_id).map(i => i.source_id);
+        if (matIds.length) await supabase.from('job_materials').update({ billing_status: 'on_draft' }).in('id', matIds);
+        if (labIds.length) await supabase.from('job_hours').update({ billing_status: 'on_draft' }).in('id', labIds);
       }
     }
 
@@ -540,8 +558,8 @@ router.delete('/:id', async (req, res, next) => {
       .single();
 
     if (checkError) throw checkError;
-    if (existing.status !== 'draft') {
-      return next(createApiError('Only draft invoices can be deleted', 403, 'INVOICE_NOT_DRAFT'));
+    if (!['draft', 'ready_to_send', 'disputed'].includes(existing.status)) {
+      return next(createApiError('Only draft, ready to send, or disputed invoices can be deleted', 403, 'INVOICE_NOT_DELETABLE'));
     }
 
     const { data: items } = await supabase
@@ -555,12 +573,17 @@ router.delete('/:id', async (req, res, next) => {
       const materialIds = items.filter(i => i.source_type === 'material').map(i => i.source_id);
 
       if (laborIds.length > 0) {
-        await supabase.from('job_hours').update({ billing_status: 'unbilled' }).in('id', laborIds);
+        await supabase.from('job_hours').update({ billing_status: 'unbilled', invoice_id: null }).in('id', laborIds);
       }
       if (materialIds.length > 0) {
-        await supabase.from('job_materials').update({ billing_status: 'unbilled' }).in('id', materialIds);
+        await supabase.from('job_materials').update({ billing_status: 'unbilled', invoice_id: null }).in('id', materialIds);
       }
     }
+
+    await Promise.all([
+      supabase.from('job_hours').update({ billing_status: 'unbilled', invoice_id: null }).eq('invoice_id', req.params.id),
+      supabase.from('job_materials').update({ billing_status: 'unbilled', invoice_id: null }).eq('invoice_id', req.params.id)
+    ]);
 
     const { error } = await supabase
       .from('invoices')

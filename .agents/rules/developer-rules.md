@@ -11,12 +11,12 @@ These rules dictate how the AI Developer Agent should behave and interact with t
 **Always mark completed user stories and tasks as `[x]` in the `.agents/stories/` markdown files.**
 Whenever an implementation is successfully finished, the developer agent must locate the corresponding user story and epic file and update the checkboxes from `[ ]` to `[x]` to maintain an accurate source of truth for project progress.
 
-## Rule 2: Commit Suggestion Protocol (No Auto-Commits)
-**Never automatically commit or push changes without explicit user instructions.**
+## Rule 2: Commit & Push Protocol (Auto-Commit & Push Active)
+**Always commit verified changes with conventional commit messages and push to remote.**
 Whenever an update, feature, bugfix, or refactor is completed:
 1. Verify the changes thoroughly (builds, tests, syntax).
-2. Propose and suggest the exact `git add` and conventional commit command with a clear, detailed message.
-3. Do not run `git commit` or `git push` unless the user explicitly requests you to commit.
+2. Stage and commit the changes with a clear, detailed conventional commit message.
+3. Push the committed changes to the remote repository (`git push`).
 
 ## Rule 3: Critical Evaluation & Independent Senior Mindset
 **Do not blindly agree with every prompt or proposed solution.**
@@ -64,4 +64,11 @@ As an independent senior developer:
 - **Deep Root-Cause Analysis**: When an error or unexpected behavior is reported, find the exact line and runtime mechanism causing it (e.g. lexical ordering, Temporal Dead Zone, stale closures, missing guards). Never guess or patch blindly.
 - **Holistic System Tracing**: Mentally trace data flows, lifecycle order, side effects, and edge cases across connected components, schemas, and queries before writing code.
 - **Prevent Regressions**: Ensure every line written or replaced is 100% intentional, robust, defensive against null/transient states, and strictly aligned with project architectural rules. We do not break things; we solve them properly.
+
+## Rule 13: Actionable Manual Verification Guidance
+**Always pinpoint concise manual tests whenever changes are completed.**
+At the conclusion of every implementation, provide a targeted checklist of manual test scenarios for the user:
+- State the exact user flows to test in the web application (e.g. navigation paths, specific inputs, buttons clicked, expected UI states).
+- Detail connected side effects or related entities that must be verified (e.g. verifying that unbilled hours and materials reappear on the corresponding job).
+- Keep instructions concise, direct, and actionable without unnecessary fluff.
 

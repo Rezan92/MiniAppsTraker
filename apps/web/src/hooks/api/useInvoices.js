@@ -84,6 +84,10 @@ export const useUpdateInvoiceStatus = (defaultId) => {
         queryClient.invalidateQueries({ queryKey: INVOICE_QUERY_KEYS.detail(id) });
         queryClient.invalidateQueries({ queryKey: INVOICE_QUERY_KEYS.logs(id) });
       }
+      queryClient.invalidateQueries({ queryKey: ['jobs'] });
+      queryClient.invalidateQueries({ queryKey: ['hours'] });
+      queryClient.invalidateQueries({ queryKey: ['materials'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
       showSuccess('Status updated successfully');
     },
     onError: (err) => showError(translateApiError(err))
@@ -124,6 +128,10 @@ export const useDeleteInvoice = (defaultId) => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: INVOICE_QUERY_KEYS.all });
+      queryClient.invalidateQueries({ queryKey: ['jobs'] });
+      queryClient.invalidateQueries({ queryKey: ['hours'] });
+      queryClient.invalidateQueries({ queryKey: ['materials'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
       showSuccess('Invoice deleted successfully');
     },
     onError: (err) => showError(translateApiError(err))

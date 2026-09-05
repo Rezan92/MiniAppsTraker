@@ -421,8 +421,26 @@ export const AI_TOOLS = [
     }
   },
   {
+    name: 'request_delete_invoice',
+    description: 'Request deletion of an invoice that is in draft, ready_to_send, or disputed status. Does NOT delete immediately; creates a pending action confirmation card for contractor review and approval. Automatically reverts all associated job labor hours and materials back to unbilled status.',
+    parameters: {
+      type: 'OBJECT',
+      properties: {
+        invoice_id: {
+          type: 'STRING',
+          description: 'UUID or human invoice number (e.g. "1027" or "INV-1027") of the invoice to delete'
+        },
+        reason: {
+          type: 'STRING',
+          description: 'Optional reason for deleting the invoice'
+        }
+      },
+      required: ['invoice_id']
+    }
+  },
+  {
     name: 'request_void_invoice',
-    description: 'Request voiding of a finalized or sent invoice. Does NOT void immediately; creates a pending confirmation card for contractor approval.',
+    description: 'Request voiding of a finalized, sent, or paid invoice. Cannot be used for draft or disputed invoices (draft or disputed invoices must be deleted instead). Does NOT void immediately; creates a pending confirmation card for contractor approval.',
     parameters: {
       type: 'OBJECT',
       properties: {

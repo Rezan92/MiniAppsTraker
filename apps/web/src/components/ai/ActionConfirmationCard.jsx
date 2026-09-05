@@ -25,6 +25,8 @@ export const ActionConfirmationCard = ({ confirmationData, onComplete }) => {
         navigate('/jobs', { replace: true });
       } else if (actionType === 'delete_client' && location.pathname.includes(`/clients/${targetId}`)) {
         navigate('/clients', { replace: true });
+      } else if (actionType === 'delete_invoice' && location.pathname.includes(`/invoices/${targetId}`)) {
+        navigate('/invoices', { replace: true });
       }
     } catch (err) {
       console.error('Failed to confirm action:', err);

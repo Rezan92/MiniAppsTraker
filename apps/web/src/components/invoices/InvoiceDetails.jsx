@@ -101,6 +101,8 @@ export const InvoiceDetails = () => {
   }
 
   const isDraft = invoice.status === 'draft';
+  const isDeletable = ['draft', 'ready_to_send', 'disputed'].includes(invoice.status);
+  const isVoidable = ['sent', 'paid', 'overdue'].includes(invoice.status);
 
   return (
     <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -179,7 +181,7 @@ export const InvoiceDetails = () => {
             </>
           )}
 
-          {['ready_to_send', 'sent', 'in_progress', 'paid', 'overdue'].includes(invoice.status) && invoice.status !== 'voided' && (
+          {isVoidable && (
             <button 
               onClick={() => { setReasonAction('voided'); setReasonText(''); setReasonModalOpen(true); }}
               className="inline-flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg text-sm font-medium hover:bg-red-700 cursor-pointer"
@@ -189,7 +191,7 @@ export const InvoiceDetails = () => {
             </button>
           )}
 
-          {isDraft && (
+          {isDeletable && (
             <button 
               onClick={() => setDeleteModalOpen(true)}
               className="inline-flex items-center p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors ml-2 cursor-pointer"
@@ -326,7 +328,9 @@ export const InvoiceDetails = () => {
       <DeleteInvoiceModal
         isOpen={deleteModalOpen}
         onClose={() => setDeleteModalOpen(false)}
-        onConfirm={() => deleteMutation.mutate()}
+        onConfirm={() => deleteMutation.mutate(undefined, {
+          onSuccess: () => navigate(fromJobId ? `/jobs/${fromJobId}` : '/invoices', { replace: true })
+        })}
         invoiceNumber={invoice.invoice_number}
         loading={deleteMutation.isPending}
       />

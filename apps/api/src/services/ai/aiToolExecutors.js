@@ -548,15 +548,45 @@ export async function executeAiTool(toolName, args = {}, { tenantId, userId }) {
         if (resolution.error) return { error: resolution.error };
         const inv = resolution.invoice;
 
+        // Invoices in draft, ready_to_send, or disputed must not be directly voided
+        if (status === 'voided' && ['draft', 'ready_to_send', 'disputed'].includes(inv.status)) {
+          return { error: `Invoice #${inv.invoice_number} is in "${inv.status}" status. Invoices in draft or disputed status should be deleted, not voided. Please request invoice deletion.` };
+        }
+
+        const updateData = { status };
+        if (status === 'paid') updateData.paid_at = new Date().toISOString();
+
         const { data, error } = await supabase
           .from('invoices')
-          .update({ status })
+          .update(updateData)
           .eq('id', inv.id)
           .eq('tenant_id', tenantId)
           .select()
           .single();
 
         if (error) return { error: error.message };
+
+        // Synchronize job billing items
+        const { data: lines } = await supabase
+          .from('invoice_line_items')
+          .select('source_id, source_type')
+          .eq('invoice_id', inv.id);
+
+        if (lines && lines.length > 0) {
+          const matIds = lines.filter(i => i.source_type === 'material' && i.source_id).map(i => i.source_id);
+          const labIds = lines.filter(i => i.source_type === 'labor' && i.source_id).map(i => i.source_id);
+
+          if (status === 'sent' || status === 'paid') {
+            if (matIds.length) await supabase.from('job_materials').update({ billing_status: 'billed' }).in('id', matIds);
+            if (labIds.length) await supabase.from('job_hours').update({ billing_status: 'billed' }).in('id', labIds);
+          } else if (status === 'voided') {
+            if (matIds.length) await supabase.from('job_materials').update({ billing_status: 'unbilled', invoice_id: null }).in('id', matIds);
+            if (labIds.length) await supabase.from('job_hours').update({ billing_status: 'unbilled', invoice_id: null }).in('id', labIds);
+          } else if (status === 'draft' || status === 'ready_to_send') {
+            if (matIds.length) await supabase.from('job_materials').update({ billing_status: 'on_draft' }).in('id', matIds);
+            if (labIds.length) await supabase.from('job_hours').update({ billing_status: 'on_draft' }).in('id', labIds);
+          }
+        }
 
         await supabase.from('invoice_logs').insert([{
           tenant_id: tenantId,
@@ -687,13 +717,89 @@ export async function executeAiTool(toolName, args = {}, { tenantId, userId }) {
         };
       }
 
+      case 'request_delete_invoice': {
+        const { invoice_id, reason } = args;
+        const resolution = await resolveInvoiceOrError(invoice_id, tenantId);
+        if (resolution.error) return { error: resolution.error };
+        const inv = resolution.invoice;
+
+        if (inv.status === 'paid') {
+          return { error: `Invoice #${inv.invoice_number} is already paid and cannot be deleted. Paid invoices can only be voided for accounting compliance.` };
+        }
+        if (['sent', 'overdue'].includes(inv.status)) {
+          return { error: `Invoice #${inv.invoice_number} has already been sent to the client. Sent invoices must either be voided with request_void_invoice or reverted to draft before deleting.` };
+        }
+        if (inv.status === 'voided') {
+          return { error: `Invoice #${inv.invoice_number} is already voided.` };
+        }
+
+        const { data: lines } = await supabase
+          .from('invoice_line_items')
+          .select('source_type, source_id')
+          .eq('invoice_id', inv.id);
+
+        const items = lines || [];
+        const laborCount = items.filter(i => i.source_type === 'labor' && i.source_id).length;
+        const matCount = items.filter(i => i.source_type === 'material' && i.source_id).length;
+
+        let impactDetails = [];
+        if (laborCount > 0) impactDetails.push(`${laborCount} labor entries`);
+        if (matCount > 0) impactDetails.push(`${matCount} material records`);
+        const itemNote = impactDetails.length > 0 ? ` (${impactDetails.join(' and ')} will revert to unbilled)` : '';
+
+        const impactSummary = `Invoice #${inv.invoice_number} for $${Number(inv.total_amount || 0).toFixed(2)} (${inv.clients?.name || 'client'}) will be permanently deleted${itemNote}.`;
+
+        const pendingAction = pendingActionManager.createAction({
+          tenantId,
+          userId,
+          actionType: 'delete_invoice',
+          targetId: inv.id,
+          description: `Permanently delete Invoice #${inv.invoice_number}`,
+          impactSummary
+        });
+
+        return {
+          result: {
+            confirmation_required: true,
+            actionId: pendingAction.actionId,
+            actionType: 'delete_invoice',
+            targetId: inv.id,
+            title: `Delete Invoice #${inv.invoice_number}`,
+            impactSummary,
+            reason: reason || 'Contractor requested deletion'
+          },
+          mutation: null
+        };
+      }
+
       case 'request_void_invoice': {
         const { invoice_id, reason } = args;
         const resolution = await resolveInvoiceOrError(invoice_id, tenantId);
         if (resolution.error) return { error: resolution.error };
         const inv = resolution.invoice;
 
-        const impactSummary = `Invoice #${inv.invoice_number} for $${Number(inv.total_amount).toFixed(2)} (${inv.clients?.name || 'client'}) will be marked as voided.`;
+        if (['draft', 'ready_to_send', 'disputed'].includes(inv.status)) {
+          return { error: `Invoice #${inv.invoice_number} is in "${inv.status}" status. Invoices in draft or disputed status should be deleted using request_delete_invoice, not voided.` };
+        }
+        if (inv.status === 'voided') {
+          return { error: `Invoice #${inv.invoice_number} is already voided.` };
+        }
+
+        const { data: lines } = await supabase
+          .from('invoice_line_items')
+          .select('source_type, source_id')
+          .eq('invoice_id', inv.id);
+
+        const items = lines || [];
+        const laborCount = items.filter(i => i.source_type === 'labor' && i.source_id).length;
+        const matCount = items.filter(i => i.source_type === 'material' && i.source_id).length;
+
+        let impactDetails = [];
+        if (laborCount > 0) impactDetails.push(`${laborCount} labor entries`);
+        if (matCount > 0) impactDetails.push(`${matCount} material records`);
+        const itemNote = impactDetails.length > 0 ? ` (${impactDetails.join(' and ')} will revert to unbilled)` : '';
+
+        const impactSummary = `Invoice #${inv.invoice_number} for $${Number(inv.total_amount || 0).toFixed(2)} (${inv.clients?.name || 'client'}) will be marked as voided${itemNote}.`;
 
         const pendingAction = pendingActionManager.createAction({
           tenantId,

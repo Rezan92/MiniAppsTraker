@@ -120,6 +120,8 @@ export const AiContextProvider = ({ children }) => {
             queryClient.invalidateQueries({ queryKey: ['invoice-logs', entityId] });
           }
           queryClient.invalidateQueries({ queryKey: ['jobs'] });
+          queryClient.invalidateQueries({ queryKey: ['hours'] });
+          queryClient.invalidateQueries({ queryKey: ['materials'] });
           queryClient.invalidateQueries({ queryKey: ['dashboard'] });
           break;
 
