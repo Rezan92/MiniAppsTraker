@@ -194,7 +194,7 @@ export const AI_TOOLS = [
   },
   {
     name: 'log_job_hours',
-    description: 'Log labor hours worked on a specific job.',
+    description: 'Log labor hours worked on a specific job. Requires the user to explicitly specify both the hours and a specific task description. Do NOT call this tool if the user did not specify what work was performed.',
     parameters: {
       type: 'OBJECT',
       properties: {
@@ -204,15 +204,15 @@ export const AI_TOOLS = [
         },
         hours: {
           type: 'NUMBER',
-          description: 'Number of hours worked (e.g. 2.5)'
+          description: 'Number of hours worked (e.g. 2.5). Must be explicitly stated by the user.'
         },
         date: {
           type: 'STRING',
-          description: 'Work date in YYYY-MM-DD format'
+          description: 'Work date in YYYY-MM-DD format (defaults to today if omitted)'
         },
         description: {
           type: 'STRING',
-          description: 'Detailed description of tasks completed during this time'
+          description: 'Specific description of work or tasks completed. MUST be explicitly provided by the user. NEVER invent generic placeholders like "General labor tasks", "Labor work", or "Work done". If the user did not specify the work done, do NOT call this tool; ask them first.'
         },
         start_time: {
           type: 'STRING',
@@ -223,12 +223,12 @@ export const AI_TOOLS = [
           description: 'Optional end time (e.g. "11:00 AM")'
         }
       },
-      required: ['job_id', 'hours', 'date', 'description']
+      required: ['job_id', 'hours', 'description']
     }
   },
   {
     name: 'log_job_materials',
-    description: 'Record material or supply expenses purchased for a specific job.',
+    description: 'Record material or supply expenses purchased for a specific job. Requires the user to explicitly specify the material item/name and cost. Do NOT call this tool if the user did not specify what materials were purchased.',
     parameters: {
       type: 'OBJECT',
       properties: {
@@ -238,15 +238,15 @@ export const AI_TOOLS = [
         },
         description: {
           type: 'STRING',
-          description: 'Name or description of materials purchased (e.g. "PVC Pipes and Glue")'
+          description: 'Specific name or description of materials purchased (e.g. "1/2 inch copper pipe"). MUST be explicitly provided by the user. NEVER invent generic placeholders like "Materials" or "Supplies". If the user did not specify what was purchased, do NOT call this tool; ask them first.'
         },
         cost: {
           type: 'NUMBER',
-          description: 'Total purchase cost in dollars (e.g. 45.80)'
+          description: 'Total purchase cost in dollars (e.g. 45.80). Must be explicitly stated by the user.'
         },
         store: {
           type: 'STRING',
-          description: 'Retailer or supplier name (e.g. "Home Depot", "Lowes")'
+          description: 'Retailer or supplier name (e.g. "Home Depot", "Lowes"). Optional. ONLY provide if explicitly mentioned by the user. NEVER invent or assume a store name.'
         },
         purchase_date: {
           type: 'STRING',
@@ -268,7 +268,7 @@ export const AI_TOOLS = [
   // --- Invoicing & Billing Tools (Phase 3) ---
   {
     name: 'draft_invoice',
-    description: 'Generate a new draft invoice for a job or client. Automatically pulls and calculates all unbilled labor hours and materials using the centralized pricing engine.',
+    description: 'Generate a new draft invoice for a job or client. Automatically pulls and calculates all unbilled labor hours and materials using the centralized pricing engine. Preserves the exact original descriptions of labor and materials entries without alteration.',
     parameters: {
       type: 'OBJECT',
       properties: {

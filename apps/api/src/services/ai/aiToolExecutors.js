@@ -295,7 +295,25 @@ export async function executeAiTool(toolName, args = {}, { tenantId, userId }) {
         if (resolution.error) return { error: resolution.error };
         const job = resolution.job;
 
-        const parsedHours = parseFloat(hours) || 0;
+        const trimmedDesc = (description || '').trim();
+        const GENERIC_LABOR_PLACEHOLDERS = [
+          'work', 'labor', 'general work', 'general labor', 'general labor tasks',
+          'tasks', 'hours', 'labor tasks', 'job work', 'labor work', 'misc work',
+          'work completed', 'tasks completed', 'work done', 'general'
+        ];
+        if (!trimmedDesc || GENERIC_LABOR_PLACEHOLDERS.includes(trimmedDesc.toLowerCase())) {
+          return {
+            error: 'Missing required task description: A specific description of the work or tasks performed is required. Please ask the user what specific tasks were completed before logging hours.'
+          };
+        }
+
+        const parsedHours = parseFloat(hours);
+        if (isNaN(parsedHours) || parsedHours <= 0) {
+          return {
+            error: 'Missing required hours: A valid positive number of hours is required. Please ask the user how many hours were worked.'
+          };
+        }
+
         // Mirror manual modal behavior: default start_time to '01:00' and calculate end_time if omitted
         const finalStartTime = normalizeTimeTo24Hour(start_time) || '01:00';
         const finalEndTime = normalizeTimeTo24Hour(end_time) || addHoursToTime(finalStartTime, parsedHours);
@@ -306,7 +324,7 @@ export async function executeAiTool(toolName, args = {}, { tenantId, userId }) {
             job_id: job.id,
             hours: parsedHours,
             date: date || new Date().toISOString().split('T')[0],
-            description: (description || 'Labor work').trim(),
+            description: trimmedDesc,
             start_time: finalStartTime,
             end_time: finalEndTime,
             billing_status: 'unbilled'
@@ -327,12 +345,30 @@ export async function executeAiTool(toolName, args = {}, { tenantId, userId }) {
         if (resolution.error) return { error: resolution.error };
         const job = resolution.job;
 
+        const trimmedDesc = (description || '').trim();
+        const GENERIC_MATERIAL_PLACEHOLDERS = [
+          'material', 'materials', 'supplies', 'item', 'items', 'stuff', 'misc',
+          'miscellaneous', 'general materials', 'parts', 'hardware', 'general'
+        ];
+        if (!trimmedDesc || GENERIC_MATERIAL_PLACEHOLDERS.includes(trimmedDesc.toLowerCase())) {
+          return {
+            error: 'Missing required material description: A specific name or description of the materials purchased is required. Please ask the user what specific materials were purchased before logging materials.'
+          };
+        }
+
+        const parsedCost = parseFloat(cost);
+        if (isNaN(parsedCost) || parsedCost < 0) {
+          return {
+            error: 'Missing valid material cost: A valid purchase cost is required. Please ask the user for the cost of the materials.'
+          };
+        }
+
         const { data, error } = await supabase
           .from('job_materials')
           .insert([{
             job_id: job.id,
-            description: description.trim(),
-            cost: parseFloat(cost),
+            description: trimmedDesc,
+            cost: parsedCost,
             store: store ? store.trim() : null,
             purchase_date: purchase_date || new Date().toISOString().split('T')[0],
             notes: notes || null,
@@ -391,7 +427,7 @@ export async function executeAiTool(toolName, args = {}, { tenantId, userId }) {
               lineItems.push({
                 source_type: 'labor',
                 source_id: h.id,
-                description: h.description ? `${h.description} (${h.hours} hrs @ $${rate}/hr)` : `${h.hours} hrs worked @ $${rate}/hr`,
+                description: h.description || `${h.hours} hours logged`,
                 service_date: h.date,
                 amount: hCost,
                 is_billable: true
