@@ -162,8 +162,17 @@ export const Dashboard = () => {
           </button>
         </div>
 
-        <CreateClientModal open={clientModalOpen} onClose={() => { setClientModalOpen(false); refetch(); }} />
-        <CreateJobModal open={jobModalOpen} onClose={() => { setJobModalOpen(false); refetch(); }} />
+        <AddClientModal 
+          open={clientModalOpen} 
+          onClose={() => setClientModalOpen(false)} 
+          onSubmit={handleCreateClient}
+        />
+        <AddJobModal 
+          open={jobModalOpen} 
+          onClose={() => setJobModalOpen(false)} 
+          onSubmit={handleCreateJob}
+          clients={clientsData}
+        />
       </div>
     );
   }

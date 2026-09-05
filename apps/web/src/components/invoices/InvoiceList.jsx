@@ -34,11 +34,11 @@ export const InvoiceList = () => {
     screen: 'InvoiceList',
     entityId: null,
     summary: {
-      totalInvoices: invoices.length,
-      draftInvoices: invoices.filter(i => i.status === 'draft').length,
-      paidInvoices: invoices.filter(i => i.status === 'paid').length,
-      sentInvoices: invoices.filter(i => i.status === 'sent').length,
-      overdueInvoices: invoices.filter(i => i.status === 'overdue').length
+      totalInvoices: Array.isArray(invoices) ? invoices.length : 0,
+      draftInvoices: Array.isArray(invoices) ? invoices.filter(i => i.status === 'draft').length : 0,
+      paidInvoices: Array.isArray(invoices) ? invoices.filter(i => i.status === 'paid').length : 0,
+      sentInvoices: Array.isArray(invoices) ? invoices.filter(i => i.status === 'sent').length : 0,
+      overdueInvoices: Array.isArray(invoices) ? invoices.filter(i => i.status === 'overdue').length : 0
     }
   }, [invoices]);
 

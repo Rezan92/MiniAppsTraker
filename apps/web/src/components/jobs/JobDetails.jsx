@@ -101,8 +101,8 @@ export const JobDetails = () => {
       rateType: job?.rate_type,
       hourlyRate: job?.hourly_rate,
       flatRate: job?.flat_rate,
-      totalHours: hours?.reduce((acc, h) => acc + Number(h.hours || 0), 0) || 0,
-      totalMaterialsCost: materials?.reduce((acc, m) => acc + Number(m.cost || 0), 0) || 0
+      totalHours: Array.isArray(hours) ? hours.reduce((acc, h) => acc + Number(h.hours || 0), 0) : 0,
+      totalMaterialsCost: Array.isArray(materials) ? materials.reduce((acc, m) => acc + Number(m.cost || 0), 0) : 0
     }
   }, [job, hours, materials, id]);
 

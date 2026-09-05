@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useContext, useEffect, useState, useRef } from 'react';
 import { supabase } from '../lib/supabase';
 
 const AuthContext = createContext();
@@ -9,11 +9,19 @@ export const AuthProvider = ({ children }) => {
   const [userData, setUserData] = useState(null); // This is backend user (tenant_id, role)
   const [loading, setLoading] = useState(true);
 
+  // Mutable refs to track token and ongoing requests without stale closure traps
+  const currentTokenRef = useRef(null);
+  const isFetchingRef = useRef(false);
+
   const fetchBackendUser = async (currentSession) => {
-    if (!currentSession) {
+    if (!currentSession?.access_token) {
       setUserData(null);
+      currentTokenRef.current = null;
       return;
     }
+
+    if (isFetchingRef.current) return;
+    isFetchingRef.current = true;
     
     try {
       const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:4000'}/api/auth/me`, {
@@ -26,6 +34,11 @@ export const AuthProvider = ({ children }) => {
           setSession(null);
           setUser(null);
           setUserData(null);
+          currentTokenRef.current = null;
+          return;
+        }
+        if (res.status === 429) {
+          console.warn("AuthContext: Rate limit reached on /api/auth/me");
           return;
         }
         throw new Error('Failed to fetch backend context');
@@ -33,31 +46,41 @@ export const AuthProvider = ({ children }) => {
       
       const json = await res.json();
       setUserData(json.data);
+      currentTokenRef.current = currentSession.access_token;
     } catch (err) {
       console.error("AuthContext fetchBackendUser error:", err);
+    } finally {
+      isFetchingRef.current = false;
     }
-  };
-
-  const initAuth = async () => {
-    const { data: { session: initSession } } = await supabase.auth.getSession();
-    setSession(initSession);
-    setUser(initSession?.user ?? null);
-    
-    if (initSession) {
-      await fetchBackendUser(initSession);
-    }
-    setLoading(false);
   };
 
   useEffect(() => {
+    const initAuth = async () => {
+      const { data: { session: initSession } } = await supabase.auth.getSession();
+      setSession(initSession);
+      setUser(initSession?.user ?? null);
+      
+      if (initSession) {
+        currentTokenRef.current = initSession.access_token;
+        await fetchBackendUser(initSession);
+      }
+      setLoading(false);
+    };
+
     initAuth();
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, newSession) => {
       setSession(newSession);
       setUser(newSession?.user ?? null);
-      if (newSession && newSession.access_token !== session?.access_token) {
-        await fetchBackendUser(newSession);
-      } else if (!newSession) {
+
+      if (newSession) {
+        // Only fetch backend user when the access token actually changes (e.g. login or token refresh)
+        if (newSession.access_token !== currentTokenRef.current) {
+          currentTokenRef.current = newSession.access_token;
+          await fetchBackendUser(newSession);
+        }
+      } else {
+        currentTokenRef.current = null;
         setUserData(null);
       }
     });

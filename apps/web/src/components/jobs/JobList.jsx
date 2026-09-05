@@ -44,10 +44,10 @@ export const JobList = () => {
     screen: 'JobList',
     entityId: null,
     summary: {
-      totalJobs: jobs.length,
-      openJobs: jobs.filter(j => j.status === 'open').length,
-      inProgressJobs: jobs.filter(j => j.status === 'in_progress').length,
-      completedJobs: jobs.filter(j => j.status === 'completed').length
+      totalJobs: Array.isArray(jobs) ? jobs.length : 0,
+      openJobs: Array.isArray(jobs) ? jobs.filter(j => j.status === 'open').length : 0,
+      inProgressJobs: Array.isArray(jobs) ? jobs.filter(j => j.status === 'in_progress').length : 0,
+      completedJobs: Array.isArray(jobs) ? jobs.filter(j => j.status === 'completed').length : 0
     }
   }, [jobs]);
 

@@ -11,12 +11,12 @@ These rules dictate how the AI Developer Agent should behave and interact with t
 **Always mark completed user stories and tasks as `[x]` in the `.agents/stories/` markdown files.**
 Whenever an implementation is successfully finished, the developer agent must locate the corresponding user story and epic file and update the checkboxes from `[ ]` to `[x]` to maintain an accurate source of truth for project progress.
 
-## Rule 2: Mandatory Auto-Commit & Push
-**Always commit changes with detailed messages and push for anything updated.**
+## Rule 2: Commit Suggestion Protocol (No Auto-Commits)
+**Never automatically commit or push changes without explicit user instructions.**
 Whenever an update, feature, bugfix, or refactor is completed:
-1. Stage and commit the changes with a clear, detailed, and conventional commit message.
-2. Push the committed changes to the remote repository immediately.
-Do not wait or ask for permission to commit and push unless explicitly instructed otherwise.
+1. Verify the changes thoroughly (builds, tests, syntax).
+2. Propose and suggest the exact `git add` and conventional commit command with a clear, detailed message.
+3. Do not run `git commit` or `git push` unless the user explicitly requests you to commit.
 
 ## Rule 3: Critical Evaluation & Independent Senior Mindset
 **Do not blindly agree with every prompt or proposed solution.**
@@ -59,9 +59,9 @@ Never perform inline floating-point arithmetic for invoice line items, tax, or j
 Workspace switching, creation, and deletion must execute smoothly in-memory via `useWorkspace()`, updating React context and purging TanStack Query cache keys without page flicker.
 
 ## Rule 12: Deep Architectural Forethought & Precise Change Execution
-**Always think deeply and plan comprehensively before modifying, replacing, or refactoring code.**
-As a senior developer:
-- Never blindly replace blocks of code or make rushed changes without understanding all connected consumers, schemas, and type contracts.
-- Mentally trace data flows, side effects, and edge cases across frontend and backend before executing.
-- Ensure every line written or replaced is 100% intentional, accurate, robust, and aligned with project architectural rules.
+**Always think deeply, investigate thoroughly, and plan comprehensively before modifying, replacing, or refactoring code.**
+As an independent senior developer:
+- **Deep Root-Cause Analysis**: When an error or unexpected behavior is reported, find the exact line and runtime mechanism causing it (e.g. lexical ordering, Temporal Dead Zone, stale closures, missing guards). Never guess or patch blindly.
+- **Holistic System Tracing**: Mentally trace data flows, lifecycle order, side effects, and edge cases across connected components, schemas, and queries before writing code.
+- **Prevent Regressions**: Ensure every line written or replaced is 100% intentional, robust, defensive against null/transient states, and strictly aligned with project architectural rules. We do not break things; we solve them properly.
 

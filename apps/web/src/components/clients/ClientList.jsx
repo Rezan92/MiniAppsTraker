@@ -32,8 +32,8 @@ export const ClientList = () => {
     screen: 'ClientList',
     entityId: null,
     summary: {
-      totalClients: clients.length,
-      activeClients: clients.filter(c => c.status === 'active').length
+      totalClients: Array.isArray(clients) ? clients.length : 0,
+      activeClients: Array.isArray(clients) ? clients.filter(c => c.status === 'active').length : 0
     }
   }, [clients]);
 

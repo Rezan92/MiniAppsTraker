@@ -41,27 +41,6 @@ export const ClientDetails = () => {
     enabled: !!session?.access_token && !!id
   });
 
-  // Register screen context envelope for AI Copilot
-  useScreenContext({
-    screen: 'ClientDetails',
-    entityId: id,
-    summary: {
-      name: client?.name,
-      company: client?.company_name,
-      email: client?.email,
-      phone: client?.phone,
-      status: client?.status,
-      propertiesCount: client?.properties?.length || 0,
-      jobsCount: jobs?.length || 0
-    }
-  }, [client, jobs, id]);
-
-  useEffect(() => {
-    if (client?.properties?.length === 1 && !jobFormData.property_id) {
-      setJobFormData(prev => ({ ...prev, property_id: client.properties[0].id }));
-    }
-  }, [client]);
-
   const { data: jobs = [], isLoading: loadingJobs } = useQuery({
     queryKey: ['jobs', 'client', id],
     queryFn: async () => {
@@ -74,6 +53,27 @@ export const ClientDetails = () => {
     },
     enabled: !!session?.access_token && !!id
   });
+
+  // Register screen context envelope for AI Copilot
+  useScreenContext({
+    screen: 'ClientDetails',
+    entityId: id,
+    summary: {
+      name: client?.name,
+      company: client?.company_name,
+      email: client?.email,
+      phone: client?.phone,
+      status: client?.status,
+      propertiesCount: client?.properties?.length || 0,
+      jobsCount: Array.isArray(jobs) ? jobs.length : 0
+    }
+  }, [client, jobs, id]);
+
+  useEffect(() => {
+    if (client?.properties?.length === 1 && !jobFormData.property_id) {
+      setJobFormData(prev => ({ ...prev, property_id: client.properties[0].id }));
+    }
+  }, [client]);
 
   const handleCreateJob = async () => {
     try {
