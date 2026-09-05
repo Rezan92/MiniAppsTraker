@@ -8,6 +8,7 @@ import { AI_TOOLS } from '../services/ai/aiToolDefinitions.js';
 import { executeAiTool } from '../services/ai/aiToolExecutors.js';
 import { buildSystemInstruction } from '../services/ai/promptBuilder.js';
 import { pendingActionManager } from '../services/ai/pendingActionManager.js';
+import { invoiceService } from '../services/domain/index.js';
 
 const router = express.Router();
 router.use(authenticate);
@@ -293,132 +294,35 @@ router.post('/confirm-action', async (req, res, next) => {
       }
 
       case 'delete_invoice': {
-        const { data: inv, error: fetchErr } = await supabase
-          .from('invoices')
-          .select('id, status, job_id')
-          .eq('id', action.targetId)
-          .eq('tenant_id', tenantId)
-          .single();
-
-        if (fetchErr || !inv) {
-          throw createApiError('Invoice not found', 404, 'NOT_FOUND');
-        }
-
-        if (!['draft', 'ready_to_send', 'disputed'].includes(inv.status)) {
-          throw createApiError(`Cannot delete invoice in "${inv.status}" status. Only draft or disputed invoices can be deleted.`, 400, 'INVOICE_NOT_DELETABLE');
-        }
-
-        // 1. Fetch linked items to revert billing status
-        const { data: items } = await supabase
-          .from('invoice_line_items')
-          .select('source_type, source_id')
-          .eq('invoice_id', action.targetId)
-          .not('source_id', 'is', null);
-
-        if (items && items.length > 0) {
-          const laborIds = items.filter(i => i.source_type === 'labor').map(i => i.source_id);
-          const materialIds = items.filter(i => i.source_type === 'material').map(i => i.source_id);
-
-          if (laborIds.length > 0) {
-            await supabase
-              .from('job_hours')
-              .update({ billing_status: 'unbilled', invoice_id: null })
-              .in('id', laborIds);
-          }
-          if (materialIds.length > 0) {
-            await supabase
-              .from('job_materials')
-              .update({ billing_status: 'unbilled', invoice_id: null })
-              .in('id', materialIds);
-          }
-        }
-
-        // Clean up any hours/materials directly referencing this invoice_id
-        await Promise.all([
-          supabase.from('job_hours').update({ billing_status: 'unbilled', invoice_id: null }).eq('invoice_id', action.targetId),
-          supabase.from('job_materials').update({ billing_status: 'unbilled', invoice_id: null }).eq('invoice_id', action.targetId)
-        ]);
-
-        // 2. Delete the invoice (invoice_line_items cascades via ON DELETE CASCADE)
-        const { error: delErr } = await supabase
-          .from('invoices')
-          .delete()
-          .eq('id', action.targetId)
-          .eq('tenant_id', tenantId);
-
-        if (delErr) throw delErr;
+        const result = await invoiceService.deleteDraftInvoice({
+          tenantId,
+          userId: req.user.id,
+          invoiceId: action.targetId
+        });
 
         triggeredMutations.push(
           { type: 'invoices', entityId: action.targetId },
-          { type: 'jobs', entityId: inv.job_id },
-          { type: 'hours', entityId: inv.job_id },
-          { type: 'materials', entityId: inv.job_id }
+          { type: 'jobs', entityId: result.deletedInvoice.job_id },
+          { type: 'hours', entityId: result.deletedInvoice.job_id },
+          { type: 'materials', entityId: result.deletedInvoice.job_id }
         );
         break;
       }
 
       case 'void_invoice': {
-        const { data: inv, error: fetchErr } = await supabase
-          .from('invoices')
-          .select('id, status, job_id')
-          .eq('id', action.targetId)
-          .eq('tenant_id', tenantId)
-          .single();
-
-        if (fetchErr || !inv) {
-          throw createApiError('Invoice not found', 404, 'NOT_FOUND');
-        }
-
-        const { error } = await supabase
-          .from('invoices')
-          .update({ status: 'voided' })
-          .eq('id', action.targetId)
-          .eq('tenant_id', tenantId);
-
-        if (error) throw error;
-
-        // Revert all linked items on job back to unbilled
-        const { data: items } = await supabase
-          .from('invoice_line_items')
-          .select('source_type, source_id')
-          .eq('invoice_id', action.targetId)
-          .not('source_id', 'is', null);
-
-        if (items && items.length > 0) {
-          const laborIds = items.filter(i => i.source_type === 'labor').map(i => i.source_id);
-          const materialIds = items.filter(i => i.source_type === 'material').map(i => i.source_id);
-
-          if (laborIds.length > 0) {
-            await supabase
-              .from('job_hours')
-              .update({ billing_status: 'unbilled', invoice_id: null })
-              .in('id', laborIds);
-          }
-          if (materialIds.length > 0) {
-            await supabase
-              .from('job_materials')
-              .update({ billing_status: 'unbilled', invoice_id: null })
-              .in('id', materialIds);
-          }
-        }
-
-        await Promise.all([
-          supabase.from('job_hours').update({ billing_status: 'unbilled', invoice_id: null }).eq('invoice_id', action.targetId),
-          supabase.from('job_materials').update({ billing_status: 'unbilled', invoice_id: null }).eq('invoice_id', action.targetId)
-        ]);
-
-        await supabase.from('invoice_logs').insert([{
-          tenant_id: tenantId,
-          invoice_id: action.targetId,
-          action: 'Voided',
-          reason: 'Voided via AI Action Confirmation'
-        }]);
+        const updatedInvoice = await invoiceService.updateInvoiceStatus({
+          tenantId,
+          userId: req.user.id,
+          invoiceId: action.targetId,
+          status: 'voided',
+          reason: action.description || 'Voided via AI Action Confirmation'
+        });
 
         triggeredMutations.push(
           { type: 'invoices', entityId: action.targetId },
-          { type: 'jobs', entityId: inv.job_id },
-          { type: 'hours', entityId: inv.job_id },
-          { type: 'materials', entityId: inv.job_id }
+          { type: 'jobs', entityId: updatedInvoice.job_id },
+          { type: 'hours', entityId: updatedInvoice.job_id },
+          { type: 'materials', entityId: updatedInvoice.job_id }
         );
         break;
       }

@@ -1,6 +1,7 @@
 import { supabase } from '../../config/supabase.js';
 import { resolveEffectiveHourlyRate } from '../masterRates.js';
 import { calculateInvoiceFinancials, roundCurrency } from '../pricingEngine.js';
+import { invoiceService } from '../domain/index.js';
 import { pendingActionManager } from './pendingActionManager.js';
 import { entityResolver } from './entityResolver.js';
 
@@ -388,188 +389,57 @@ export async function executeAiTool(toolName, args = {}, { tenantId, userId }) {
       case 'draft_invoice': {
         const { client_id, job_id, labor_title, due_date, tax_rate_percent, markup_amount, notes } = args;
 
+        let targetJobId = null;
         let targetClientId = null;
-        let job = null;
-        let lineItems = [];
-        let baseLabor = 0;
-        let linkedJobTitle = labor_title || 'General Contracting Labor';
 
-        // 1. Resolve Job if provided
         if (job_id) {
           const jobRes = await resolveJobOrError(job_id, tenantId);
           if (jobRes.error) return { error: jobRes.error };
-          job = jobRes.job;
-          targetClientId = job.client_id;
-          linkedJobTitle = labor_title || job.title;
-
-          // Pull unbilled hours (scoped via job_id, no tenant_id column)
-          const { data: hoursList } = await supabase
-            .from('job_hours')
-            .select('*')
-            .eq('job_id', job.id)
-            .eq('billing_status', 'unbilled')
-            .order('date', { ascending: true });
-
-          // Pull unbilled materials (scoped via job_id, no tenant_id column)
-          const { data: materialsList } = await supabase
-            .from('job_materials')
-            .select('*')
-            .eq('job_id', job.id)
-            .eq('billing_status', 'unbilled')
-            .order('purchase_date', { ascending: true });
-
-          // Calculate labor and generate itemized labor line items
-          if (job.rate_type === 'hourly') {
-            const rate = job.hourly_rate || resolveEffectiveHourlyRate({ isEmergency: false });
-            for (const h of (hoursList || [])) {
-              const hCost = roundCurrency(Number(h.hours || 0) * rate);
-              baseLabor = roundCurrency(baseLabor + hCost);
-              lineItems.push({
-                source_type: 'labor',
-                source_id: h.id,
-                description: h.description || `${h.hours} hours logged`,
-                service_date: h.date,
-                amount: hCost,
-                is_billable: true
-              });
-            }
-          } else {
-            baseLabor = roundCurrency(job.flat_rate || 0);
-            lineItems.push({
-              source_type: 'labor',
-              description: linkedJobTitle || 'Flat Rate Project Labor',
-              amount: baseLabor,
-              is_billable: true
-            });
-          }
-
-          // Build material line items
-          for (const m of (materialsList || [])) {
-            lineItems.push({
-              source_type: 'material',
-              source_id: m.id,
-              description: m.description,
-              amount: roundCurrency(m.cost),
-              is_billable: true
-            });
-          }
+          targetJobId = jobRes.job.id;
+          targetClientId = jobRes.job.client_id;
         }
 
-        // 2. Resolve Client if client_id explicitly given or inferred
-        const clientQuery = client_id || targetClientId;
-        if (!clientQuery) {
+        if (client_id) {
+          const clientRes = await resolveClientOrError(client_id, tenantId);
+          if (clientRes.error) return { error: clientRes.error };
+          targetClientId = clientRes.client.id;
+        }
+
+        if (!targetClientId && !targetJobId) {
           return { error: 'A valid client or job is required to draft an invoice.' };
         }
 
-        const clientRes = await resolveClientOrError(clientQuery, tenantId);
-        if (clientRes.error) return { error: clientRes.error };
-        const client = clientRes.client;
+        try {
+          const draftRes = await invoiceService.draftInvoiceFromJob({
+            tenantId,
+            userId,
+            clientId: targetClientId,
+            jobId: targetJobId,
+            laborTitle,
+            dueDate: due_date,
+            taxRatePercent: tax_rate_percent,
+            markupAmount: markup_amount,
+            notes
+          });
 
-        // 3. Deterministic financial calculations via pricingEngine.js (Rule 10)
-        const financials = calculateInvoiceFinancials({
-          baseLaborAmount: baseLabor,
-          lineItems,
-          markupAmount: markup_amount || 0,
-          taxRatePercent: tax_rate_percent || 0
-        });
-
-        // 4. Fetch sequential invoice number from tenant record
-        const { data: tenantData } = await supabase
-          .from('tenants')
-          .select('next_invoice_number')
-          .eq('id', tenantId)
-          .single();
-
-        const nextNum = tenantData?.next_invoice_number || 1001;
-        const invoiceNumber = `${nextNum}`;
-        const defaultDueDate = due_date || new Date(Date.now() + 14 * 86400000).toISOString().split('T')[0];
-
-        // 5. Insert invoice (strictly existing database columns)
-        const { data: newInvoice, error: invErr } = await supabase
-          .from('invoices')
-          .insert([{
-            tenant_id: tenantId,
-            client_id: client.id,
-            job_id: job ? job.id : null,
-            invoice_number: invoiceNumber,
-            invoice_date: new Date().toISOString().split('T')[0],
-            due_date: defaultDueDate,
-            labor_title: linkedJobTitle,
-            labor_notes: notes || null,
-            labor_amount: financials.laborAmount,
-            materials_amount: financials.materialsAmount,
-            total_amount: financials.totalAmount,
-            status: 'draft'
-          }])
-          .select()
-          .single();
-
-        if (invErr) {
-          console.error('[AI Tool Executor] draft_invoice error:', invErr);
-          return { error: invErr.message };
+          return {
+            result: {
+              invoiceId: draftRes.invoice.id,
+              invoiceNumber: draftRes.invoice.invoice_number,
+              clientName: draftRes.client.name,
+              totalAmount: draftRes.financials.totalAmount,
+              subtotal: draftRes.financials.subtotal,
+              taxAmount: draftRes.financials.taxAmount,
+              status: 'draft',
+              dueDate: draftRes.invoice.due_date
+            },
+            mutation: 'invoices',
+            entityId: draftRes.invoice.id
+          };
+        } catch (err) {
+          console.error('[AI Tool Executor] draft_invoice error:', err);
+          return { error: err.message };
         }
-
-        // Increment tenant next_invoice_number
-        await supabase
-          .from('tenants')
-          .update({ next_invoice_number: nextNum + 1 })
-          .eq('id', tenantId);
-
-        // 6. Insert itemized line items (with service_date and is_billable)
-        if (lineItems.length > 0) {
-          const itemsToInsert = lineItems.map((item, idx) => ({
-            invoice_id: newInvoice.id,
-            source_type: item.source_type,
-            source_id: item.source_id || null,
-            description: item.description,
-            service_date: item.service_date || null,
-            amount: item.amount,
-            sort_order: idx,
-            is_billable: true
-          }));
-          await supabase.from('invoice_line_items').insert(itemsToInsert);
-
-          // Update billed status of materials
-          const matIds = lineItems.filter(i => i.source_type === 'material').map(i => i.source_id).filter(Boolean);
-          if (matIds.length > 0) {
-            await supabase
-              .from('job_materials')
-              .update({ billing_status: 'on_draft', invoice_id: newInvoice.id })
-              .in('id', matIds);
-          }
-        }
-
-        // Update billed status of hours if job was linked
-        if (job) {
-          await supabase
-            .from('job_hours')
-            .update({ billing_status: 'on_draft', invoice_id: newInvoice.id })
-            .eq('job_id', job.id)
-            .eq('billing_status', 'unbilled');
-        }
-
-        // 7. Insert audit log in invoice_logs
-        await supabase.from('invoice_logs').insert([{
-          tenant_id: tenantId,
-          invoice_id: newInvoice.id,
-          action: 'Created',
-          reason: 'Drafted via AI Copilot'
-        }]);
-
-        return {
-          result: {
-            invoiceId: newInvoice.id,
-            invoiceNumber: newInvoice.invoice_number,
-            clientName: client.name,
-            totalAmount: financials.totalAmount,
-            subtotal: financials.subtotal,
-            taxAmount: financials.taxAmount,
-            status: 'draft',
-            dueDate: defaultDueDate
-          },
-          mutation: 'invoices',
-          entityId: newInvoice.id
-        };
       }
 
       case 'add_invoice_line_item': {
@@ -578,98 +448,55 @@ export async function executeAiTool(toolName, args = {}, { tenantId, userId }) {
         if (resolution.error) return { error: resolution.error };
         const inv = resolution.invoice;
 
-        if (inv.status !== 'draft') return { error: 'Cannot modify non-draft invoices.' };
+        try {
+          const { item, invoice: updatedInv } = await invoiceService.addInvoiceLineItem({
+            tenantId,
+            userId,
+            invoiceId: inv.id,
+            itemData: {
+              description,
+              amount,
+              source_type
+            }
+          });
 
-        const { data: lineItem, error: itemErr } = await supabase
-          .from('invoice_line_items')
-          .insert([{
-            invoice_id: inv.id,
-            source_type: source_type || 'ad_hoc',
-            description: description.trim(),
-            amount: roundCurrency(amount),
-            is_billable: true
-          }])
-          .select()
-          .single();
-
-        if (itemErr) return { error: itemErr.message };
-
-        // Recalculate totals
-        const { data: allItems } = await supabase
-          .from('invoice_line_items')
-          .select('*')
-          .eq('invoice_id', inv.id);
-
-        const financials = calculateInvoiceFinancials({
-          baseLaborAmount: inv.labor_amount,
-          lineItems: allItems || []
-        });
-
-        await supabase
-          .from('invoices')
-          .update({
-            materials_amount: financials.materialsAmount,
-            total_amount: financials.totalAmount
-          })
-          .eq('id', inv.id);
-
-        return { result: lineItem, mutation: 'invoices', entityId: inv.id };
+          return {
+            result: {
+              lineItemId: item.id,
+              invoiceId: updatedInv.id,
+              description: item.description,
+              amount: item.amount,
+              newTotal: updatedInv.total_amount
+            },
+            mutation: 'invoices',
+            entityId: updatedInv.id
+          };
+        } catch (err) {
+          console.error('[AI Tool Executor] add_invoice_line_item error:', err);
+          return { error: err.message };
+        }
       }
 
       case 'update_invoice_status': {
-        const { invoice_id, status } = args;
+        const { invoice_id, status, reason } = args;
         const resolution = await resolveInvoiceOrError(invoice_id, tenantId);
         if (resolution.error) return { error: resolution.error };
         const inv = resolution.invoice;
 
-        // Invoices in draft, ready_to_send, or disputed must not be directly voided
-        if (status === 'voided' && ['draft', 'ready_to_send', 'disputed'].includes(inv.status)) {
-          return { error: `Invoice #${inv.invoice_number} is in "${inv.status}" status. Invoices in draft or disputed status should be deleted, not voided. Please request invoice deletion.` };
+        try {
+          const updatedInvoice = await invoiceService.updateInvoiceStatus({
+            tenantId,
+            userId,
+            invoiceId: inv.id,
+            status,
+            reason: reason || 'Updated via AI Copilot'
+          });
+
+          return { result: updatedInvoice, mutation: 'invoices', entityId: inv.id };
+        } catch (err) {
+          console.error('[AI Tool Executor] update_invoice_status error:', err);
+          return { error: err.message };
         }
-
-        const updateData = { status };
-        if (status === 'paid') updateData.paid_at = new Date().toISOString();
-
-        const { data, error } = await supabase
-          .from('invoices')
-          .update(updateData)
-          .eq('id', inv.id)
-          .eq('tenant_id', tenantId)
-          .select()
-          .single();
-
-        if (error) return { error: error.message };
-
-        // Synchronize job billing items
-        const { data: lines } = await supabase
-          .from('invoice_line_items')
-          .select('source_id, source_type')
-          .eq('invoice_id', inv.id);
-
-        if (lines && lines.length > 0) {
-          const matIds = lines.filter(i => i.source_type === 'material' && i.source_id).map(i => i.source_id);
-          const labIds = lines.filter(i => i.source_type === 'labor' && i.source_id).map(i => i.source_id);
-
-          if (status === 'sent' || status === 'paid') {
-            if (matIds.length) await supabase.from('job_materials').update({ billing_status: 'billed' }).in('id', matIds);
-            if (labIds.length) await supabase.from('job_hours').update({ billing_status: 'billed' }).in('id', labIds);
-          } else if (status === 'voided') {
-            if (matIds.length) await supabase.from('job_materials').update({ billing_status: 'unbilled', invoice_id: null }).in('id', matIds);
-            if (labIds.length) await supabase.from('job_hours').update({ billing_status: 'unbilled', invoice_id: null }).in('id', labIds);
-          } else if (status === 'draft' || status === 'ready_to_send') {
-            if (matIds.length) await supabase.from('job_materials').update({ billing_status: 'on_draft' }).in('id', matIds);
-            if (labIds.length) await supabase.from('job_hours').update({ billing_status: 'on_draft' }).in('id', labIds);
-          }
-        }
-
-        await supabase.from('invoice_logs').insert([{
-          tenant_id: tenantId,
-          invoice_id: inv.id,
-          action: status,
-          reason: 'Updated via AI Copilot'
-        }]);
-
-        return { result: data, mutation: 'invoices', entityId: inv.id };
       }
 
       case 'get_invoice_details': {
