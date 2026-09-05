@@ -8,7 +8,7 @@ import { AI_TOOLS } from '../services/ai/aiToolDefinitions.js';
 import { executeAiTool } from '../services/ai/aiToolExecutors.js';
 import { buildSystemInstruction } from '../services/ai/promptBuilder.js';
 import { pendingActionManager } from '../services/ai/pendingActionManager.js';
-import { invoiceService } from '../services/domain/index.js';
+import { invoiceService, jobService } from '../services/domain/index.js';
 
 const router = express.Router();
 router.use(authenticate);
@@ -270,13 +270,11 @@ router.post('/confirm-action', async (req, res, next) => {
 
     switch (action.actionType) {
       case 'delete_job': {
-        const { error } = await supabase
-          .from('jobs')
-          .delete()
-          .eq('id', action.targetId)
-          .eq('tenant_id', tenantId);
-
-        if (error) throw error;
+        await jobService.deleteJob({
+          tenantId,
+          userId: req.user.id,
+          jobId: action.targetId
+        });
         triggeredMutations.push({ type: 'jobs', entityId: action.targetId });
         break;
       }

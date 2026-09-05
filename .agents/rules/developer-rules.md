@@ -72,3 +72,8 @@ At the conclusion of every implementation, provide a targeted checklist of manua
 - Detail connected side effects or related entities that must be verified (e.g. verifying that unbilled hours and materials reappear on the corresponding job).
 - Keep instructions concise, direct, and actionable without unnecessary fluff.
 
+## Rule 14: Unified Domain Services Layer (Manual & AI Parity)
+**Never duplicate database mutations across REST controllers and AI tool executors.**
+All database mutations, business domain invariants, and cascade side effects must be isolated inside centralized Domain Services under `apps/api/src/services/domain/` (e.g. `invoiceService.js`, `jobService.js`, `clientService.js`). Both manual REST route handlers and AI tool executors/actions must act strictly as thin controllers delegating to the domain service with `{ tenantId, userId, ... }`. Any future service or database mutation must follow this single-source-of-truth pattern to prevent dual-path divergence.
+
+

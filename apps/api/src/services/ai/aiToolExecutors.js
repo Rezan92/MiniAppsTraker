@@ -1,7 +1,6 @@
 import { supabase } from '../../config/supabase.js';
 import { resolveEffectiveHourlyRate } from '../masterRates.js';
-import { calculateInvoiceFinancials, roundCurrency } from '../pricingEngine.js';
-import { invoiceService } from '../domain/index.js';
+import { invoiceService, jobService } from '../domain/index.js';
 import { pendingActionManager } from './pendingActionManager.js';
 import { entityResolver } from './entityResolver.js';
 
@@ -247,29 +246,25 @@ export async function executeAiTool(toolName, args = {}, { tenantId, userId }) {
         if (clientResolution.error) return { error: clientResolution.error };
         const client = clientResolution.client;
 
-        // Resolve rate type and effective hourly rate using masterRates
-        const finalHourlyRate = rate_type === 'hourly' 
-          ? (typeof hourly_rate === 'number' && hourly_rate > 0 ? hourly_rate : resolveEffectiveHourlyRate({ rateType: 'hourly' }))
-          : null;
-
-        const { data, error } = await supabase
-          .from('jobs')
-          .insert([{
-            tenant_id: tenantId,
-            client_id: client.id,
-            title: title.trim(),
-            rate_type,
-            hourly_rate: finalHourlyRate,
-            flat_rate: rate_type === 'flat' ? (Number(flat_rate) || 0) : null,
-            start_date: start_date || new Date().toISOString().split('T')[0],
-            status: status || 'open',
-            notes: notes || null
-          }])
-          .select('*, clients(name)')
-          .single();
-
-        if (error) return { error: error.message };
-        return { result: data, mutation: 'jobs', entityId: data.id };
+        try {
+          const data = await jobService.createJob({
+            tenantId,
+            userId,
+            jobData: {
+              client_id: client.id,
+              title,
+              rate_type,
+              hourly_rate,
+              flat_rate,
+              start_date,
+              status,
+              notes
+            }
+          });
+          return { result: data, mutation: 'jobs', entityId: data.id };
+        } catch (err) {
+          return { error: err.message };
+        }
       }
 
       case 'update_job_status': {
@@ -278,16 +273,17 @@ export async function executeAiTool(toolName, args = {}, { tenantId, userId }) {
         if (resolution.error) return { error: resolution.error };
         const job = resolution.job;
 
-        const { data, error } = await supabase
-          .from('jobs')
-          .update({ status })
-          .eq('id', job.id)
-          .eq('tenant_id', tenantId)
-          .select()
-          .single();
-
-        if (error) return { error: error.message };
-        return { result: data, mutation: 'jobs', entityId: job.id };
+        try {
+          const data = await jobService.updateJobStatus({
+            tenantId,
+            userId,
+            jobId: job.id,
+            status
+          });
+          return { result: data, mutation: 'jobs', entityId: job.id };
+        } catch (err) {
+          return { error: err.message };
+        }
       }
 
       case 'log_job_hours': {
@@ -296,48 +292,23 @@ export async function executeAiTool(toolName, args = {}, { tenantId, userId }) {
         if (resolution.error) return { error: resolution.error };
         const job = resolution.job;
 
-        const trimmedDesc = (description || '').trim();
-        const GENERIC_LABOR_PLACEHOLDERS = [
-          'work', 'labor', 'general work', 'general labor', 'general labor tasks',
-          'tasks', 'hours', 'labor tasks', 'job work', 'labor work', 'misc work',
-          'work completed', 'tasks completed', 'work done', 'general'
-        ];
-        if (!trimmedDesc || GENERIC_LABOR_PLACEHOLDERS.includes(trimmedDesc.toLowerCase())) {
-          return {
-            error: 'Missing required task description: A specific description of the work or tasks performed is required. Please ask the user what specific tasks were completed before logging hours.'
-          };
+        try {
+          const data = await jobService.logJobHours({
+            tenantId,
+            userId,
+            jobId: job.id,
+            hoursData: {
+              hours,
+              date,
+              description,
+              start_time,
+              end_time
+            }
+          });
+          return { result: data, mutation: 'hours', entityId: job.id };
+        } catch (err) {
+          return { error: err.message };
         }
-
-        const parsedHours = parseFloat(hours);
-        if (isNaN(parsedHours) || parsedHours <= 0) {
-          return {
-            error: 'Missing required hours: A valid positive number of hours is required. Please ask the user how many hours were worked.'
-          };
-        }
-
-        // Mirror manual modal behavior: default start_time to '01:00' and calculate end_time if omitted
-        const finalStartTime = normalizeTimeTo24Hour(start_time) || '01:00';
-        const finalEndTime = normalizeTimeTo24Hour(end_time) || addHoursToTime(finalStartTime, parsedHours);
-
-        const { data, error } = await supabase
-          .from('job_hours')
-          .insert([{
-            job_id: job.id,
-            hours: parsedHours,
-            date: date || new Date().toISOString().split('T')[0],
-            description: trimmedDesc,
-            start_time: finalStartTime,
-            end_time: finalEndTime,
-            billing_status: 'unbilled'
-          }])
-          .select()
-          .single();
-
-        if (error) {
-          console.error('[AI Tool Executor] log_job_hours error:', error);
-          return { error: error.message };
-        }
-        return { result: data, mutation: 'hours', entityId: job.id };
       }
 
       case 'log_job_materials': {
@@ -346,43 +317,24 @@ export async function executeAiTool(toolName, args = {}, { tenantId, userId }) {
         if (resolution.error) return { error: resolution.error };
         const job = resolution.job;
 
-        const trimmedDesc = (description || '').trim();
-        const GENERIC_MATERIAL_PLACEHOLDERS = [
-          'material', 'materials', 'supplies', 'item', 'items', 'stuff', 'misc',
-          'miscellaneous', 'general materials', 'parts', 'hardware', 'general'
-        ];
-        if (!trimmedDesc || GENERIC_MATERIAL_PLACEHOLDERS.includes(trimmedDesc.toLowerCase())) {
-          return {
-            error: 'Missing required material description: A specific name or description of the materials purchased is required. Please ask the user what specific materials were purchased before logging materials.'
-          };
+        try {
+          const data = await jobService.logJobMaterials({
+            tenantId,
+            userId,
+            jobId: job.id,
+            materialData: {
+              description,
+              cost,
+              store,
+              purchase_date,
+              notes,
+              is_from_stock
+            }
+          });
+          return { result: data, mutation: 'materials', entityId: job.id };
+        } catch (err) {
+          return { error: err.message };
         }
-
-        const parsedCost = parseFloat(cost);
-        if (isNaN(parsedCost) || parsedCost < 0) {
-          return {
-            error: 'Missing valid material cost: A valid purchase cost is required. Please ask the user for the cost of the materials.'
-          };
-        }
-
-        const { data, error } = await supabase
-          .from('job_materials')
-          .insert([{
-            job_id: job.id,
-            description: trimmedDesc,
-            cost: parsedCost,
-            store: store ? store.trim() : null,
-            purchase_date: purchase_date || new Date().toISOString().split('T')[0],
-            notes: notes || null,
-            is_from_stock: Boolean(is_from_stock)
-          }])
-          .select()
-          .single();
-
-        if (error) {
-          console.error('[AI Tool Executor] log_job_materials error:', error);
-          return { error: error.message };
-        }
-        return { result: data, mutation: 'materials', entityId: job.id };
       }
 
       // --- Invoicing & Billing Tools (Phase 3 + Itemized Labor) ---

@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { supabase } from '../config/supabase.js';
 import { authenticate } from '../middleware/auth.js';
 import { createApiError } from '../middleware/errorHandler.js';
+import { jobService } from '../services/domain/index.js';
 
 const router = express.Router();
 router.use(authenticate);
@@ -91,13 +92,11 @@ router.post('/', async (req, res, next) => {
     const result = jobSchema.safeParse(req.body);
     if (!result.success) return next(result.error);
 
-    const { data, error } = await supabase
-      .from('jobs')
-      .insert([{ ...result.data, tenant_id: req.user.tenant_id }])
-      .select()
-      .single();
-
-    if (error) throw error;
+    const data = await jobService.createJob({
+      tenantId: req.user.tenant_id,
+      userId: req.user.id,
+      jobData: result.data
+    });
     res.json({ success: true, data });
   } catch (err) {
     next(err);
@@ -109,16 +108,12 @@ router.put('/:id', async (req, res, next) => {
     const result = jobSchema.safeParse(req.body);
     if (!result.success) return next(result.error);
 
-    const { data, error } = await supabase
-      .from('jobs')
-      .update(result.data)
-      .eq('id', req.params.id)
-      .eq('tenant_id', req.user.tenant_id)
-      .select()
-      .single();
-
-    if (error) throw error;
-    if (!data) return next(createApiError('Job not found or update failed', 404, 'NOT_FOUND'));
+    const data = await jobService.updateJob({
+      tenantId: req.user.tenant_id,
+      userId: req.user.id,
+      jobId: req.params.id,
+      updateData: result.data
+    });
     res.json({ success: true, data });
   } catch (err) {
     next(err);
@@ -130,16 +125,12 @@ router.patch('/:id', async (req, res, next) => {
     const result = jobPatchSchema.safeParse(req.body);
     if (!result.success) return next(result.error);
 
-    const { data, error } = await supabase
-      .from('jobs')
-      .update(result.data)
-      .eq('id', req.params.id)
-      .eq('tenant_id', req.user.tenant_id)
-      .select()
-      .single();
-
-    if (error) throw error;
-    if (!data) return next(createApiError('Job not found or update failed', 404, 'NOT_FOUND'));
+    const data = await jobService.updateJob({
+      tenantId: req.user.tenant_id,
+      userId: req.user.id,
+      jobId: req.params.id,
+      updateData: result.data
+    });
     res.json({ success: true, data });
   } catch (err) {
     next(err);
@@ -151,16 +142,12 @@ router.patch('/:id/status', async (req, res, next) => {
     const result = statusSchema.safeParse(req.body);
     if (!result.success) return next(result.error);
 
-    const { data, error } = await supabase
-      .from('jobs')
-      .update({ status: result.data.status })
-      .eq('id', req.params.id)
-      .eq('tenant_id', req.user.tenant_id)
-      .select()
-      .single();
-
-    if (error) throw error;
-    if (!data) return next(createApiError('Job not found', 404, 'NOT_FOUND'));
+    const data = await jobService.updateJobStatus({
+      tenantId: req.user.tenant_id,
+      userId: req.user.id,
+      jobId: req.params.id,
+      status: result.data.status
+    });
     res.json({ success: true, data });
   } catch (err) {
     next(err);
@@ -172,19 +159,12 @@ router.post('/:id/materials', async (req, res, next) => {
     const result = materialSchema.safeParse(req.body);
     if (!result.success) return next(result.error);
 
-    const { data: job, error: jobError } = await supabase
-      .from('jobs')
-      .select('id')
-      .eq('id', req.params.id)
-      .eq('tenant_id', req.user.tenant_id)
-      .single();
-      
-    if (jobError || !job) return next(createApiError('Job not found', 404, 'NOT_FOUND'));
-
-    const payload = { ...result.data, job_id: job.id };
-    
-    const { data, error } = await supabase.from('job_materials').insert([payload]).select().single();
-    if (error) throw error;
+    const data = await jobService.logJobMaterials({
+      tenantId: req.user.tenant_id,
+      userId: req.user.id,
+      jobId: req.params.id,
+      materialData: result.data
+    });
     res.json({ success: true, data });
   } catch (err) { next(err); }
 });
@@ -215,44 +195,25 @@ router.patch('/:id/materials/:materialId', async (req, res, next) => {
     const result = materialSchema.partial().safeParse(req.body);
     if (!result.success) return next(result.error);
 
-    const { data: job, error: jobError } = await supabase
-      .from('jobs')
-      .select('id')
-      .eq('id', req.params.id)
-      .eq('tenant_id', req.user.tenant_id)
-      .single();
-      
-    if (jobError || !job) return next(createApiError('Job not found', 404, 'NOT_FOUND'));
-
-    const { data: existing } = await supabase.from('job_materials').select('billing_status').eq('id', req.params.materialId).single();
-    if (existing && existing.billing_status === 'billed') {
-      return next(createApiError('Cannot modify items that have already been billed.', 403, 'ITEM_LOCKED'));
-    }
-
-    const { data, error } = await supabase.from('job_materials').update(result.data).eq('id', req.params.materialId).eq('job_id', job.id).select().single();
-    if (error) throw error;
+    const data = await jobService.updateJobMaterials({
+      tenantId: req.user.tenant_id,
+      userId: req.user.id,
+      jobId: req.params.id,
+      materialId: req.params.materialId,
+      updateData: result.data
+    });
     res.json({ success: true, data });
   } catch (err) { next(err); }
 });
 
 router.delete('/:id/materials/:materialId', async (req, res, next) => {
   try {
-    const { data: job, error: jobError } = await supabase
-      .from('jobs')
-      .select('id')
-      .eq('id', req.params.id)
-      .eq('tenant_id', req.user.tenant_id)
-      .single();
-      
-    if (jobError || !job) return next(createApiError('Job not found', 404, 'NOT_FOUND'));
-
-    const { data: existing } = await supabase.from('job_materials').select('billing_status').eq('id', req.params.materialId).single();
-    if (existing && existing.billing_status === 'billed') {
-      return next(createApiError('Cannot modify items that have already been billed.', 403, 'ITEM_LOCKED'));
-    }
-
-    const { error } = await supabase.from('job_materials').delete().eq('id', req.params.materialId).eq('job_id', job.id);
-    if (error) throw error;
+    await jobService.deleteJobMaterials({
+      tenantId: req.user.tenant_id,
+      userId: req.user.id,
+      jobId: req.params.id,
+      materialId: req.params.materialId
+    });
     res.json({ success: true });
   } catch (err) { next(err); }
 });
@@ -262,19 +223,12 @@ router.post('/:id/hours', async (req, res, next) => {
     const result = jobHoursSchema.safeParse(req.body);
     if (!result.success) return next(result.error);
 
-    const { data: job, error: jobError } = await supabase
-      .from('jobs')
-      .select('id')
-      .eq('id', req.params.id)
-      .eq('tenant_id', req.user.tenant_id)
-      .single();
-      
-    if (jobError || !job) return next(createApiError('Job not found', 404, 'NOT_FOUND'));
-
-    const payload = { ...result.data, job_id: job.id };
-
-    const { data, error } = await supabase.from('job_hours').insert([payload]).select().single();
-    if (error) throw error;
+    const data = await jobService.logJobHours({
+      tenantId: req.user.tenant_id,
+      userId: req.user.id,
+      jobId: req.params.id,
+      hoursData: result.data
+    });
     res.json({ success: true, data });
   } catch (err) { next(err); }
 });
@@ -305,56 +259,36 @@ router.patch('/:id/hours/:hourId', async (req, res, next) => {
     const result = jobHoursSchema.partial().safeParse(req.body);
     if (!result.success) return next(result.error);
 
-    const { data: job, error: jobError } = await supabase
-      .from('jobs')
-      .select('id')
-      .eq('id', req.params.id)
-      .eq('tenant_id', req.user.tenant_id)
-      .single();
-      
-    if (jobError || !job) return next(createApiError('Job not found', 404, 'NOT_FOUND'));
-
-    const { data: existing } = await supabase.from('job_hours').select('billing_status').eq('id', req.params.hourId).single();
-    if (existing && existing.billing_status === 'billed') {
-      return next(createApiError('Cannot modify items that have already been billed.', 403, 'ITEM_LOCKED'));
-    }
-
-    const { data, error } = await supabase.from('job_hours').update(result.data).eq('id', req.params.hourId).eq('job_id', job.id).select().single();
-    if (error) throw error;
+    const data = await jobService.updateJobHours({
+      tenantId: req.user.tenant_id,
+      userId: req.user.id,
+      jobId: req.params.id,
+      hourId: req.params.hourId,
+      updateData: result.data
+    });
     res.json({ success: true, data });
   } catch (err) { next(err); }
 });
 
 router.delete('/:id/hours/:hourId', async (req, res, next) => {
   try {
-    const { data: job, error: jobError } = await supabase
-      .from('jobs')
-      .select('id')
-      .eq('id', req.params.id)
-      .eq('tenant_id', req.user.tenant_id)
-      .single();
-      
-    if (jobError || !job) return next(createApiError('Job not found', 404, 'NOT_FOUND'));
-
-    const { data: existing } = await supabase.from('job_hours').select('billing_status').eq('id', req.params.hourId).single();
-    if (existing && existing.billing_status === 'billed') {
-      return next(createApiError('Cannot modify items that have already been billed.', 403, 'ITEM_LOCKED'));
-    }
-
-    const { error } = await supabase.from('job_hours').delete().eq('id', req.params.hourId).eq('job_id', job.id);
-    if (error) throw error;
+    await jobService.deleteJobHours({
+      tenantId: req.user.tenant_id,
+      userId: req.user.id,
+      jobId: req.params.id,
+      hourId: req.params.hourId
+    });
     res.json({ success: true });
   } catch (err) { next(err); }
 });
 
 router.delete('/:id', async (req, res, next) => {
   try {
-    const { data: invoices } = await supabase.from('invoices').select('status').eq('job_id', req.params.id).eq('tenant_id', req.user.tenant_id);
-    if (invoices && invoices.some(inv => inv.status === 'paid' || inv.status === 'in_progress')) {
-      return next(createApiError('Cannot delete a job that has paid or in-progress invoices.', 403, 'JOB_HAS_ACTIVE_INVOICES'));
-    }
-    const { error } = await supabase.from('jobs').delete().eq('id', req.params.id).eq('tenant_id', req.user.tenant_id);
-    if (error) throw error;
+    await jobService.deleteJob({
+      tenantId: req.user.tenant_id,
+      userId: req.user.id,
+      jobId: req.params.id
+    });
     res.json({ success: true });
   } catch (err) { next(err); }
 });
