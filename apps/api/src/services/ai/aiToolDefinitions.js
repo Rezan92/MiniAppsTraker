@@ -282,7 +282,7 @@ export const AI_TOOLS = [
         },
         labor_title: {
           type: 'STRING',
-          description: 'Title or description of the primary labor service (e.g. "Drywall and Painting")'
+          description: 'Optional labor title. Automatically defaults to the linked job title if omitted. When drafting an invoice for a job, DO NOT ask the user for a labor title.'
         },
         due_date: {
           type: 'STRING',

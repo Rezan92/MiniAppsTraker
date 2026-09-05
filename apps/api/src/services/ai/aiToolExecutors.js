@@ -415,7 +415,7 @@ export async function executeAiTool(toolName, args = {}, { tenantId, userId }) {
             userId,
             clientId: targetClientId,
             jobId: targetJobId,
-            laborTitle,
+            laborTitle: labor_title,
             dueDate: due_date,
             taxRatePercent: tax_rate_percent,
             markupAmount: markup_amount,
