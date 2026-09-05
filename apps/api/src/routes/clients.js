@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { supabase } from '../config/supabase.js';
 import { authenticate } from '../middleware/auth.js';
 import { createApiError } from '../middleware/errorHandler.js';
+import { clientService } from '../services/domain/index.js';
 
 const router = express.Router();
 router.use(authenticate);
@@ -75,30 +76,16 @@ router.get('/:id', async (req, res, next) => {
 
 router.post('/', async (req, res, next) => {
   try {
-    if (!req.user || !req.user.tenant_id) {
-      return next(createApiError('Tenant context missing', 400, 'TENANT_REQUIRED'));
-    }
-
     const result = clientSchema.safeParse(req.body);
-    if (!result.success) {
-      return next(result.error);
-    }
+    if (!result.success) return next(result.error);
 
-    const { name, client_type, company_name, email, phone, address, notes, status } = result.data;
-    const cleanEmail = email?.trim() ? email.trim() : null;
-    const cleanPhone = phone ? phone.replace(/\D/g, '') : null;
+    const client = await clientService.createClient({
+      tenantId: req.user.tenant_id,
+      userId: req.user.id,
+      clientData: result.data
+    });
 
-    const { data, error } = await supabase
-      .from('clients')
-      .insert([{ name, client_type, company_name, email: cleanEmail, phone: cleanPhone, address, notes, status, tenant_id: req.user.tenant_id }])
-      .select();
-
-    if (error) return next(error);
-    if (!data || data.length === 0) {
-      return next(createApiError('Failed to create client record', 500, 'DATABASE_ERROR'));
-    }
-
-    res.json({ success: true, data: data[0] });
+    res.json({ success: true, data: client });
   } catch (err) {
     next(err);
   }
@@ -106,32 +93,35 @@ router.post('/', async (req, res, next) => {
 
 router.put('/:id', async (req, res, next) => {
   try {
-    if (!req.user || !req.user.tenant_id) {
-      return next(createApiError('Tenant context missing', 400, 'TENANT_REQUIRED'));
-    }
-
     const result = clientSchema.safeParse(req.body);
-    if (!result.success) {
-      return next(result.error);
-    }
+    if (!result.success) return next(result.error);
 
-    const { name, client_type, company_name, email, phone, address, notes, status } = result.data;
-    const cleanEmail = email?.trim() ? email.trim() : null;
-    const cleanPhone = phone ? phone.replace(/\D/g, '') : null;
+    const client = await clientService.updateClient({
+      tenantId: req.user.tenant_id,
+      userId: req.user.id,
+      clientId: req.params.id,
+      updateData: result.data
+    });
 
-    const { data, error } = await supabase
-      .from('clients')
-      .update({ name, client_type, company_name, email: cleanEmail, phone: cleanPhone, address, notes, status })
-      .eq('id', req.params.id)
-      .eq('tenant_id', req.user.tenant_id)
-      .select();
+    res.json({ success: true, data: client });
+  } catch (err) {
+    next(err);
+  }
+});
 
-    if (error) return next(error);
-    if (!data || data.length === 0) {
-      return next(createApiError('Client not found or update failed', 404, 'NOT_FOUND'));
-    }
+router.patch('/:id', async (req, res, next) => {
+  try {
+    const result = clientSchema.partial().safeParse(req.body);
+    if (!result.success) return next(result.error);
 
-    res.json({ success: true, data: data[0] });
+    const client = await clientService.updateClient({
+      tenantId: req.user.tenant_id,
+      userId: req.user.id,
+      clientId: req.params.id,
+      updateData: result.data
+    });
+
+    res.json({ success: true, data: client });
   } catch (err) {
     next(err);
   }
@@ -139,21 +129,11 @@ router.put('/:id', async (req, res, next) => {
 
 router.delete('/:id', async (req, res, next) => {
   try {
-    if (!req.user || !req.user.tenant_id) {
-      return next(createApiError('Tenant context missing', 400, 'TENANT_REQUIRED'));
-    }
-
-    const { data, error } = await supabase
-      .from('clients')
-      .delete()
-      .eq('id', req.params.id)
-      .eq('tenant_id', req.user.tenant_id)
-      .select();
-
-    if (error) return next(error);
-    if (!data || data.length === 0) {
-      return next(createApiError('Client not found or already deleted', 404, 'NOT_FOUND'));
-    }
+    await clientService.deleteClient({
+      tenantId: req.user.tenant_id,
+      userId: req.user.id,
+      clientId: req.params.id
+    });
 
     res.json({ success: true });
   } catch (err) {

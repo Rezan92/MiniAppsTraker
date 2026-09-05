@@ -1,6 +1,6 @@
 import { supabase } from '../../config/supabase.js';
 import { resolveEffectiveHourlyRate } from '../masterRates.js';
-import { invoiceService, jobService } from '../domain/index.js';
+import { invoiceService, jobService, clientService } from '../domain/index.js';
 import { pendingActionManager } from './pendingActionManager.js';
 import { entityResolver } from './entityResolver.js';
 
@@ -143,25 +143,16 @@ export async function executeAiTool(toolName, args = {}, { tenantId, userId }) {
 
       case 'create_client': {
         const { name, email, phone, address, client_type, notes } = args;
-        const normalizedPhone = phone ? phone.replace(/[^\d+]/g, '') : null;
-
-        const { data, error } = await supabase
-          .from('clients')
-          .insert([{
-            tenant_id: tenantId,
-            name: name.trim(),
-            email: email ? email.trim().toLowerCase() : null,
-            phone: normalizedPhone || null,
-            address: address ? address.trim() : null,
-            client_type: client_type || 'residential',
-            notes: notes || null,
-            status: 'active'
-          }])
-          .select()
-          .single();
-
-        if (error) return { error: error.message };
-        return { result: data, mutation: 'clients', entityId: data.id };
+        try {
+          const data = await clientService.createClient({
+            tenantId,
+            userId,
+            clientData: { name, email, phone, address, client_type, notes }
+          });
+          return { result: data, mutation: 'clients', entityId: data.id };
+        } catch (err) {
+          return { error: err.message };
+        }
       }
 
       case 'update_client': {
@@ -170,23 +161,17 @@ export async function executeAiTool(toolName, args = {}, { tenantId, userId }) {
         if (resolution.error) return { error: resolution.error };
         const client = resolution.client;
 
-        const payload = {};
-        if (updates.name) payload.name = updates.name.trim();
-        if (updates.email) payload.email = updates.email.trim().toLowerCase();
-        if (updates.phone) payload.phone = updates.phone.replace(/[^\d+]/g, '');
-        if (updates.address) payload.address = updates.address.trim();
-        if (updates.notes !== undefined) payload.notes = updates.notes;
-
-        const { data, error } = await supabase
-          .from('clients')
-          .update(payload)
-          .eq('id', client.id)
-          .eq('tenant_id', tenantId)
-          .select()
-          .single();
-
-        if (error) return { error: error.message };
-        return { result: data, mutation: 'clients', entityId: client.id };
+        try {
+          const data = await clientService.updateClient({
+            tenantId,
+            userId,
+            clientId: client.id,
+            updateData: updates
+          });
+          return { result: data, mutation: 'clients', entityId: client.id };
+        } catch (err) {
+          return { error: err.message };
+        }
       }
 
       case 'list_jobs': {
