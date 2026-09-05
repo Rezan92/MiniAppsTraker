@@ -35,6 +35,39 @@ async function resolveInvoiceOrError(identifier, tenantId) {
   return { invoice: res.entity };
 }
 
+function normalizeTimeTo24Hour(timeStr) {
+  if (!timeStr || typeof timeStr !== 'string') return null;
+  const cleaned = timeStr.trim();
+  // Check 12-hour format with AM/PM (e.g. "8:30 AM", "02:15 PM")
+  const ampmMatch = cleaned.match(/^(\d{1,2}):(\d{2})(?::\d{2})?\s*(AM|PM)$/i);
+  if (ampmMatch) {
+    let hours = parseInt(ampmMatch[1], 10);
+    const minutes = parseInt(ampmMatch[2], 10);
+    const period = ampmMatch[3].toUpperCase();
+    if (period === 'PM' && hours < 12) hours += 12;
+    if (period === 'AM' && hours === 12) hours = 0;
+    return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
+  }
+  // Check 24-hour format (e.g. "08:30", "14:00", "01:00:00")
+  const standardMatch = cleaned.match(/^(\d{1,2}):(\d{2})/);
+  if (standardMatch) {
+    const hours = parseInt(standardMatch[1], 10);
+    const minutes = parseInt(standardMatch[2], 10);
+    return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
+  }
+  return null;
+}
+
+function addHoursToTime(startTimeStr, hoursNum) {
+  const norm = normalizeTimeTo24Hour(startTimeStr) || '01:00';
+  const [startH, startM] = norm.split(':').map(Number);
+  const totalMinutes = Math.round(Number(hoursNum) * 60);
+  const combinedMinutes = startM + totalMinutes;
+  const endH = (startH + Math.floor(combinedMinutes / 60)) % 24;
+  const endM = combinedMinutes % 60;
+  return `${String(endH).padStart(2, '0')}:${String(endM).padStart(2, '0')}`;
+}
+
 /**
  * Executes an AI tool call securely within tenant boundaries.
  * @param {string} toolName
@@ -262,15 +295,20 @@ export async function executeAiTool(toolName, args = {}, { tenantId, userId }) {
         if (resolution.error) return { error: resolution.error };
         const job = resolution.job;
 
+        const parsedHours = parseFloat(hours) || 0;
+        // Mirror manual modal behavior: default start_time to '01:00' and calculate end_time if omitted
+        const finalStartTime = normalizeTimeTo24Hour(start_time) || '01:00';
+        const finalEndTime = normalizeTimeTo24Hour(end_time) || addHoursToTime(finalStartTime, parsedHours);
+
         const { data, error } = await supabase
           .from('job_hours')
           .insert([{
             job_id: job.id,
-            hours: parseFloat(hours),
+            hours: parsedHours,
             date: date || new Date().toISOString().split('T')[0],
-            description: description.trim(),
-            start_time: start_time || null,
-            end_time: end_time || null,
+            description: (description || 'Labor work').trim(),
+            start_time: finalStartTime,
+            end_time: finalEndTime,
             billing_status: 'unbilled'
           }])
           .select()
