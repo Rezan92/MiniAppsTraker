@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQueryClient } from '@tanstack/react-query';
 import { useToast } from '../../contexts/ToastContext';
 import { useNavigate } from 'react-router-dom';
 import { Tooltip } from '../common/Tooltip';
@@ -7,6 +7,8 @@ import { ConfirmModal } from '../common/ConfirmModal';
 import { BaseModal } from '../common/BaseModal';
 import { DataTable } from '../common/DataTable';
 import { apiClient } from '../../lib/apiClient';
+import { useProperties } from '../../hooks/api/useProperties';
+import { invalidatePropertyCascade } from '../../lib/cacheInvalidator';
 
 export const PropertiesList = ({ clientId }) => {
   const { showError, showSuccess } = useToast();
@@ -19,11 +21,7 @@ export const PropertiesList = ({ clientId }) => {
   const [editingId, setEditingId] = useState(null);
   const [formData, setFormData] = useState({ name: '', address: '', renter_name: '', renter_phone: '', notes: '' });
 
-  const { data: properties = [], isLoading } = useQuery({
-    queryKey: ['properties', clientId],
-    queryFn: () => apiClient.get(`/api/properties?client_id=${clientId}`),
-    enabled: !!clientId
-  });
+  const { data: properties = [], isLoading } = useProperties(clientId);
 
   const handleOpenAdd = () => {
     setEditingId(null);
@@ -46,7 +44,7 @@ export const PropertiesList = ({ clientId }) => {
     if (!propToDelete) return;
     try {
       await apiClient.delete(`/api/properties/${propToDelete}`);
-      queryClient.invalidateQueries({ queryKey: ['properties', clientId] });
+      invalidatePropertyCascade(queryClient, { propertyId: propToDelete, clientId });
       showSuccess('Property deleted successfully!');
     } catch (err) {
       showError(err.message || 'Failed to delete property');
@@ -60,13 +58,14 @@ export const PropertiesList = ({ clientId }) => {
     e.preventDefault();
     try {
       const payload = { ...formData, client_id: clientId };
+      let res;
       if (editingId) {
-        await apiClient.put(`/api/properties/${editingId}`, payload);
+        res = await apiClient.put(`/api/properties/${editingId}`, payload);
       } else {
-        await apiClient.post('/api/properties', payload);
+        res = await apiClient.post('/api/properties', payload);
       }
 
-      queryClient.invalidateQueries({ queryKey: ['properties', clientId] });
+      invalidatePropertyCascade(queryClient, { propertyId: editingId || res?.id, clientId });
       setIsModalOpen(false);
       showSuccess(`Property ${editingId ? 'updated' : 'added'} successfully!`);
     } catch (err) {

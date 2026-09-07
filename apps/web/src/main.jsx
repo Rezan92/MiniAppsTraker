@@ -8,9 +8,11 @@ import './index.css';
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      staleTime: 1000 * 60 * 2, // 2 minutes
-      refetchOnWindowFocus: false,
-      retry: false,
+      staleTime: 1000 * 60 * 5, // 5 minutes fresh data window
+      gcTime: 1000 * 60 * 15,    // 15 minutes garbage collection (replaces cacheTime in v5)
+      refetchOnWindowFocus: true, // safety-net background refresh when returning to tab
+      refetchOnReconnect: true,
+      retry: 1,
     },
   },
 });

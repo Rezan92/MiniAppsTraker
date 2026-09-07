@@ -9,10 +9,14 @@ import { PropertiesList } from './PropertiesList';
 import { InvoicesWidget } from '../common/InvoicesWidget';
 import { useScreenContext } from '../../contexts/AiContext';
 
+import { useClient } from '../../hooks/api/useClients';
+import { useJobs } from '../../hooks/api/useJobs';
+import { apiClient } from '../../lib/apiClient';
+import { invalidateJobCascade } from '../../lib/cacheInvalidator';
+
 export const ClientDetails = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { session } = useAuth();
   const { showError, showSuccess } = useToast();
   const queryClient = useQueryClient();
 
@@ -28,31 +32,9 @@ export const ClientDetails = () => {
     end_date: new Date().toISOString().split('T')[0], 
     notes: '' 
   });
-  const { data: client, isLoading: loadingClient, isError: errorClient } = useQuery({
-    queryKey: ['clients', id],
-    queryFn: async () => {
-      const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:4000'}/api/clients/${id}`, {
-        headers: { 'Authorization': `Bearer ${session?.access_token}` }
-      });
-      if (!res.ok) throw new Error('Failed to fetch client details');
-      const data = await res.json();
-      return data.data;
-    },
-    enabled: !!session?.access_token && !!id
-  });
-
-  const { data: jobs = [], isLoading: loadingJobs } = useQuery({
-    queryKey: ['jobs', 'client', id],
-    queryFn: async () => {
-      const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:4000'}/api/jobs?client_id=${id}`, {
-        headers: { 'Authorization': `Bearer ${session?.access_token}` }
-      });
-      if (!res.ok) throw new Error('Failed to fetch jobs');
-      const data = await res.json();
-      return data.data || [];
-    },
-    enabled: !!session?.access_token && !!id
-  });
+  
+  const { data: client, isLoading: loadingClient, isError: errorClient } = useClient(id);
+  const { data: jobs = [], isLoading: loadingJobs } = useJobs({ client_id: id });
 
   // Register screen context envelope for AI Copilot
   useScreenContext({
@@ -83,26 +65,18 @@ export const ClientDetails = () => {
         hourly_rate: jobFormData.rate_type === 'hourly' ? parseFloat(jobFormData.hourly_rate) : undefined,
         flat_rate: jobFormData.rate_type === 'flat' ? parseFloat(jobFormData.flat_rate) : undefined
       };
-      const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:4000'}/api/jobs`, {
-        method: 'POST',
-        headers: { 
-          'Authorization': `Bearer ${session?.access_token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(payload)
+      const createdJob = await apiClient.post('/api/jobs', payload);
+      invalidateJobCascade(queryClient, { 
+        jobId: createdJob?.id, 
+        clientId: id, 
+        propertyId: payload.property_id 
       });
-      if (res.ok) {
-        queryClient.invalidateQueries({ queryKey: ['jobs'] });
-        setJobModalOpen(false);
-        setJobFormData({ client_id: '', property_id: '', title: '', rate_type: 'flat', hourly_rate: '', flat_rate: '', start_date: '', end_date: '', notes: '' });
-        showSuccess('Job successfully created!');
-      } else {
-        const errorData = await res.json();
-        showError(errorData.error?.message || 'Failed to create job');
-      }
+      setJobModalOpen(false);
+      setJobFormData({ client_id: '', property_id: '', title: '', rate_type: 'flat', hourly_rate: '', flat_rate: '', start_date: '', end_date: '', notes: '' });
+      showSuccess('Job successfully created!');
     } catch (err) {
       console.error(err);
-      showError('An unexpected error occurred.');
+      showError(err.message || 'Failed to create job');
     }
   };
 

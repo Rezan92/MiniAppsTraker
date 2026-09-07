@@ -1,11 +1,8 @@
 import { useQuery } from '@tanstack/react-query';
 import { apiClient } from '../../lib/apiClient';
+import { QUERY_KEYS } from '../../lib/queryKeys';
 
-export const PROPERTY_QUERY_KEYS = {
-  all: ['properties'],
-  listByClient: (clientId) => ['properties', clientId],
-  detail: (id) => ['property', id]
-};
+export const PROPERTY_QUERY_KEYS = QUERY_KEYS.properties;
 
 export const useProperties = (clientId) => {
   return useQuery({

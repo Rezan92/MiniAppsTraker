@@ -1,10 +1,8 @@
 import { useQuery } from '@tanstack/react-query';
 import { apiClient } from '../../lib/apiClient';
+import { QUERY_KEYS } from '../../lib/queryKeys';
 
-export const DASHBOARD_QUERY_KEYS = {
-  all: ['dashboard'],
-  summary: (tenantId) => ['dashboard', 'summary', tenantId]
-};
+export const DASHBOARD_QUERY_KEYS = QUERY_KEYS.dashboard;
 
 export const useDashboardSummary = (tenantId) => {
   return useQuery({

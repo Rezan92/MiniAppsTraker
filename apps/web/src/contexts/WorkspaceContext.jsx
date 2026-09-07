@@ -3,12 +3,14 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from './AuthContext';
 import { useToast } from './ToastContext';
 import { apiClient } from '../lib/apiClient';
+import { QUERY_KEYS } from '../lib/queryKeys';
+import { useSupabaseRealtimeSync } from '../hooks/realtime/useSupabaseRealtimeSync';
 
 const WorkspaceContext = createContext(null);
 
 export const WORKSPACE_QUERY_KEYS = {
-  list: ['workspaces'],
-  detail: (id) => ['workspace', id]
+  list: QUERY_KEYS.workspaces.all,
+  detail: (id) => QUERY_KEYS.workspaces.detail(id)
 };
 
 export const WorkspaceProvider = ({ children }) => {
@@ -17,6 +19,11 @@ export const WorkspaceProvider = ({ children }) => {
   const queryClient = useQueryClient();
   const [isSwitching, setIsSwitching] = useState(false);
 
+  const activeTenantId = userData?.tenant_id;
+
+  // Mount real-time Postgres sync for active tenant
+  useSupabaseRealtimeSync(activeTenantId);
+
   // Fetch workspaces via TanStack Query
   const { data: workspaces = [], isLoading: isLoadingWorkspaces, refetch: refetchWorkspaces } = useQuery({
     queryKey: WORKSPACE_QUERY_KEYS.list,
@@ -24,7 +31,6 @@ export const WorkspaceProvider = ({ children }) => {
     enabled: !!session?.access_token
   });
 
-  const activeTenantId = userData?.tenant_id;
   const currentWorkspace = workspaces.find(w => w.tenant_id === activeTenantId) || null;
 
   // In-Memory Fast Workspace Switcher

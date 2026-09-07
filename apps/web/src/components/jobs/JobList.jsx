@@ -14,6 +14,7 @@ import { useToast } from '../../contexts/ToastContext';
 import { useQueryClient } from '@tanstack/react-query';
 import { JOB_QUERY_KEYS } from '../../hooks/api/useJobs';
 import { useScreenContext } from '../../contexts/AiContext';
+import { invalidateJobWorkItemsCascade } from '../../lib/cacheInvalidator';
 
 export const JobList = () => {
   const navigate = useNavigate();
@@ -90,7 +91,7 @@ export const JobList = () => {
       const dataToUse = submittedData || matData;
       const payload = { ...dataToUse, cost: parseFloat(dataToUse.cost) };
       await apiClient.post(`/api/jobs/${selectedJobId}/materials`, payload);
-      queryClient.invalidateQueries({ queryKey: JOB_QUERY_KEYS.all });
+      invalidateJobWorkItemsCascade(queryClient, { jobId: selectedJobId });
       setMatOpen(false);
       setMatData({ description: '', cost: '20.00', is_from_stock: false, store: '', purchase_date: new Date().toISOString().split('T')[0], notes: '' });
       showSuccess('Material added successfully!');
@@ -108,7 +109,7 @@ export const JobList = () => {
       const dataToUse = submittedData || hoursData;
       const payload = { ...dataToUse, hours: parseFloat(dataToUse.hours) };
       await apiClient.post(`/api/jobs/${selectedJobId}/hours`, payload);
-      queryClient.invalidateQueries({ queryKey: JOB_QUERY_KEYS.all });
+      invalidateJobWorkItemsCascade(queryClient, { jobId: selectedJobId });
       setHoursOpen(false);
       setHoursData({ date: new Date().toISOString().split('T')[0], hours: '' });
       showSuccess('Hours logged successfully!');

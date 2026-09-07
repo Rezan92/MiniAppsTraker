@@ -6,13 +6,20 @@ import { AddMaterialModal } from './AddMaterialModal';
 import { AddJobHoursModal } from './AddJobHoursModal';
 import { AddJobModal } from './AddJobModal';
 import { DeleteJobItemModal } from './DeleteJobItemModal';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQueryClient, useMutation } from '@tanstack/react-query';
 import { NotFound } from '../errors/NotFound';
 import { translateApiError } from '../../utils/errorTranslator';
 import { STATUS_COLORS, JOB_STATUSES } from '../../utils/constants';
 import { StatusBadgeDropdown } from '../shared/StatusBadgeDropdown';
 import { useScreenContext } from '../../contexts/AiContext';
 import { apiClient } from '../../lib/apiClient';
+import { useJob, useJobMaterials, useJobHours } from '../../hooks/api/useJobs';
+import { useClients } from '../../hooks/api/useClients';
+import { 
+  invalidateJobCascade, 
+  invalidateJobWorkItemsCascade, 
+  invalidateInvoiceCascade 
+} from '../../lib/cacheInvalidator';
 
 export const JobDetails = () => {
   const { id } = useParams();
@@ -34,33 +41,15 @@ export const JobDetails = () => {
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [itemToDelete, setItemToDelete] = useState(null);
 
-  const { data: job, isLoading: loadingJob, isError: errorJob } = useQuery({
-    queryKey: ['job', id],
-    queryFn: () => apiClient.get(`/api/jobs/${id}`),
-    enabled: !!session?.access_token && !!id
-  });
+  const { data: job, isLoading: loadingJob, isError: errorJob } = useJob(id);
 
   const rawInvoices = job?.invoices;
   const invoices = Array.isArray(rawInvoices) ? rawInvoices : (rawInvoices ? [rawInvoices] : []);
   const draftInvoice = invoices.find(inv => inv.status === 'draft');
 
-  const { data: materials = [], isLoading: loadingMaterials } = useQuery({
-    queryKey: ['materials', 'job', id],
-    queryFn: () => apiClient.get(`/api/jobs/${id}/materials`),
-    enabled: !!session?.access_token && !!id
-  });
-
-  const { data: hours = [], isLoading: loadingHours } = useQuery({
-    queryKey: ['hours', 'job', id],
-    queryFn: () => apiClient.get(`/api/jobs/${id}/hours`),
-    enabled: !!session?.access_token && !!id
-  });
-
-  const { data: clients = [] } = useQuery({
-    queryKey: ['clients'],
-    queryFn: () => apiClient.get('/api/clients'),
-    enabled: !!session?.access_token
-  });
+  const { data: materials = [], isLoading: loadingMaterials } = useJobMaterials(id, true);
+  const { data: hours = [], isLoading: loadingHours } = useJobHours(id, true);
+  const { data: clients = [] } = useClients();
 
   // Register screen context envelope for AI Copilot
   useScreenContext({
@@ -91,7 +80,7 @@ export const JobDetails = () => {
       setMatOpen(false);
       setMatData({ description: '', cost: '20.00', is_from_stock: false, store: '', purchase_date: new Date().toISOString().split('T')[0], notes: '' });
       showSuccess(`Material ${dataToUse.id ? 'updated' : 'added'} successfully!`);
-      queryClient.invalidateQueries({ queryKey: ['materials', 'job', id] });
+      invalidateJobWorkItemsCascade(queryClient, { jobId: id });
     } catch (err) {
       console.error(err);
       showError(err.message || `Failed to ${submittedData?.id || matData?.id ? 'update' : 'add'} material`);
@@ -110,7 +99,7 @@ export const JobDetails = () => {
       setHoursOpen(false);
       setHoursData({ date: new Date().toISOString().split('T')[0], hours: '', description: '', start_time: '', end_time: '' });
       showSuccess(`Hours ${dataToUse.id ? 'updated' : 'logged'} successfully!`);
-      queryClient.invalidateQueries({ queryKey: ['hours', 'job', id] });
+      invalidateJobWorkItemsCascade(queryClient, { jobId: id });
     } catch (err) {
       console.error(err);
       showError(err.message || `Failed to ${submittedData?.id || hoursData?.id ? 'update' : 'log'} hours`);
@@ -120,7 +109,7 @@ export const JobDetails = () => {
   const handleUpdateStatus = async (newStatus) => {
     try {
       await apiClient.patch(`/api/jobs/${id}/status`, { status: newStatus });
-      queryClient.invalidateQueries({ queryKey: ['job', id] });
+      invalidateJobCascade(queryClient, { jobId: id });
       showSuccess('Job status updated!');
     } catch (err) {
       console.error(err);
@@ -135,7 +124,7 @@ export const JobDetails = () => {
     try {
       await apiClient.delete(`/api/jobs/${id}/${endpoint}/${itemId}`);
       showSuccess(`${type === 'hour' ? 'Hour' : 'Material'} entry deleted successfully!`);
-      queryClient.invalidateQueries({ queryKey: [endpoint, 'job', id] });
+      invalidateJobWorkItemsCascade(queryClient, { jobId: id });
     } catch (err) {
       showError(err.message || `Failed to delete ${type} entry`);
     } finally {
@@ -155,8 +144,10 @@ export const JobDetails = () => {
       };
       
       await apiClient.put(`/api/jobs/${id}`, payload);
-      queryClient.invalidateQueries({ queryKey: ['job', id] });
-      queryClient.invalidateQueries({ queryKey: ['jobs'] });
+      invalidateJobCascade(queryClient, { 
+        jobId: id, 
+        propertyId: payload.property_id 
+      });
       setEditOpen(false);
       showSuccess('Job successfully updated!');
     } catch (err) {
@@ -179,7 +170,11 @@ export const JobDetails = () => {
       return apiClient.post('/api/invoices', payload);
     },
     onSuccess: (data) => {
-      queryClient.invalidateQueries(['jobs', id]);
+      invalidateInvoiceCascade(queryClient, { 
+        invoiceId: data?.id, 
+        jobId: id, 
+        clientId: job?.client_id 
+      });
       navigate(`/invoices/${data.id}/edit`, { state: { fromJob: id } });
     },
     onError: (err) => {

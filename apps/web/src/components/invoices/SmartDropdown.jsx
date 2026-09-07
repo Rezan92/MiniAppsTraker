@@ -1,6 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { apiClient } from '../../lib/apiClient';
+import { useJobMaterials, useJobHours } from '../../hooks/api/useJobs';
 
 export const SmartDropdown = ({ jobId, onAddItems, filterType, existingItems = [], selectedJob }) => {
   const [showBilled, setShowBilled] = useState(false);
@@ -17,24 +16,18 @@ export const SmartDropdown = ({ jobId, onAddItems, filterType, existingItems = [
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // Fetch unbilled/billed items
-  const { data: materials = [], isLoading: loadingMaterials } = useQuery({
-    queryKey: ['job_materials', jobId, showBilled],
-    queryFn: async () => {
-      const statusList = showBilled ? 'unbilled,on_draft,billed' : 'unbilled';
-      return apiClient.get(`/api/jobs/${jobId}/materials?billing_status=${statusList}`);
-    },
-    enabled: !!jobId && isOpen && (!filterType || filterType === 'material')
-  });
+  // Fetch unbilled/billed items using standardized domain hooks
+  const { data: materials = [], isLoading: loadingMaterials } = useJobMaterials(
+    jobId, 
+    showBilled, 
+    !!jobId && isOpen && (!filterType || filterType === 'material')
+  );
 
-  const { data: hours = [], isLoading: loadingHours } = useQuery({
-    queryKey: ['job_hours', jobId, showBilled],
-    queryFn: async () => {
-      const statusList = showBilled ? 'unbilled,on_draft,billed' : 'unbilled';
-      return apiClient.get(`/api/jobs/${jobId}/hours?billing_status=${statusList}`);
-    },
-    enabled: !!jobId && isOpen && (!filterType || filterType === 'labor')
-  });
+  const { data: hours = [], isLoading: loadingHours } = useJobHours(
+    jobId, 
+    showBilled, 
+    !!jobId && isOpen && (!filterType || filterType === 'labor')
+  );
 
   const handleAddItem = (item, type) => {
     let amount = item.cost || 0;

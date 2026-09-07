@@ -2,12 +2,10 @@ import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tansta
 import { apiClient } from '../../lib/apiClient';
 import { useToast } from '../../contexts/ToastContext';
 import { translateApiError } from '../../utils/errorTranslator';
+import { QUERY_KEYS } from '../../lib/queryKeys';
+import { invalidateClientCascade } from '../../lib/cacheInvalidator';
 
-export const CLIENT_QUERY_KEYS = {
-  all: ['clients'],
-  list: (search) => ['clients', { search }],
-  detail: (id) => ['clients', 'detail', id]
-};
+export const CLIENT_QUERY_KEYS = QUERY_KEYS.clients;
 
 export const useClients = (search = '') => {
   return useQuery({
@@ -31,8 +29,8 @@ export const useCreateClient = () => {
 
   return useMutation({
     mutationFn: (formData) => apiClient.post('/api/clients', formData),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: CLIENT_QUERY_KEYS.all });
+    onSuccess: (data) => {
+      invalidateClientCascade(queryClient, { clientId: data?.id });
       showSuccess('Client successfully added!');
     },
     onError: (err) => showError(translateApiError(err))
@@ -46,10 +44,7 @@ export const useUpdateClient = () => {
   return useMutation({
     mutationFn: ({ id, ...formData }) => apiClient.put(`/api/clients/${id}`, formData),
     onSuccess: (_data, variables) => {
-      queryClient.invalidateQueries({ queryKey: CLIENT_QUERY_KEYS.all });
-      if (variables?.id) {
-        queryClient.invalidateQueries({ queryKey: CLIENT_QUERY_KEYS.detail(variables.id) });
-      }
+      invalidateClientCascade(queryClient, { clientId: variables?.id });
       showSuccess('Client updated successfully!');
     },
     onError: (err) => showError(translateApiError(err))
@@ -62,8 +57,8 @@ export const useDeleteClient = () => {
 
   return useMutation({
     mutationFn: (id) => apiClient.delete(`/api/clients/${id}`),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: CLIENT_QUERY_KEYS.all });
+    onSuccess: (_data, id) => {
+      invalidateClientCascade(queryClient, { clientId: id });
       showSuccess('Client deleted successfully!');
     },
     onError: (err) => showError(translateApiError(err))

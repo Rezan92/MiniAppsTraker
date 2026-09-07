@@ -2,6 +2,13 @@ import React, { createContext, useContext, useState, useCallback, useEffect, use
 import { useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '../lib/apiClient';
 import { translateApiError } from '../utils/errorTranslator';
+import { QUERY_KEYS } from '../lib/queryKeys';
+import { 
+  invalidateJobCascade, 
+  invalidateJobWorkItemsCascade, 
+  invalidateClientCascade, 
+  invalidateInvoiceCascade 
+} from '../lib/cacheInvalidator';
 
 export const AVAILABLE_MODELS = [
   { id: 'gemini-2.5-flash', label: 'Gemini 2.5 Flash' },
@@ -114,45 +121,23 @@ export const AiContextProvider = ({ children }) => {
       switch (type) {
         case 'hours':
         case 'materials':
-          if (entityId) {
-            queryClient.invalidateQueries({ queryKey: ['hours', 'job', entityId] });
-            queryClient.invalidateQueries({ queryKey: ['materials', 'job', entityId] });
-            queryClient.invalidateQueries({ queryKey: ['job', entityId] });
-          }
-          queryClient.invalidateQueries({ queryKey: ['jobs'] });
-          queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+          invalidateJobWorkItemsCascade(queryClient, { jobId: entityId });
           break;
 
         case 'jobs':
-          queryClient.invalidateQueries({ queryKey: ['jobs'] });
-          if (entityId) {
-            queryClient.invalidateQueries({ queryKey: ['job', entityId] });
-          }
-          queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+          invalidateJobCascade(queryClient, { jobId: entityId });
           break;
 
         case 'clients':
-          queryClient.invalidateQueries({ queryKey: ['clients'] });
-          if (entityId) {
-            queryClient.invalidateQueries({ queryKey: ['client', entityId] });
-          }
-          queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+          invalidateClientCascade(queryClient, { clientId: entityId });
           break;
 
         case 'invoices':
-          queryClient.invalidateQueries({ queryKey: ['invoices'] });
-          if (entityId) {
-            queryClient.invalidateQueries({ queryKey: ['invoice', entityId] });
-            queryClient.invalidateQueries({ queryKey: ['invoice-logs', entityId] });
-          }
-          queryClient.invalidateQueries({ queryKey: ['jobs'] });
-          queryClient.invalidateQueries({ queryKey: ['hours'] });
-          queryClient.invalidateQueries({ queryKey: ['materials'] });
-          queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+          invalidateInvoiceCascade(queryClient, { invoiceId: entityId });
           break;
 
         default:
-          queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+          queryClient.invalidateQueries({ queryKey: QUERY_KEYS.dashboard.all });
           break;
       }
     }

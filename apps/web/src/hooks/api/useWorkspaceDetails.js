@@ -2,11 +2,9 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '../../lib/apiClient';
 import { useToast } from '../../contexts/ToastContext';
 import { translateApiError } from '../../utils/errorTranslator';
+import { QUERY_KEYS } from '../../lib/queryKeys';
 
-export const WORKSPACE_QUERY_KEYS = {
-  all: ['workspaces'],
-  detail: (id) => ['workspaces', 'detail', id]
-};
+export const WORKSPACE_QUERY_KEYS = QUERY_KEYS.workspaces;
 
 export const useWorkspaceDetails = (tenantId) => {
   return useQuery({

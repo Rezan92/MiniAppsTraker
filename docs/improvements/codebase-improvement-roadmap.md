@@ -112,10 +112,10 @@ This document serves as the comprehensive architectural audit, security review, 
 - **Problem**: All application views (InvoiceBuilder, JobDetails, ClientDetails, Settings) are compiled into a single initial bundle (>810 kB).
 - **Remedy**: Implement dynamic imports (`React.lazy(() => import(...))`) for main routes with a lightweight fallback skeleton.
 
-### 6.2 TanStack Query Cache & Stale Time Optimization
-- **Affected Files**: [`apps/web/src/main.jsx`](file:///c:/Users/syria/Documents/WebProjects/MiniAppsTraker/apps/web/src/main.jsx)
-- **Problem**: Default TanStack query settings refetch aggressively on window refocus.
-- **Remedy**: Configure default query client options (`staleTime: 1000 * 60 * 2` [2 mins], `refetchOnWindowFocus: false`) with per-hook overrides.
+### 6.2 TanStack Query Cache, Relational Cascades & Supabase Realtime Sync
+- **Affected Files**: [`apps/web/src/main.jsx`](file:///c:/Users/syria/Documents/WebProjects/MiniAppsTraker/apps/web/src/main.jsx), [`apps/web/src/lib/queryKeys.js`](file:///c:/Users/syria/Documents/WebProjects/MiniAppsTraker/apps/web/src/lib/queryKeys.js), [`apps/web/src/lib/cacheInvalidator.js`](file:///c:/Users/syria/Documents/WebProjects/MiniAppsTraker/apps/web/src/lib/cacheInvalidator.js), [`apps/web/src/hooks/realtime/useSupabaseRealtimeSync.js`](file:///c:/Users/syria/Documents/WebProjects/MiniAppsTraker/apps/web/src/hooks/realtime/useSupabaseRealtimeSync.js), [`apps/api/supabase/migrations/00030_enable_supabase_realtime.sql`](file:///c:/Users/syria/Documents/WebProjects/MiniAppsTraker/apps/api/supabase/migrations/00030_enable_supabase_realtime.sql)
+- **Problem**: Inconsistent query keys and missing relational cache cascades caused stale UI states that required manual browser reloads (`F5`).
+- **Remedy**: Implemented unified `QUERY_KEYS` hierarchy, TanStack Query v5 syntax fix, relational cascading invalidators (`cacheInvalidator.js`), PostgreSQL `REPLICA IDENTITY FULL` publication, and live WebSocket synchronization (`useSupabaseRealtimeSync`) with balanced 5-minute stale times.
 
 ---
 
@@ -137,5 +137,6 @@ This document serves as the comprehensive architectural audit, security review, 
 | 12 | Print Stylesheet Modularization | CSS Architecture | **P3 (Low)** | Low | Low | **Completed** | `apps/web/src/components/invoices/` |
 | 13 | API Query Pagination (`limit`/`offset`) | Performance | **P3 (Low)** | Medium | Medium | **Completed** | `apps/api/src/routes/` |
 | 14 | Team Management & Teammate Invitations Hub | Settings & Team | **P1 (High)** | Medium | High | **Completed** | `apps/web/src/components/settings/` |
+| 15 | Live Multi-Tenant Reflection (Supabase Realtime + TanStack Query v5 Cascades) | Architecture | **P1 (High)** | Medium | High | **Completed** | Full Web App & DB |
 
 ---

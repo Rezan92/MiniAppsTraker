@@ -2,14 +2,10 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '../../lib/apiClient';
 import { useToast } from '../../contexts/ToastContext';
 import { translateApiError } from '../../utils/errorTranslator';
+import { QUERY_KEYS } from '../../lib/queryKeys';
+import { invalidateJobCascade } from '../../lib/cacheInvalidator';
 
-export const JOB_QUERY_KEYS = {
-  all: ['jobs'],
-  list: (filters = {}) => ['jobs', filters],
-  detail: (id) => ['job', id],
-  materials: (jobId, showBilled) => ['materials', 'job', jobId, showBilled],
-  hours: (jobId, showBilled) => ['hours', 'job', jobId, showBilled]
-};
+export const JOB_QUERY_KEYS = QUERY_KEYS.jobs;
 
 export const useJobs = (filters = {}) => {
   const queryParams = new URLSearchParams();
@@ -62,8 +58,12 @@ export const useCreateJob = () => {
 
   return useMutation({
     mutationFn: (formData) => apiClient.post('/api/jobs', formData),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: JOB_QUERY_KEYS.all });
+    onSuccess: (data, variables) => {
+      invalidateJobCascade(queryClient, { 
+        jobId: data?.id, 
+        clientId: variables?.client_id, 
+        propertyId: variables?.property_id 
+      });
       showSuccess('Job successfully created!');
     },
     onError: (err) => showError(translateApiError(err))
@@ -77,10 +77,11 @@ export const useUpdateJob = () => {
   return useMutation({
     mutationFn: ({ id, ...formData }) => apiClient.put(`/api/jobs/${id}`, formData),
     onSuccess: (_data, variables) => {
-      queryClient.invalidateQueries({ queryKey: JOB_QUERY_KEYS.all });
-      if (variables?.id) {
-        queryClient.invalidateQueries({ queryKey: JOB_QUERY_KEYS.detail(variables.id) });
-      }
+      invalidateJobCascade(queryClient, { 
+        jobId: variables?.id, 
+        clientId: variables?.client_id, 
+        propertyId: variables?.property_id 
+      });
       showSuccess('Job successfully updated!');
     },
     onError: (err) => showError(translateApiError(err))
@@ -94,10 +95,7 @@ export const useUpdateJobStatus = () => {
   return useMutation({
     mutationFn: ({ id, status }) => apiClient.patch(`/api/jobs/${id}/status`, { status }),
     onSuccess: (_data, variables) => {
-      queryClient.invalidateQueries({ queryKey: JOB_QUERY_KEYS.all });
-      if (variables?.id) {
-        queryClient.invalidateQueries({ queryKey: JOB_QUERY_KEYS.detail(variables.id) });
-      }
+      invalidateJobCascade(queryClient, { jobId: variables?.id });
       showSuccess('Job status updated!');
     },
     onError: (err) => showError(translateApiError(err))

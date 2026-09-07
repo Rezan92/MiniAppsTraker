@@ -1,50 +1,27 @@
 import React, { useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { useAuth } from '../../contexts/AuthContext';
+import { useQueryClient } from '@tanstack/react-query';
 import { useToast } from '../../contexts/ToastContext';
 import { InvoicesWidget } from '../common/InvoicesWidget';
 import { AddJobModal } from '../jobs/AddJobModal';
 import { NotFound } from '../errors/NotFound';
 import { translateApiError } from '../../utils/errorTranslator';
+import { useProperty } from '../../hooks/api/useProperties';
+import { useJobs } from '../../hooks/api/useJobs';
+import { apiClient } from '../../lib/apiClient';
+import { invalidateJobCascade } from '../../lib/cacheInvalidator';
 
 export const PropertyDetails = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { session } = useAuth();
   const { showSuccess, showError } = useToast();
   const queryClient = useQueryClient();
 
   const [jobModalOpen, setJobModalOpen] = useState(false);
   const [jobFormData, setJobFormData] = useState({ client_id: '', property_id: '', title: '', rate_type: 'flat', hourly_rate: '', flat_rate: '', start_date: '', end_date: '', notes: '' });
 
-  const { data: property, isLoading, error } = useQuery({
-    queryKey: ['property', id],
-    queryFn: async () => {
-      const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:4000'}/api/properties/${id}`, {
-        headers: { 'Authorization': `Bearer ${session?.access_token}` }
-      });
-      const json = await res.json();
-      if (!res.ok || !json.success) throw new Error(json.error);
-      return json.data;
-    },
-    enabled: !!session && !!id
-  });
-
-  const { data: jobs = [], isLoading: loadingJobs } = useQuery({
-    queryKey: ['jobs', 'property', id],
-    queryFn: async () => {
-      const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:4000'}/api/jobs?property_id=${id}`, {
-        headers: { 'Authorization': `Bearer ${session?.access_token}` }
-      });
-      if (!res.ok) throw new Error('Failed to fetch jobs');
-      const data = await res.json();
-      return data.data || [];
-    },
-    enabled: !!session?.access_token && !!id
-  });
-
-
+  const { data: property, isLoading, error } = useProperty(id);
+  const { data: jobs = [], isLoading: loadingJobs } = useJobs({ property_id: id });
 
   const handleSaveJob = async () => {
     try {
@@ -55,24 +32,15 @@ export const PropertyDetails = () => {
         flat_rate: jobFormData.rate_type === 'flat' ? parseFloat(jobFormData.flat_rate) : undefined
       };
       
-      const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:4000'}/api/jobs`, {
-        method: 'POST',
-        headers: { 
-          'Authorization': `Bearer ${session?.access_token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(payload)
+      const createdJob = await apiClient.post('/api/jobs', payload);
+      invalidateJobCascade(queryClient, { 
+        jobId: createdJob?.id, 
+        propertyId: id, 
+        clientId: payload.client_id 
       });
-      if (res.ok) {
-        queryClient.invalidateQueries({ queryKey: ['jobs', 'property', id] });
-        queryClient.invalidateQueries({ queryKey: ['jobs'] });
-        setJobModalOpen(false);
-        setJobFormData({ client_id: '', property_id: '', title: '', rate_type: 'flat', hourly_rate: '', flat_rate: '', start_date: '', end_date: '', notes: '' });
-        showSuccess('Job successfully created!');
-      } else {
-        const errorData = await res.json();
-        showError(translateApiError(errorData.error?.message || errorData.message || 'Failed to save job'));
-      }
+      setJobModalOpen(false);
+      setJobFormData({ client_id: '', property_id: '', title: '', rate_type: 'flat', hourly_rate: '', flat_rate: '', start_date: '', end_date: '', notes: '' });
+      showSuccess('Job successfully created!');
     } catch (err) {
       console.error(err);
       showError(translateApiError(err));

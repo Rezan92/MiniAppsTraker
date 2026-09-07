@@ -16,6 +16,7 @@ import { useProperties } from '../../hooks/api/useProperties';
 import { useInvoice } from '../../hooks/api/useInvoices';
 import { apiClient } from '../../lib/apiClient';
 import { useUnsavedChangesWarning } from '../../hooks/useUnsavedChangesWarning';
+import { invalidateInvoiceCascade } from '../../lib/cacheInvalidator';
 
 export const InvoiceBuilder = () => {
   const { id } = useParams();
@@ -280,12 +281,15 @@ export const InvoiceBuilder = () => {
     },
     onSuccess: (data) => {
       initialSnapshotRef.current = null;
+      invalidateInvoiceCascade(queryClient, { 
+        invoiceId: data?.id || id, 
+        jobId: formData.job_id || fromJobId, 
+        clientId: formData.client_id 
+      });
       showSuccess(`Invoice ${isEditing ? 'updated' : 'created'} successfully`);
-      queryClient.invalidateQueries(['invoices']);
       if (!isEditing) {
         navigate(`/invoices/${data.id}/edit`, { state: { fromJob: fromJobId } });
       } else {
-        queryClient.invalidateQueries(['invoice', id]);
         navigate(`/invoices/${id}`, { state: { fromJob: fromJobId } });
       }
     },

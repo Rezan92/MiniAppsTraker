@@ -2,13 +2,10 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '../../lib/apiClient';
 import { useToast } from '../../contexts/ToastContext';
 import { translateApiError } from '../../utils/errorTranslator';
+import { QUERY_KEYS } from '../../lib/queryKeys';
+import { invalidateInvoiceCascade } from '../../lib/cacheInvalidator';
 
-export const INVOICE_QUERY_KEYS = {
-  all: ['invoices'],
-  list: (filters = {}) => ['invoices', filters],
-  detail: (id) => ['invoice', id],
-  logs: (id) => ['invoice_logs', id]
-};
+export const INVOICE_QUERY_KEYS = QUERY_KEYS.invoices;
 
 export const useInvoices = (filters = {}) => {
   const queryParams = new URLSearchParams();
@@ -55,11 +52,11 @@ export const useSaveInvoice = (id) => {
       return isEditing ? apiClient.patch(endpoint, payload) : apiClient.post(endpoint, payload);
     },
     onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: INVOICE_QUERY_KEYS.all });
-      if (id) {
-        queryClient.invalidateQueries({ queryKey: INVOICE_QUERY_KEYS.detail(id) });
-        queryClient.invalidateQueries({ queryKey: INVOICE_QUERY_KEYS.logs(id) });
-      }
+      invalidateInvoiceCascade(queryClient, { 
+        invoiceId: data?.id || id, 
+        jobId: data?.job_id,
+        clientId: data?.client_id
+      });
       showSuccess(`Invoice ${isEditing ? 'updated' : 'created'} successfully`);
     },
     onError: (err) => showError(translateApiError(err))
@@ -77,17 +74,13 @@ export const useUpdateInvoiceStatus = (defaultId) => {
       const { status, reason } = variables;
       return apiClient.patch(`/api/invoices/${id}/status`, { status, reason });
     },
-    onSuccess: (_data, variables) => {
+    onSuccess: (data, variables) => {
       const id = variables?.id || defaultId;
-      queryClient.invalidateQueries({ queryKey: INVOICE_QUERY_KEYS.all });
-      if (id) {
-        queryClient.invalidateQueries({ queryKey: INVOICE_QUERY_KEYS.detail(id) });
-        queryClient.invalidateQueries({ queryKey: INVOICE_QUERY_KEYS.logs(id) });
-      }
-      queryClient.invalidateQueries({ queryKey: ['jobs'] });
-      queryClient.invalidateQueries({ queryKey: ['hours'] });
-      queryClient.invalidateQueries({ queryKey: ['materials'] });
-      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+      invalidateInvoiceCascade(queryClient, { 
+        invoiceId: id,
+        jobId: data?.job_id,
+        clientId: data?.client_id
+      });
       showSuccess('Status updated successfully');
     },
     onError: (err) => showError(translateApiError(err))
@@ -126,12 +119,9 @@ export const useDeleteInvoice = (defaultId) => {
       if (!id) throw new Error("Invoice ID is required to delete invoice");
       return apiClient.delete(`/api/invoices/${id}`);
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: INVOICE_QUERY_KEYS.all });
-      queryClient.invalidateQueries({ queryKey: ['jobs'] });
-      queryClient.invalidateQueries({ queryKey: ['hours'] });
-      queryClient.invalidateQueries({ queryKey: ['materials'] });
-      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+    onSuccess: (_data, variables) => {
+      const id = (typeof variables === 'string' || typeof variables === 'number') ? variables : (variables?.id || defaultId);
+      invalidateInvoiceCascade(queryClient, { invoiceId: id });
       showSuccess('Invoice deleted successfully');
     },
     onError: (err) => showError(translateApiError(err))
