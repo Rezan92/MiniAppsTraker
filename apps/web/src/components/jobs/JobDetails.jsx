@@ -12,6 +12,7 @@ import { translateApiError } from '../../utils/errorTranslator';
 import { STATUS_COLORS, JOB_STATUSES } from '../../utils/constants';
 import { StatusBadgeDropdown } from '../shared/StatusBadgeDropdown';
 import { useScreenContext } from '../../contexts/AiContext';
+import { apiClient } from '../../lib/apiClient';
 
 export const JobDetails = () => {
   const { id } = useParams();
@@ -35,14 +36,7 @@ export const JobDetails = () => {
 
   const { data: job, isLoading: loadingJob, isError: errorJob } = useQuery({
     queryKey: ['job', id],
-    queryFn: async () => {
-      const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:4000'}/api/jobs/${id}`, {
-        headers: { 'Authorization': `Bearer ${session?.access_token}` }
-      });
-      if (!res.ok) throw new Error('Failed to fetch job details');
-      const data = await res.json();
-      return data.data;
-    },
+    queryFn: () => apiClient.get(`/api/jobs/${id}`),
     enabled: !!session?.access_token && !!id
   });
 
@@ -52,40 +46,19 @@ export const JobDetails = () => {
 
   const { data: materials = [], isLoading: loadingMaterials } = useQuery({
     queryKey: ['materials', 'job', id],
-    queryFn: async () => {
-      const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:4000'}/api/jobs/${id}/materials`, {
-        headers: { 'Authorization': `Bearer ${session?.access_token}` }
-      });
-      if (!res.ok) throw new Error('Failed to fetch materials');
-      const data = await res.json();
-      return data.data || [];
-    },
+    queryFn: () => apiClient.get(`/api/jobs/${id}/materials`),
     enabled: !!session?.access_token && !!id
   });
 
   const { data: hours = [], isLoading: loadingHours } = useQuery({
     queryKey: ['hours', 'job', id],
-    queryFn: async () => {
-      const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:4000'}/api/jobs/${id}/hours`, {
-        headers: { 'Authorization': `Bearer ${session?.access_token}` }
-      });
-      if (!res.ok) throw new Error('Failed to fetch hours');
-      const data = await res.json();
-      return data.data || [];
-    },
+    queryFn: () => apiClient.get(`/api/jobs/${id}/hours`),
     enabled: !!session?.access_token && !!id
   });
 
   const { data: clients = [] } = useQuery({
     queryKey: ['clients'],
-    queryFn: async () => {
-      const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:4000'}/api/clients`, {
-        headers: { 'Authorization': `Bearer ${session?.access_token}` }
-      });
-      const data = await res.json();
-      if (!data.success) throw new Error(data.error?.message || 'Failed to fetch clients');
-      return data.data;
-    },
+    queryFn: () => apiClient.get('/api/clients'),
     enabled: !!session?.access_token
   });
 
@@ -110,34 +83,18 @@ export const JobDetails = () => {
     try {
       const dataToUse = submittedData || matData;
       const payload = { ...dataToUse, cost: parseFloat(dataToUse.cost) };
-      if (!dataToUse.id && draftInvoice) {
-        payload.invoice_id = draftInvoice.id;
-      }
-      const method = dataToUse.id ? 'PATCH' : 'POST';
-      const url = dataToUse.id 
-        ? `${import.meta.env.VITE_API_URL || 'http://localhost:4000'}/api/jobs/${id}/materials/${dataToUse.id}`
-        : `${import.meta.env.VITE_API_URL || 'http://localhost:4000'}/api/jobs/${id}/materials`;
-
-      const res = await fetch(url, {
-        method,
-        headers: { 
-          'Authorization': `Bearer ${session?.access_token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(payload)
-      });
-      if (res.ok) {
-        setMatOpen(false);
-        setMatData({ description: '', cost: '20.00', is_from_stock: false, store: '', purchase_date: new Date().toISOString().split('T')[0], notes: '' });
-        showSuccess(`Material ${dataToUse.id ? 'updated' : 'added'} successfully!`);
-        queryClient.invalidateQueries({ queryKey: ['materials', 'job', id] });
+      if (dataToUse.id) {
+        await apiClient.patch(`/api/jobs/${id}/materials/${dataToUse.id}`, payload);
       } else {
-        const errorData = await res.json();
-        showError(errorData.error?.message || `Failed to ${dataToUse.id ? 'update' : 'add'} material`);
+        await apiClient.post(`/api/jobs/${id}/materials`, payload);
       }
+      setMatOpen(false);
+      setMatData({ description: '', cost: '20.00', is_from_stock: false, store: '', purchase_date: new Date().toISOString().split('T')[0], notes: '' });
+      showSuccess(`Material ${dataToUse.id ? 'updated' : 'added'} successfully!`);
+      queryClient.invalidateQueries({ queryKey: ['materials', 'job', id] });
     } catch (err) {
       console.error(err);
-      showError('An unexpected error occurred.');
+      showError(err.message || `Failed to ${submittedData?.id || matData?.id ? 'update' : 'add'} material`);
     }
   };
 
@@ -145,57 +102,29 @@ export const JobDetails = () => {
     try {
       const dataToUse = submittedData || hoursData;
       const payload = { ...dataToUse, hours: parseFloat(dataToUse.hours) };
-      if (!dataToUse.id && draftInvoice) {
-        payload.invoice_id = draftInvoice.id;
-      }
-      const method = dataToUse.id ? 'PATCH' : 'POST';
-      const url = dataToUse.id 
-        ? `${import.meta.env.VITE_API_URL || 'http://localhost:4000'}/api/jobs/${id}/hours/${dataToUse.id}`
-        : `${import.meta.env.VITE_API_URL || 'http://localhost:4000'}/api/jobs/${id}/hours`;
-
-      const res = await fetch(url, {
-        method,
-        headers: { 
-          'Authorization': `Bearer ${session?.access_token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(payload)
-      });
-      if (res.ok) {
-        setHoursOpen(false);
-        setHoursData({ date: new Date().toISOString().split('T')[0], hours: '', description: '', start_time: '', end_time: '' });
-        showSuccess(`Hours ${dataToUse.id ? 'updated' : 'logged'} successfully!`);
-        queryClient.invalidateQueries({ queryKey: ['hours', 'job', id] });
+      if (dataToUse.id) {
+        await apiClient.patch(`/api/jobs/${id}/hours/${dataToUse.id}`, payload);
       } else {
-        const errorData = await res.json();
-        showError(errorData.error?.message || `Failed to ${dataToUse.id ? 'update' : 'log'} hours`);
+        await apiClient.post(`/api/jobs/${id}/hours`, payload);
       }
+      setHoursOpen(false);
+      setHoursData({ date: new Date().toISOString().split('T')[0], hours: '', description: '', start_time: '', end_time: '' });
+      showSuccess(`Hours ${dataToUse.id ? 'updated' : 'logged'} successfully!`);
+      queryClient.invalidateQueries({ queryKey: ['hours', 'job', id] });
     } catch (err) {
       console.error(err);
-      showError('An unexpected error occurred.');
+      showError(err.message || `Failed to ${submittedData?.id || hoursData?.id ? 'update' : 'log'} hours`);
     }
   };
 
   const handleUpdateStatus = async (newStatus) => {
     try {
-      const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:4000'}/api/jobs/${id}/status`, {
-        method: 'PATCH',
-        headers: { 
-          'Authorization': `Bearer ${session?.access_token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ status: newStatus })
-      });
-      if (res.ok) {
-        queryClient.invalidateQueries({ queryKey: ['job', id] });
-        showSuccess('Job status updated!');
-      } else {
-        const errorData = await res.json();
-        showError(errorData.error?.message || 'Failed to update status');
-      }
+      await apiClient.patch(`/api/jobs/${id}/status`, { status: newStatus });
+      queryClient.invalidateQueries({ queryKey: ['job', id] });
+      showSuccess('Job status updated!');
     } catch (err) {
       console.error(err);
-      showError('An unexpected error occurred.');
+      showError(err.message || 'Failed to update status');
     }
   };
 
@@ -204,19 +133,11 @@ export const JobDetails = () => {
     const { id: itemId, type } = itemToDelete;
     const endpoint = type === 'hour' ? 'hours' : 'materials';
     try {
-      const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:4000'}/api/jobs/${id}/${endpoint}/${itemId}`, {
-        method: 'DELETE',
-        headers: { 'Authorization': `Bearer ${session?.access_token}` }
-      });
-      if (res.ok) {
-        showSuccess(`${type === 'hour' ? 'Hour' : 'Material'} entry deleted successfully!`);
-        queryClient.invalidateQueries({ queryKey: [endpoint, 'job', id] });
-      } else {
-        const errorData = await res.json();
-        showError(errorData.error?.message || `Failed to delete ${type} entry`);
-      }
+      await apiClient.delete(`/api/jobs/${id}/${endpoint}/${itemId}`);
+      showSuccess(`${type === 'hour' ? 'Hour' : 'Material'} entry deleted successfully!`);
+      queryClient.invalidateQueries({ queryKey: [endpoint, 'job', id] });
     } catch (err) {
-      showError('An unexpected error occurred.');
+      showError(err.message || `Failed to delete ${type} entry`);
     } finally {
       setDeleteModalOpen(false);
       setItemToDelete(null);
@@ -233,23 +154,11 @@ export const JobDetails = () => {
         flat_rate: dataToUse.rate_type === 'flat' ? parseFloat(dataToUse.flat_rate) : undefined
       };
       
-      const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:4000'}/api/jobs/${id}`, {
-        method: 'PUT',
-        headers: { 
-          'Authorization': `Bearer ${session?.access_token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(payload)
-      });
-      if (res.ok) {
-        queryClient.invalidateQueries({ queryKey: ['job', id] });
-        queryClient.invalidateQueries({ queryKey: ['jobs'] });
-        setEditOpen(false);
-        showSuccess('Job successfully updated!');
-      } else {
-        const errorData = await res.json();
-        showError(translateApiError(errorData.error?.message || errorData.message || 'Failed to update job'));
-      }
+      await apiClient.put(`/api/jobs/${id}`, payload);
+      queryClient.invalidateQueries({ queryKey: ['job', id] });
+      queryClient.invalidateQueries({ queryKey: ['jobs'] });
+      setEditOpen(false);
+      showSuccess('Job successfully updated!');
     } catch (err) {
       console.error(err);
       showError(translateApiError(err));
@@ -267,18 +176,7 @@ export const JobDetails = () => {
         labor_amount: 0,
         invoice_date: new Date().toISOString().split('T')[0]
       };
-      
-      const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:4000'}/api/invoices`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session?.access_token}`
-        },
-        body: JSON.stringify(payload)
-      });
-      const json = await res.json();
-      if (!res.ok || !json.success) throw new Error(json.error?.message || json.error || 'Failed to create draft');
-      return json.data;
+      return apiClient.post('/api/invoices', payload);
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries(['jobs', id]);

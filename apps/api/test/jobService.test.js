@@ -84,3 +84,66 @@ test('updateJobStatus validates allowed status enum', async () => {
     /Invalid status: invalid_status/
   );
 });
+
+test('materialSchema accepts valid material payloads with or without invoice_id', async () => {
+  const { materialSchema } = await import('../src/routes/jobs.js');
+  
+  // Without invoice_id
+  const parsed1 = materialSchema.safeParse({
+    description: 'Drywall screws',
+    cost: 15.50,
+    store: 'Home Depot',
+    purchase_date: '2026-09-07'
+  });
+  assert.equal(parsed1.success, true);
+
+  // With valid UUID invoice_id
+  const parsed2 = materialSchema.safeParse({
+    description: 'Drywall screws',
+    cost: 15.50,
+    store: 'Home Depot',
+    purchase_date: '2026-09-07',
+    invoice_id: 'a1b2c3d4-e5f6-4a1b-8c2d-3e4f5a6b7c8d'
+  });
+  assert.equal(parsed2.success, true);
+  assert.equal(parsed2.data.invoice_id, 'a1b2c3d4-e5f6-4a1b-8c2d-3e4f5a6b7c8d');
+
+  // With null invoice_id
+  const parsed3 = materialSchema.safeParse({
+    description: 'Drywall screws',
+    cost: 15.50,
+    invoice_id: null
+  });
+  assert.equal(parsed3.success, true);
+});
+
+test('jobHoursSchema accepts valid hours payloads with or without invoice_id', async () => {
+  const { jobHoursSchema } = await import('../src/routes/jobs.js');
+
+  // Without invoice_id
+  const parsed1 = jobHoursSchema.safeParse({
+    date: '2026-09-07',
+    hours: 2.5,
+    description: 'Installed new subfloor'
+  });
+  assert.equal(parsed1.success, true);
+
+  // With valid UUID invoice_id
+  const parsed2 = jobHoursSchema.safeParse({
+    date: '2026-09-07',
+    hours: 2.5,
+    description: 'Installed new subfloor',
+    invoice_id: 'a1b2c3d4-e5f6-4a1b-8c2d-3e4f5a6b7c8d'
+  });
+  assert.equal(parsed2.success, true);
+  assert.equal(parsed2.data.invoice_id, 'a1b2c3d4-e5f6-4a1b-8c2d-3e4f5a6b7c8d');
+
+  // With null invoice_id
+  const parsed3 = jobHoursSchema.safeParse({
+    date: '2026-09-07',
+    hours: 2.5,
+    description: 'Installed new subfloor',
+    invoice_id: null
+  });
+  assert.equal(parsed3.success, true);
+});

@@ -27,21 +27,23 @@ const statusSchema = z.object({
   status: z.enum(['open', 'in_progress', 'completed', 'on_hold', 'cancelled'])
 }).strict();
 
-const materialSchema = z.object({
+export const materialSchema = z.object({
   description: z.string().min(1, "Description is required"),
   cost: z.number().min(0, "Cost must be a positive number"),
   is_from_stock: z.boolean().optional().default(false),
   store: z.string().optional().nullable(),
   purchase_date: z.string().optional().nullable(),
-  notes: z.string().optional().nullable()
+  notes: z.string().optional().nullable(),
+  invoice_id: z.string().uuid().optional().nullable()
 }).strict();
 
-const jobHoursSchema = z.object({
+export const jobHoursSchema = z.object({
   date: z.string().min(1, "Date is required"),
   hours: z.number().min(0, "Hours must be positive"),
   start_time: z.string().optional().nullable(),
   end_time: z.string().optional().nullable(),
-  description: z.string().min(1, "Description is required")
+  description: z.string().min(1, "Description is required"),
+  invoice_id: z.string().uuid().optional().nullable()
 }).strict();
 
 router.get('/', async (req, res, next) => {
