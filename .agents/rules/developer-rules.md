@@ -11,12 +11,13 @@ These rules dictate how the AI Developer Agent should behave and interact with t
 **Always mark completed user stories and tasks as `[x]` in the `.agents/stories/` markdown files.**
 Whenever an implementation is successfully finished, the developer agent must locate the corresponding user story and epic file and update the checkboxes from `[ ]` to `[x]` to maintain an accurate source of truth for project progress.
 
-## Rule 2: Commit & Push Protocol (Auto-Commit & Push Active)
-**Always commit verified changes with conventional commit messages and push to remote.**
+## Rule 2: Commit & Push Protocol (Always Auto-Commit & Push)
+**Always commit and push changes after each task or change with a detailed commit message describing everything that was done.**
 Whenever an update, feature, bugfix, or refactor is completed:
 1. Verify the changes thoroughly (builds, tests, syntax).
-2. Stage and commit the changes with a clear, detailed conventional commit message.
-3. Push the committed changes to the remote repository (`git push`).
+2. Stage all changed and new files (`git add .`).
+3. Commit the changes with a detailed conventional commit message that comprehensively describes all work done across components (e.g. including bullet points detailing backend, frontend, hooks, UI updates, and schemas).
+4. Push the committed changes immediately to the remote repository (`git push`).
 
 ## Rule 3: Critical Evaluation & Independent Senior Mindset
 **Do not blindly agree with every prompt or proposed solution.**

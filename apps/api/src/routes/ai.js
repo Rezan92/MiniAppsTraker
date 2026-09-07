@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { authenticate } from '../middleware/auth.js';
 import { createApiError } from '../middleware/errorHandler.js';
 import { supabase } from '../config/supabase.js';
-import { ai, DEFAULT_AI_MODEL } from '../services/ai/geminiClient.js';
+import { ai, DEFAULT_AI_MODEL, getAiClient, getAiConfig } from '../services/ai/geminiClient.js';
 import { AI_TOOLS } from '../services/ai/aiToolDefinitions.js';
 import { executeAiTool } from '../services/ai/aiToolExecutors.js';
 import { buildSystemInstruction } from '../services/ai/promptBuilder.js';
@@ -12,6 +12,14 @@ import { invoiceService, jobService, clientService } from '../services/domain/in
 
 const router = express.Router();
 router.use(authenticate);
+
+// GET /api/ai/config — Retrieve configured AI capabilities and active tiers
+router.get('/config', (req, res) => {
+  res.json({
+    success: true,
+    data: getAiConfig()
+  });
+});
 
 const chatRequestSchema = z.object({
   messages: z.array(z.object({
@@ -30,7 +38,8 @@ const chatRequestSchema = z.object({
     title: z.string().optional().nullable(),
     timestamp: z.number().optional().nullable()
   }).optional().nullable(),
-  model: z.string().optional()
+  model: z.string().optional(),
+  tier: z.enum(['free', 'paid']).optional().default('free')
 });
 
 router.post('/chat', async (req, res, next) => {
@@ -40,7 +49,8 @@ router.post('/chat', async (req, res, next) => {
       return next(createApiError('Tenant context missing from authenticated session', 400, 'TENANT_REQUIRED'));
     }
 
-    if (!process.env.GEMINI_API_KEY) {
+    const config = getAiConfig();
+    if (!config.hasFreeKey && !config.hasPaidKey) {
       return res.status(503).json({
         success: false,
         error: {
@@ -55,10 +65,11 @@ router.post('/chat', async (req, res, next) => {
       return next(parseResult.error);
     }
 
-    const { messages, screenContext, activeFocus, model } = parseResult.data;
+    const { messages, screenContext, activeFocus, model, tier } = parseResult.data;
+    const { ai: aiClient, activeTier, isPaidKeyConfigured } = getAiClient(tier);
     const targetModel = model || DEFAULT_AI_MODEL;
     const lastUserMsg = messages[messages.length - 1]?.content;
-    console.log(`\n🤖 [AI Request] Model: ${targetModel} | User: ${req.user.email} | Screen: ${screenContext?.screen || 'Global'} | Prompt: "${lastUserMsg}"`);
+    console.log(`\n🤖 [AI Request] Tier: ${activeTier.toUpperCase()} | Model: ${targetModel} | User: ${req.user.email} | Screen: ${screenContext?.screen || 'Global'} | Prompt: "${lastUserMsg}"`);
 
     let currentActiveFocus = activeFocus || null;
     const systemInstruction = buildSystemInstruction({ user: req.user, screenContext, activeFocus: currentActiveFocus });
@@ -83,7 +94,7 @@ router.post('/chat', async (req, res, next) => {
 
       let response;
       try {
-        response = await ai.models.generateContent({
+        response = await aiClient.models.generateContent({
           model: activeModel,
           contents,
           config: {
@@ -97,7 +108,7 @@ router.post('/chat', async (req, res, next) => {
         if (isNotFound && activeModel !== DEFAULT_AI_MODEL) {
           console.warn(`⚠️ [AI Engine] Model "${activeModel}" not available on Google API. Gracefully falling back to "${DEFAULT_AI_MODEL}".`);
           activeModel = DEFAULT_AI_MODEL;
-          response = await ai.models.generateContent({
+          response = await aiClient.models.generateContent({
             model: DEFAULT_AI_MODEL,
             contents,
             config: {
@@ -117,7 +128,7 @@ router.post('/chat', async (req, res, next) => {
       if (!functionCalls || functionCalls.length === 0) {
         // No function calls — Gemini provided a direct natural language response
         const replyText = content?.parts?.map(p => p.text).filter(Boolean).join('\n') || '';
-        console.log(`🤖 [AI Response] Model: ${activeModel} | Reply: "${replyText.slice(0, 100)}..." | Mutations: ${triggeredMutations.length}`);
+        console.log(`🤖 [AI Response] Tier: ${activeTier.toUpperCase()} | Model: ${activeModel} | Reply: "${replyText.slice(0, 100)}..." | Mutations: ${triggeredMutations.length}`);
         return res.json({
           success: true,
           data: {
@@ -126,7 +137,9 @@ router.post('/chat', async (req, res, next) => {
             confirmationData: pendingConfirmation,
             invoiceData: invoiceCardData,
             activeFocus: currentActiveFocus,
-            model_used: activeModel
+            model_used: activeModel,
+            tier_used: activeTier,
+            is_paid_configured: isPaidKeyConfigured
           }
         });
       }
@@ -226,7 +239,10 @@ router.post('/chat', async (req, res, next) => {
         triggered_mutations: triggeredMutations,
         confirmationData: pendingConfirmation,
         invoiceData: invoiceCardData,
-        activeFocus: currentActiveFocus
+        activeFocus: currentActiveFocus,
+        model_used: activeModel,
+        tier_used: activeTier,
+        is_paid_configured: isPaidKeyConfigured
       }
     });
 

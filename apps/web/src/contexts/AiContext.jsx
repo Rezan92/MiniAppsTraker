@@ -35,8 +35,29 @@ export const AiContextProvider = ({ children }) => {
   const [selectedModel, setSelectedModel] = useState(() => {
     return localStorage.getItem('miniapps_ai_model') || 'gemini-2.5-flash';
   });
+  const [selectedTier, setSelectedTierState] = useState(() => {
+    return localStorage.getItem('miniapps_ai_tier') || 'free';
+  });
+  const [aiConfig, setAiConfig] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
+
+  // Fetch AI configuration (available keys and tiers) on mount
+  useEffect(() => {
+    let mounted = true;
+    apiClient.get('/api/ai/config')
+      .then(cfg => {
+        if (mounted && cfg) {
+          setAiConfig(cfg);
+        }
+      })
+      .catch(err => {
+        console.warn('Could not fetch AI config:', err);
+      });
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   // Ref to always access latest screenContext in async callbacks
   const screenContextRef = useRef(screenContext);
@@ -56,6 +77,11 @@ export const AiContextProvider = ({ children }) => {
   const handleSetModel = useCallback((modelId) => {
     setSelectedModel(modelId);
     localStorage.setItem('miniapps_ai_model', modelId);
+  }, []);
+
+  const handleSetTier = useCallback((tier) => {
+    setSelectedTierState(tier);
+    localStorage.setItem('miniapps_ai_tier', tier);
   }, []);
 
   // Avoid redundant state updates and infinite re-render loops
@@ -161,7 +187,8 @@ export const AiContextProvider = ({ children }) => {
         messages: apiMessages,
         screenContext: currentScreen || null,
         activeFocus: currentFocus || null,
-        model: selectedModel
+        model: selectedModel,
+        tier: selectedTier
       });
 
       const replyText = response?.reply || "I've completed that request.";
@@ -202,7 +229,7 @@ export const AiContextProvider = ({ children }) => {
     } finally {
       setIsLoading(false);
     }
-  }, [messages, selectedModel, handleTriggeredMutations]);
+  }, [messages, selectedModel, selectedTier, handleTriggeredMutations]);
 
   const confirmPendingAction = useCallback(async (actionId, confirmed) => {
     try {
@@ -236,6 +263,9 @@ export const AiContextProvider = ({ children }) => {
       error,
       selectedModel,
       setSelectedModel: handleSetModel,
+      selectedTier,
+      setSelectedTier: handleSetTier,
+      aiConfig,
       activeFocus,
       availableModels: AVAILABLE_MODELS,
       sendMessage,
