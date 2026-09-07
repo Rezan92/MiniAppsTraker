@@ -296,6 +296,47 @@ export async function executeAiTool(toolName, args = {}, { tenantId, userId }) {
         }
       }
 
+      case 'update_job_hours': {
+        const { job_id, hour_id, hours, description, date } = args;
+        const resolution = await resolveJobOrError(job_id, tenantId);
+        if (resolution.error) return { error: resolution.error };
+        const job = resolution.job;
+
+        let targetHourId = hour_id;
+        if (!targetHourId) {
+          const { data: recentHours, error: findErr } = await supabase
+            .from('job_hours')
+            .select('id')
+            .eq('job_id', job.id)
+            .eq('tenant_id', tenantId)
+            .order('created_at', { ascending: false })
+            .limit(1);
+
+          if (findErr || !recentHours || recentHours.length === 0) {
+            return { error: 'No recent hours entry found to update for this job.' };
+          }
+          targetHourId = recentHours[0].id;
+        }
+
+        try {
+          const updateData = {};
+          if (hours !== undefined) updateData.hours = hours;
+          if (description !== undefined) updateData.description = description;
+          if (date !== undefined) updateData.date = date;
+
+          const data = await jobService.updateJobHours({
+            tenantId,
+            userId,
+            jobId: job.id,
+            hourId: targetHourId,
+            updateData
+          });
+          return { result: data, mutation: 'hours', entityId: job.id };
+        } catch (err) {
+          return { error: err.message };
+        }
+      }
+
       case 'log_job_materials': {
         const { job_id, description, cost, store, purchase_date, notes, is_from_stock } = args;
         const resolution = await resolveJobOrError(job_id, tenantId);

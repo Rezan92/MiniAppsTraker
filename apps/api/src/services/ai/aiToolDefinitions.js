@@ -194,7 +194,7 @@ export const AI_TOOLS = [
   },
   {
     name: 'log_job_hours',
-    description: 'Log labor hours worked on a specific job. Requires the user to explicitly specify both the hours and a specific task description. Do NOT call this tool if the user did not specify what work was performed.',
+    description: 'Log labor hours worked on a specific job.',
     parameters: {
       type: 'OBJECT',
       properties: {
@@ -204,7 +204,7 @@ export const AI_TOOLS = [
         },
         hours: {
           type: 'NUMBER',
-          description: 'Number of hours worked (e.g. 2.5). Must be explicitly stated by the user.'
+          description: 'Number of hours worked (e.g. 2.5)'
         },
         date: {
           type: 'STRING',
@@ -212,7 +212,7 @@ export const AI_TOOLS = [
         },
         description: {
           type: 'STRING',
-          description: 'Specific description of work or tasks completed. MUST be explicitly provided by the user. NEVER invent generic placeholders like "General labor tasks", "Labor work", or "Work done". If the user did not specify the work done, do NOT call this tool; ask them first.'
+          description: 'Description of work or tasks completed'
         },
         start_time: {
           type: 'STRING',
@@ -227,8 +227,38 @@ export const AI_TOOLS = [
     }
   },
   {
+    name: 'update_job_hours',
+    description: 'Update an existing logged work hours entry for a job (e.g. adjust hours worked, work date, or task description). If hour_id is omitted, updates the most recent hours entry for the job.',
+    parameters: {
+      type: 'OBJECT',
+      properties: {
+        job_id: {
+          type: 'STRING',
+          description: 'UUID or title of the job'
+        },
+        hour_id: {
+          type: 'STRING',
+          description: 'Optional UUID of the specific hours record. If omitted, updates the most recent hours entry for the job.'
+        },
+        hours: {
+          type: 'NUMBER',
+          description: 'Updated number of hours worked (e.g. 4)'
+        },
+        date: {
+          type: 'STRING',
+          description: 'Updated work date in YYYY-MM-DD format'
+        },
+        description: {
+          type: 'STRING',
+          description: 'Updated description of work completed'
+        }
+      },
+      required: ['job_id']
+    }
+  },
+  {
     name: 'log_job_materials',
-    description: 'Record material or supply expenses purchased for a specific job. Requires the user to explicitly specify the material item/name and cost. Do NOT call this tool if the user did not specify what materials were purchased.',
+    description: 'Record material or supply expenses purchased for a specific job.',
     parameters: {
       type: 'OBJECT',
       properties: {
@@ -238,15 +268,15 @@ export const AI_TOOLS = [
         },
         description: {
           type: 'STRING',
-          description: 'Specific name or description of materials purchased (e.g. "1/2 inch copper pipe"). MUST be explicitly provided by the user. NEVER invent generic placeholders like "Materials" or "Supplies". If the user did not specify what was purchased, do NOT call this tool; ask them first.'
+          description: 'Name or description of materials purchased (e.g. "1/2 inch copper pipe")'
         },
         cost: {
           type: 'NUMBER',
-          description: 'Total purchase cost in dollars (e.g. 45.80). Must be explicitly stated by the user.'
+          description: 'Total purchase cost in dollars (e.g. 45.80)'
         },
         store: {
           type: 'STRING',
-          description: 'Retailer or supplier name (e.g. "Home Depot", "Lowes"). Optional. ONLY provide if explicitly mentioned by the user. NEVER invent or assume a store name.'
+          description: 'Retailer or supplier name (e.g. "Home Depot", "Lowes")'
         },
         purchase_date: {
           type: 'STRING',
@@ -282,7 +312,7 @@ export const AI_TOOLS = [
         },
         labor_title: {
           type: 'STRING',
-          description: 'Optional labor title. Automatically defaults to the linked job title if omitted. When drafting an invoice for a job, DO NOT ask the user for a labor title.'
+          description: 'Optional labor title (defaults to the linked job title if omitted)'
         },
         due_date: {
           type: 'STRING',

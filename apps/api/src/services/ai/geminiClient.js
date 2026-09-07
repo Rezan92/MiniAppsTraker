@@ -12,9 +12,10 @@ export const DEFAULT_AI_MODEL = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
  * @returns {{ hasFreeKey: boolean, hasPaidKey: boolean, defaultModel: string }}
  */
 export function getAiConfig() {
+  const paidKey = process.env.GEMINI_API_KEY_PAID || process.env.GEMINI_API_KEY_PAYED;
   return {
     hasFreeKey: Boolean(process.env.GEMINI_API_KEY || process.env.GEMINI_API_KEY_FREE),
-    hasPaidKey: Boolean(process.env.GEMINI_API_KEY_PAID),
+    hasPaidKey: Boolean(paidKey),
     defaultModel: DEFAULT_AI_MODEL
   };
 }
@@ -26,14 +27,15 @@ export function getAiConfig() {
  */
 export function getAiClient(tier = 'free') {
   const requestedTier = tier === 'paid' ? 'paid' : 'free';
-  const hasDedicatedPaidKey = Boolean(process.env.GEMINI_API_KEY_PAID);
+  const paidKey = process.env.GEMINI_API_KEY_PAID || process.env.GEMINI_API_KEY_PAYED;
+  const hasDedicatedPaidKey = Boolean(paidKey);
 
   let apiKey;
   let activeTier;
 
   if (requestedTier === 'paid') {
     if (hasDedicatedPaidKey) {
-      apiKey = process.env.GEMINI_API_KEY_PAID;
+      apiKey = paidKey;
       activeTier = 'paid';
     } else {
       apiKey = process.env.GEMINI_API_KEY || process.env.GEMINI_API_KEY_FREE;

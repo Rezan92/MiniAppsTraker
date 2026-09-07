@@ -6,8 +6,8 @@ export const SuggestionChips = ({ screenContext, onSelectPrompt }) => {
     switch (screen) {
       case 'JobDetails':
         return [
-          "Log 2 hours for today",
-          "Add $45 for materials",
+          "What hours did I work today?",
+          "Log today's material purchases",
           "Draft invoice for this job",
           "Summarize this job",
           "Mark job as completed"
