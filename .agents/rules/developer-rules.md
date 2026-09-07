@@ -6,10 +6,9 @@ trigger: always_on
 
 These rules dictate how the AI Developer Agent should behave and interact with the codebase. They must be followed closely during all tasks.
 
-## Rule 1: Task and Story Completion Tracking (Deactivated)
-*(Currently deactivated - do not follow or spend attention on this rule unless reactivated).*
-**Always mark completed user stories and tasks as `[x]` in the `.agents/stories/` markdown files.**
-Whenever an implementation is successfully finished, the developer agent must locate the corresponding user story and epic file and update the checkboxes from `[ ]` to `[x]` to maintain an accurate source of truth for project progress.
+## Rule 1: Centralized Roadmap Tracking
+**Always track implementation progress in the `docs/improvements/` directory.**
+We no longer use `.agents/stories/` for user stories. Whenever a major architectural improvement or feature phase is completed, the developer agent must locate the corresponding tracking file in `docs/improvements/` (e.g., `codebase-improvement-roadmap.md` or `ai-copilot-roadmap.md`) and mark the relevant tasks as completed `[x]` to maintain a single source of truth for project progress.
 
 ## Rule 2: Commit & Push Protocol (Always Auto-Commit & Push)
 **Always commit and push changes after each task or change with a detailed commit message describing everything that was done.**
