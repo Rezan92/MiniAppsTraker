@@ -780,9 +780,18 @@ export async function updateInvoiceStatus({
     }
 
     if (updatedInvoice.job_id) {
-      const { data: job } = await supabase.from('jobs').select('status').eq('id', updatedInvoice.job_id).single();
+      const { data: job } = await supabase
+        .from('jobs')
+        .select('status')
+        .eq('id', updatedInvoice.job_id)
+        .eq('tenant_id', tenantId)
+        .single();
       if (job && job.status !== 'completed') {
-        await supabase.from('jobs').update({ status: 'completed' }).eq('id', updatedInvoice.job_id);
+        await supabase
+          .from('jobs')
+          .update({ status: 'completed' })
+          .eq('id', updatedInvoice.job_id)
+          .eq('tenant_id', tenantId);
       }
     }
   }

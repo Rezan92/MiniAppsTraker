@@ -7,6 +7,7 @@ import {
   normalizePhoneNumber,
   normalizeEmail
 } from '../src/services/domain/clientService.js';
+import { clientSchema } from '../src/routes/clients.js';
 
 test('clientService guards require tenantId for all operations', async () => {
   await assert.rejects(
@@ -54,3 +55,30 @@ test('normalizeEmail trims and lowercases addresses', () => {
   assert.equal(normalizeEmail(''), null);
   assert.equal(normalizeEmail(null), null);
 });
+
+test('clientSchema accepts client names containing numbers and business punctuation', () => {
+  const validNames = [
+    'Unit 402 LLC',
+    'Apartment 304',
+    'Building 5 LLC',
+    '3M Corp',
+    'Smith & Jones Co.',
+    'Suite #10 / Bldg 2',
+    "O'Connor's Repair-Shop"
+  ];
+
+  for (const name of validNames) {
+    const parsed = clientSchema.safeParse({ name });
+    assert.equal(parsed.success, true, `Expected "${name}" to be accepted`);
+    assert.equal(parsed.data.name, name);
+  }
+
+  // Blank whitespace must be rejected
+  const whitespaceOnly = clientSchema.safeParse({ name: '   ' });
+  assert.equal(whitespaceOnly.success, false, 'Expected whitespace-only name to fail');
+
+  // Empty string must be rejected
+  const emptyName = clientSchema.safeParse({ name: '' });
+  assert.equal(emptyName.success, false, 'Expected empty string name to fail');
+});
+

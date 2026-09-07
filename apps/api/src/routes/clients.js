@@ -8,8 +8,8 @@ import { clientService } from '../services/domain/index.js';
 const router = express.Router();
 router.use(authenticate);
 
-const clientSchema = z.object({
-  name: z.string().min(1, "Name is required").regex(/^[a-zA-Z\s\-\']+$/, "Full name cannot contain numbers"),
+export const clientSchema = z.object({
+  name: z.string().trim().min(1, "Name is required").max(100, "Name cannot exceed 100 characters").regex(/^[a-zA-Z0-9\s\-\'\&\.\,\#\/]+$/, "Name contains invalid characters"),
   client_type: z.enum(['residential', 'commercial', 'property_manager']).default('residential'),
   company_name: z.string().optional().nullable(),
   email: z.string().email().optional().or(z.literal('')),
