@@ -117,7 +117,7 @@ export const AI_TOOLS = [
   },
   {
     name: 'get_job_details',
-    description: 'Get comprehensive details for a specific job, including logged labor hours, materials, and linked invoices.',
+    description: 'Get comprehensive details for a specific job, including logged labor hours, materials, unbilled work breakdown, and linked invoices (draft, sent, paid).',
     parameters: {
       type: 'OBJECT',
       properties: {
@@ -361,19 +361,41 @@ export const AI_TOOLS = [
     }
   },
   {
-    name: 'update_invoice_status',
-    description: 'Update the status of an invoice (e.g. mark as sent, paid, or voided).',
+    name: 'add_unbilled_items_to_invoice',
+    description: 'Appends all unbilled labor hours and materials from a job to an existing draft invoice. Automatically calculates rates, preserves verbatim descriptions, locks items to "on_draft", and recalculates invoice totals.',
     parameters: {
       type: 'OBJECT',
       properties: {
         invoice_id: {
           type: 'STRING',
-          description: 'UUID of the invoice'
+          description: 'UUID or invoice number of the draft invoice (e.g. "1002" or UUID)'
+        },
+        job_id: {
+          type: 'STRING',
+          description: 'Optional UUID or title of the job (defaults to the invoice linked job if omitted)'
+        }
+      },
+      required: ['invoice_id']
+    }
+  },
+  {
+    name: 'update_invoice_status',
+    description: 'Update the status of an invoice (e.g. mark as sent, paid, or revert to draft).',
+    parameters: {
+      type: 'OBJECT',
+      properties: {
+        invoice_id: {
+          type: 'STRING',
+          description: 'UUID or invoice number of the invoice'
         },
         status: {
           type: 'STRING',
           enum: ['draft', 'sent', 'in_progress', 'paid', 'overdue', 'voided'],
           description: 'Target invoice status matching database check constraint'
+        },
+        reason: {
+          type: 'STRING',
+          description: 'Optional explanation for the status change (required when reverting to draft, voiding, or disputing)'
         }
       },
       required: ['invoice_id', 'status']

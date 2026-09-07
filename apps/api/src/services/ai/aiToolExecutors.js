@@ -203,22 +203,36 @@ export async function executeAiTool(toolName, args = {}, { tenantId, userId }) {
         if (resolution.error) return { error: resolution.error };
         const job = resolution.job;
 
-        const [hoursRes, materialsRes] = await Promise.all([
+        const [hoursRes, materialsRes, invoicesRes] = await Promise.all([
           supabase.from('job_hours').select('*').eq('job_id', job.id).order('date', { ascending: false }),
-          supabase.from('job_materials').select('*').eq('job_id', job.id).order('created_at', { ascending: false })
+          supabase.from('job_materials').select('*').eq('job_id', job.id).order('created_at', { ascending: false }),
+          supabase.from('invoices').select('id, invoice_number, status, total_amount, due_date, created_at').eq('job_id', job.id).eq('tenant_id', tenantId).order('created_at', { ascending: false })
         ]);
 
-        const totalHours = (hoursRes.data || []).reduce((sum, h) => sum + Number(h.hours || 0), 0);
-        const totalMaterialsCost = (materialsRes.data || []).reduce((sum, m) => sum + Number(m.cost || 0), 0);
+        const allHours = hoursRes.data || [];
+        const allMaterials = materialsRes.data || [];
+        const unbilledHours = allHours.filter(h => h.billing_status === 'unbilled');
+        const unbilledMaterials = allMaterials.filter(m => m.billing_status === 'unbilled');
+
+        const totalHours = allHours.reduce((sum, h) => sum + Number(h.hours || 0), 0);
+        const totalMaterialsCost = allMaterials.reduce((sum, m) => sum + Number(m.cost || 0), 0);
 
         return {
           result: {
             job,
-            hours: hoursRes.data || [],
-            materials: materialsRes.data || [],
+            hours: allHours,
+            materials: allMaterials,
+            invoices: invoicesRes.data || [],
+            unbilled: {
+              hours: unbilledHours,
+              materials: unbilledMaterials
+            },
             totals: {
               totalHours,
-              totalMaterialsCost
+              totalMaterialsCost,
+              unbilledHoursCount: unbilledHours.length,
+              unbilledMaterialsCount: unbilledMaterials.length,
+              invoicesCount: (invoicesRes.data || []).length
             }
           },
           mutation: null
@@ -416,6 +430,48 @@ export async function executeAiTool(toolName, args = {}, { tenantId, userId }) {
           };
         } catch (err) {
           console.error('[AI Tool Executor] draft_invoice error:', err);
+          return { error: err.message };
+        }
+      }
+
+      case 'add_unbilled_items_to_invoice': {
+        const { invoice_id, job_id } = args;
+        const resolution = await resolveInvoiceOrError(invoice_id, tenantId);
+        if (resolution.error) return { error: resolution.error };
+        const inv = resolution.invoice;
+
+        let resolvedJobId = null;
+        if (job_id) {
+          const jobRes = await resolveJobOrError(job_id, tenantId);
+          if (jobRes.error) return { error: jobRes.error };
+          resolvedJobId = jobRes.job.id;
+        }
+
+        try {
+          const addRes = await invoiceService.addUnbilledJobItemsToInvoice({
+            tenantId,
+            userId,
+            invoiceId: inv.id,
+            jobId: resolvedJobId || inv.job_id
+          });
+
+          return {
+            result: {
+              invoiceId: addRes.invoice.id,
+              invoiceNumber: addRes.invoice.invoice_number,
+              status: addRes.invoice.status,
+              addedHoursCount: addRes.addedHoursCount,
+              addedMaterialsCount: addRes.addedMaterialsCount,
+              newLaborAmount: addRes.financials.laborAmount,
+              newMaterialsAmount: addRes.financials.materialsAmount,
+              newTotalAmount: addRes.financials.totalAmount,
+              addedItems: addRes.addedItems
+            },
+            mutation: 'invoices',
+            entityId: addRes.invoice.id
+          };
+        } catch (err) {
+          console.error('[AI Tool Executor] add_unbilled_items_to_invoice error:', err);
           return { error: err.message };
         }
       }

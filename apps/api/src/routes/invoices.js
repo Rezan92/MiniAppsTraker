@@ -181,6 +181,22 @@ router.post('/:id/items', async (req, res, next) => {
   }
 });
 
+router.post('/:id/unbilled-items', async (req, res, next) => {
+  try {
+    const { job_id } = req.body || {};
+    const result = await invoiceService.addUnbilledJobItemsToInvoice({
+      tenantId: req.user.tenant_id,
+      userId: req.user.id,
+      invoiceId: req.params.id,
+      jobId: job_id || null
+    });
+
+    res.json({ success: true, data: result });
+  } catch (err) {
+    next(err);
+  }
+});
+
 router.patch('/:id/items/:itemId', async (req, res, next) => {
   try {
     const result = lineItemUpdateSchema.safeParse(req.body);

@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { enforceInvoiceEditability, createInvoice, draftInvoiceFromJob, deleteDraftInvoice } from '../src/services/domain/invoiceService.js';
+import { enforceInvoiceEditability, createInvoice, draftInvoiceFromJob, deleteDraftInvoice, addUnbilledJobItemsToInvoice, updateInvoiceStatus } from '../src/services/domain/invoiceService.js';
 
 test('invoiceService guards require tenantId for all operations', async () => {
   await assert.rejects(
@@ -23,6 +23,20 @@ test('invoiceService guards require tenantId for all operations', async () => {
     },
     { message: 'Tenant context missing' }
   );
+
+  await assert.rejects(
+    async () => {
+      await addUnbilledJobItemsToInvoice({ tenantId: null, invoiceId: 'test-id' });
+    },
+    { message: 'Tenant context missing' }
+  );
+
+  await assert.rejects(
+    async () => {
+      await updateInvoiceStatus({ tenantId: null, invoiceId: 'test-id', status: 'draft' });
+    },
+    { message: 'Tenant context missing' }
+  );
 });
 
 test('draftInvoiceFromJob requires valid client or job', async () => {
@@ -33,3 +47,4 @@ test('draftInvoiceFromJob requires valid client or job', async () => {
     { message: 'A valid client or job is required to draft an invoice.' }
   );
 });
+

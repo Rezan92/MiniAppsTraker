@@ -644,6 +644,209 @@ export async function addInvoiceLineItem({
 }
 
 /**
+ * Adds all unbilled labor hours and materials from a job to an existing draft invoice.
+ * Enforces that the invoice is editable (status = 'draft').
+ * Locks all added hours and materials to 'on_draft', links invoice_id,
+ * and recalculates invoice financials deterministically via pricingEngine.js.
+ * 
+ * @param {Object} params
+ * @param {string} params.tenantId
+ * @param {string} [params.userId]
+ * @param {string} params.invoiceId
+ * @param {string} [params.jobId] - Optional; defaults to invoice.job_id
+ * @returns {Promise<{ invoice: Object, addedItems: Array, addedHoursCount: number, addedMaterialsCount: number, financials: Object }>}
+ */
+export async function addUnbilledJobItemsToInvoice({
+  tenantId,
+  userId,
+  invoiceId,
+  jobId
+}) {
+  if (!tenantId) {
+    const err = new Error('Tenant context missing');
+    err.status = 400;
+    throw err;
+  }
+
+  // 1. Enforce editability (must be draft, not sent/paid/voided)
+  const invoice = await enforceInvoiceEditability(invoiceId, tenantId);
+
+  const targetJobId = jobId || invoice.job_id;
+  if (!targetJobId) {
+    const err = new Error('No job associated with this invoice.');
+    err.status = 400;
+    throw err;
+  }
+
+  // 2. Fetch job details
+  const { data: job, error: jobErr } = await supabase
+    .from('jobs')
+    .select('*')
+    .eq('id', targetJobId)
+    .eq('tenant_id', tenantId)
+    .single();
+
+  if (jobErr || !job) {
+    const err = new Error('Job not found');
+    err.status = 404;
+    throw err;
+  }
+
+  // 3. Fetch unbilled hours & materials
+  const [{ data: unbilledHours }, { data: unbilledMaterials }] = await Promise.all([
+    supabase
+      .from('job_hours')
+      .select('*')
+      .eq('job_id', targetJobId)
+      .eq('billing_status', 'unbilled')
+      .order('date', { ascending: true }),
+    supabase
+      .from('job_materials')
+      .select('*')
+      .eq('job_id', targetJobId)
+      .eq('billing_status', 'unbilled')
+      .order('purchase_date', { ascending: true })
+  ]);
+
+  const hours = unbilledHours || [];
+  const materials = unbilledMaterials || [];
+
+  if (hours.length === 0 && materials.length === 0) {
+    const err = new Error('No unbilled hours or materials found for this job.');
+    err.status = 400;
+    throw err;
+  }
+
+  // Get current max sort_order
+  const { data: currentItems } = await supabase
+    .from('invoice_line_items')
+    .select('sort_order')
+    .eq('invoice_id', invoiceId)
+    .order('sort_order', { ascending: false })
+    .limit(1);
+
+  let nextSortOrder = currentItems && currentItems.length > 0 && typeof currentItems[0].sort_order === 'number'
+    ? (currentItems[0].sort_order + 1)
+    : 0;
+
+  const newItemsToInsert = [];
+
+  // Build labor items
+  if (job.rate_type === 'hourly') {
+    const rate = job.hourly_rate || resolveEffectiveHourlyRate({ isEmergency: false });
+    for (const h of hours) {
+      const hCost = roundCurrency(Number(h.hours || 0) * rate);
+      newItemsToInsert.push({
+        invoice_id: invoiceId,
+        source_type: 'labor',
+        source_id: h.id,
+        description: h.description || `${h.hours} hours logged`,
+        service_date: h.date || null,
+        amount: hCost,
+        sort_order: nextSortOrder++,
+        is_billable: true
+      });
+    }
+  } else {
+    // Flat rate job: logged hours are imported for work detail/reference (not charged extra by default)
+    for (const h of hours) {
+      newItemsToInsert.push({
+        invoice_id: invoiceId,
+        source_type: 'labor',
+        source_id: h.id,
+        description: h.description || `${h.hours} hours logged`,
+        service_date: h.date || null,
+        amount: 0,
+        sort_order: nextSortOrder++,
+        is_billable: false
+      });
+    }
+  }
+
+  // Build material items
+  for (const m of materials) {
+    const isBillable = job.rate_type !== 'flat';
+    newItemsToInsert.push({
+      invoice_id: invoiceId,
+      source_type: 'material',
+      source_id: m.id,
+      description: m.description,
+      amount: roundCurrency(m.cost),
+      sort_order: nextSortOrder++,
+      is_billable: isBillable
+    });
+  }
+
+  // Insert items
+  const { data: insertedItems, error: insertErr } = await supabase
+    .from('invoice_line_items')
+    .insert(newItemsToInsert)
+    .select();
+
+  if (insertErr) throw insertErr;
+
+  // Lock hours to 'on_draft'
+  const hourIds = hours.map(h => h.id);
+  if (hourIds.length > 0) {
+    await supabase
+      .from('job_hours')
+      .update({ billing_status: 'on_draft', invoice_id: invoiceId })
+      .in('id', hourIds);
+  }
+
+  // Lock materials to 'on_draft'
+  const matIds = materials.map(m => m.id);
+  if (matIds.length > 0) {
+    await supabase
+      .from('job_materials')
+      .update({ billing_status: 'on_draft', invoice_id: invoiceId })
+      .in('id', matIds);
+  }
+
+  // Recalculate invoice totals from all line items
+  const { data: allLineItems } = await supabase
+    .from('invoice_line_items')
+    .select('*')
+    .eq('invoice_id', invoiceId);
+
+  const financials = calculateInvoiceFinancials({
+    baseLaborAmount: 0,
+    lineItems: allLineItems || []
+  });
+
+  const { data: updatedInvoice, error: updateInvErr } = await supabase
+    .from('invoices')
+    .update({
+      labor_amount: financials.laborAmount,
+      materials_amount: financials.materialsAmount,
+      total_amount: financials.totalAmount
+    })
+    .eq('id', invoiceId)
+    .eq('tenant_id', tenantId)
+    .select()
+    .single();
+
+  if (updateInvErr) throw updateInvErr;
+
+  // Audit log
+  await supabase.from('invoice_logs').insert([{
+    tenant_id: tenantId,
+    invoice_id: invoiceId,
+    action: 'Item Added',
+    reason: `Appended ${hours.length} unbilled hour(s) and ${materials.length} unbilled material(s) from job`,
+    user_id: userId || null
+  }]);
+
+  return {
+    invoice: updatedInvoice,
+    addedItems: insertedItems || [],
+    addedHoursCount: hours.length,
+    addedMaterialsCount: materials.length,
+    financials
+  };
+}
+
+/**
  * Updates an existing line item and recalculates invoice totals.
  * @param {Object} params
  * @returns {Promise<Object>} Updated item
