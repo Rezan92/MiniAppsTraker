@@ -128,11 +128,20 @@ export const InvoiceBuilder = () => {
         navigate(`/invoices/${id}`);
         return;
       }
-      const lineItems = existingInvoice.invoice_line_items || [];
+      const lineItems = [...(existingInvoice.invoice_line_items || [])];
+      // If legacy invoice has labor_amount > 0 and no line items, convert to ad-hoc line item
+      if (lineItems.length === 0 && Number(existingInvoice.labor_amount) > 0) {
+        lineItems.push({
+          id: `temp-legacy-labor-${Date.now()}`,
+          source_type: 'ad_hoc',
+          description: existingInvoice.labor_title || 'Labor Charge',
+          amount: Number(existingInvoice.labor_amount),
+          is_billable: true,
+          sort_order: 0,
+          is_hidden: false
+        });
+      }
       setLocalLineItems(lineItems);
-
-      const billableLabor = lineItems.filter(i => (i.source_type === 'labor' || i.source_type === 'ad_hoc') && i.is_billable !== false).reduce((sum, i) => sum + Number(i.amount || 0), 0);
-      const flatRate = Math.max(0, Number(existingInvoice.labor_amount || 0) - billableLabor);
 
       const resolvedAddress = existingInvoice.property_address || existingInvoice.jobs?.rental_properties?.address || '';
 
@@ -147,7 +156,7 @@ export const InvoiceBuilder = () => {
         property_id: existingInvoice.property_id || '',
         labor_title: existingInvoice.labor_title || '',
         labor_notes: existingInvoice.labor_notes || '',
-        labor_amount: flatRate,
+        labor_amount: 0,
         breakdown_by_days: existingInvoice.breakdown_by_days || false
       };
 
@@ -263,8 +272,8 @@ export const InvoiceBuilder = () => {
         job_id: formData.job_id || null,
         property_id: formData.property_id || null,
         billed_to_name: finalBilledToName,
-        labor_amount: Number(formData.labor_amount) || 0,
-        ...(isEditing ? { line_items: localLineItems } : {})
+        labor_amount: 0,
+        line_items: localLineItems
       };
       
       return isEditing ? apiClient.patch(`/api/invoices/${id}`, payload) : apiClient.post('/api/invoices', payload);
@@ -296,15 +305,8 @@ export const InvoiceBuilder = () => {
     .filter(i => i.source_type === 'material' && i.is_billable !== false)
     .reduce((sum, i) => sum + Number(i.amount || 0), 0);
   
-  const laborTotal = (Number(formData.labor_amount) || 0) + laborLineItemsSubtotal;
+  const laborTotal = laborLineItemsSubtotal;
   const totalDue = laborTotal + materialsSubtotal;
-
-  // Auto-populate flat rate if it's 0 on new drafts
-  useEffect(() => {
-    if (!isEditing && selectedJob?.rate_type === 'flat' && selectedJob?.flat_rate && Number(formData.labor_amount) === 0) {
-      setFormData(prev => ({ ...prev, labor_amount: selectedJob.flat_rate }));
-    }
-  }, [isEditing, selectedJob, formData.labor_amount]);
 
   return (
     <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -360,38 +362,25 @@ export const InvoiceBuilder = () => {
             handleJobSelect={handleJobSelect}
           />
 
-          {/* Labor Base Section */}
+          {/* Labor Description Section */}
           <div className="pb-4">
             <h3 className="font-title-lg font-bold text-gray-900 border-b border-gray-200 pb-2 mb-4 flex items-center gap-3">
-              Base Labor (Optional)
+              Labor Description & Notes
               {selectedJob?.rate_type === 'flat' && (
                 <span className="text-xs bg-blue-100 text-blue-800 px-2 py-0.5 rounded font-bold uppercase tracking-wider">
                   Flat Rate Job (${Number(selectedJob.flat_rate || 0).toFixed(2)})
                 </span>
               )}
             </h3>
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
-              <div className="md:col-span-3">
-                <label className="block text-label-md text-gray-700 mb-1">Labor Title</label>
-                <input 
-                  type="text" 
-                  value={formData.labor_title}
-                  onChange={(e) => setFormData({...formData, labor_title: e.target.value})}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary font-bold"
-                  placeholder="e.g. Repairs & Installation"
-                />
-              </div>
-              <div>
-                <label className="block text-label-md text-gray-700 mb-1">Base Labor Amount ($)</label>
-                <input 
-                  type="number" 
-                  min="0"
-                  step="0.01"
-                  value={formData.labor_amount}
-                  onChange={(e) => setFormData({...formData, labor_amount: e.target.value})}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary text-right font-medium"
-                />
-              </div>
+            <div className="mb-4">
+              <label className="block text-label-md text-gray-700 mb-1">Labor Section Title</label>
+              <input 
+                type="text" 
+                value={formData.labor_title}
+                onChange={(e) => setFormData({...formData, labor_title: e.target.value})}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary font-bold"
+                placeholder="e.g. Repairs & Installation"
+              />
             </div>
             <div>
               <label className="block text-label-md text-gray-700 mb-1">Labor Notes (Optional)</label>

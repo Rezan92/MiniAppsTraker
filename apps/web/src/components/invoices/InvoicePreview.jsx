@@ -13,9 +13,9 @@ export const InvoicePreview = forwardRef(({ invoice, tenant }, ref) => {
   const laborItems = invoice.invoice_line_items?.filter(i => i.source_type === 'labor' || i.source_type === 'ad_hoc') || [];
   const materialItems = invoice.invoice_line_items?.filter(i => i.source_type === 'material') || [];
 
-  // Filter out hidden and non-billable items for display purposes
-  const visibleLaborItems = laborItems.filter(i => !i.is_hidden && i.is_billable !== false);
-  const visibleMaterialItems = materialItems.filter(i => !i.is_hidden && i.is_billable !== false);
+  // Filter out hidden items for display purposes (non-billable items still appear as references if not hidden)
+  const visibleLaborItems = laborItems.filter(i => !i.is_hidden);
+  const visibleMaterialItems = materialItems.filter(i => !i.is_hidden);
 
   const propertyLocation = invoice.property_address || invoice.jobs?.rental_properties?.address || '';
 
@@ -109,7 +109,7 @@ export const InvoicePreview = forwardRef(({ invoice, tenant }, ref) => {
 
                       return sortedDates.map(date => {
                         const dayItems = grouped[date].sort((a,b)=>a.sort_order - b.sort_order);
-                        const dayAmount = dayItems.reduce((sum, i) => sum + Number(i.amount || 0), 0);
+                        const dayAmount = dayItems.filter(i => i.is_billable !== false).reduce((sum, i) => sum + Number(i.amount || 0), 0);
                         let formattedDate = date;
                         if (date !== 'Unspecified Date') {
                           // Using a UTC parse approach to avoid off-by-one timezone issues with raw yyyy-mm-dd
@@ -164,7 +164,9 @@ export const InvoicePreview = forwardRef(({ invoice, tenant }, ref) => {
                         <li key={item.id}>
                           <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%' }}>
                             <span style={{ paddingRight: '15px' }}>{item.description}</span>
-                            <span style={{ color: '#718096', whiteSpace: 'nowrap' }}>{formatCurrency(item.amount)}</span>
+                            <span style={{ color: '#718096', whiteSpace: 'nowrap' }}>
+                              {item.is_billable !== false ? formatCurrency(item.amount) : 'Included'}
+                            </span>
                           </div>
                         </li>
                       ))}

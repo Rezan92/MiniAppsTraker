@@ -8,21 +8,6 @@ import { invoiceService } from '../services/domain/index.js';
 const router = express.Router();
 router.use(authenticate);
 
-const invoiceSchema = z.object({
-  client_id: z.string().uuid(),
-  job_id: z.string().uuid().optional().nullable(),
-  invoice_date: z.string().optional(),
-  due_date: z.string().optional().nullable(),
-  labor_title: z.string().optional().nullable(),
-  labor_notes: z.string().optional().nullable(),
-  labor_amount: z.number().optional().default(0),
-  property_address: z.string().optional().nullable(),
-  property_id: z.string().uuid().optional().nullable(),
-  billed_to_name: z.string().optional().nullable(),
-  bill_to_type: z.enum(['client_name', 'company_name', 'property_address', 'renter_name']).optional().default('client_name'),
-  breakdown_by_days: z.boolean().optional().default(false)
-});
-
 const statusSchema = z.object({
   status: z.enum(['draft', 'ready_to_send', 'sent', 'disputed', 'paid', 'voided']),
   reason: z.string().optional()
@@ -60,9 +45,24 @@ const invoicePatchItemSchema = z.object({
   is_hidden: z.boolean().optional().default(false)
 });
 
-const invoicePatchSchema = invoiceSchema.extend({
-  client_id: z.string().uuid().optional(),
+const invoiceSchema = z.object({
+  client_id: z.string().uuid(),
+  job_id: z.string().uuid().optional().nullable(),
+  invoice_date: z.string().optional(),
+  due_date: z.string().optional().nullable(),
+  labor_title: z.string().optional().nullable(),
+  labor_notes: z.string().optional().nullable(),
+  labor_amount: z.number().optional().default(0),
+  property_address: z.string().optional().nullable(),
+  property_id: z.string().uuid().optional().nullable(),
+  billed_to_name: z.string().optional().nullable(),
+  bill_to_type: z.enum(['client_name', 'company_name', 'property_address', 'renter_name']).optional().default('client_name'),
+  breakdown_by_days: z.boolean().optional().default(false),
   line_items: z.array(invoicePatchItemSchema).optional()
+});
+
+const invoicePatchSchema = invoiceSchema.extend({
+  client_id: z.string().uuid().optional()
 });
 
 router.get('/', async (req, res, next) => {
@@ -127,10 +127,12 @@ router.post('/', async (req, res, next) => {
       return next(result.error);
     }
 
+    const { line_items, ...invoiceData } = result.data;
     const invoice = await invoiceService.createInvoice({
       tenantId: req.user.tenant_id,
       userId: req.user.id,
-      invoiceData: result.data
+      invoiceData,
+      lineItems: line_items || []
     });
 
     res.json({ success: true, data: invoice });

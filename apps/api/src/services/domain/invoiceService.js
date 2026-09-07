@@ -45,14 +45,14 @@ export async function enforceInvoiceEditability(invoiceId, tenantId) {
  * @param {Object} params.invoiceData
  * @returns {Promise<Object>} Created invoice
  */
-export async function createInvoice({ tenantId, userId, invoiceData }) {
+export async function createInvoice({ tenantId, userId, invoiceData, lineItems = [] }) {
   if (!tenantId) {
     const err = new Error('Tenant context missing');
     err.status = 400;
     throw err;
   }
 
-  const { due_date, ...restData } = invoiceData;
+  const { due_date, labor_amount, ...restData } = invoiceData;
   const sanitizedDueDate = due_date === '' ? null : due_date;
 
   // 1. Fetch sequential invoice number from tenant record
@@ -66,6 +66,35 @@ export async function createInvoice({ tenantId, userId, invoiceData }) {
   const nextNum = tenant?.next_invoice_number || 1001;
   const invoiceNumber = `${nextNum}`;
 
+  let initialItems = Array.isArray(lineItems) ? [...lineItems] : [];
+  if (restData.job_id && initialItems.length === 0) {
+    const { data: job } = await supabase
+      .from('jobs')
+      .select('title, rate_type, flat_rate')
+      .eq('id', restData.job_id)
+      .eq('tenant_id', tenantId)
+      .single();
+
+    if (job && job.rate_type === 'flat' && Number(job.flat_rate) > 0) {
+      initialItems.push({
+        source_type: 'ad_hoc',
+        source_id: null,
+        description: `Flat Rate: ${job.title || 'Job Service'}`,
+        amount: Number(job.flat_rate),
+        sort_order: 0,
+        is_billable: true,
+        service_date: null,
+        is_hidden: false
+      });
+    }
+  }
+
+  // Calculate financials strictly from billable line items (baseLaborAmount = 0)
+  const financials = calculateInvoiceFinancials({
+    baseLaborAmount: 0,
+    lineItems: initialItems
+  });
+
   // 2. Insert invoice in draft status
   const { data: invoice, error: invoiceError } = await supabase
     .from('invoices')
@@ -74,15 +103,40 @@ export async function createInvoice({ tenantId, userId, invoiceData }) {
       due_date: sanitizedDueDate,
       tenant_id: tenantId,
       invoice_number: invoiceNumber,
-      labor_amount: restData.labor_amount || 0,
-      materials_amount: 0,
-      total_amount: restData.labor_amount || 0,
+      labor_amount: financials.laborAmount,
+      materials_amount: financials.materialsAmount,
+      total_amount: financials.totalAmount,
       status: 'draft'
     }])
     .select()
     .single();
 
   if (invoiceError) throw invoiceError;
+
+  // 2b. Insert initial line items if any provided
+  if (initialItems.length > 0) {
+    const itemsToInsert = initialItems.map((item, idx) => ({
+      invoice_id: invoice.id,
+      source_type: item.source_type,
+      source_id: item.source_id || null,
+      description: item.description,
+      amount: item.amount,
+      sort_order: item.sort_order ?? idx,
+      is_billable: item.is_billable !== false,
+      service_date: item.service_date || null,
+      is_hidden: !!item.is_hidden
+    }));
+    await supabase.from('invoice_line_items').insert(itemsToInsert);
+
+    const laborSourceIds = itemsToInsert.filter(i => i.source_type === 'labor' && i.source_id).map(i => i.source_id);
+    const matSourceIds = itemsToInsert.filter(i => i.source_type === 'material' && i.source_id).map(i => i.source_id);
+    if (laborSourceIds.length > 0) {
+      await supabase.from('job_hours').update({ billing_status: 'on_draft', invoice_id: invoice.id }).in('id', laborSourceIds);
+    }
+    if (matSourceIds.length > 0) {
+      await supabase.from('job_materials').update({ billing_status: 'on_draft', invoice_id: invoice.id }).in('id', matSourceIds);
+    }
+  }
 
   // 3. Atomically increment tenant invoice sequence
   await supabase
@@ -129,7 +183,6 @@ export async function draftInvoiceFromJob({
   let targetClientId = clientId || null;
   let job = null;
   const lineItems = [];
-  let baseLabor = 0;
   let linkedJobTitle = laborTitle || 'General Contracting Labor';
 
   // 1. Resolve Job and unbilled items if jobId provided
@@ -171,7 +224,6 @@ export async function draftInvoiceFromJob({
       const rate = job.hourly_rate || resolveEffectiveHourlyRate({ isEmergency: false });
       for (const h of (hoursList || [])) {
         const hCost = roundCurrency(Number(h.hours || 0) * rate);
-        baseLabor = roundCurrency(baseLabor + hCost);
         lineItems.push({
           source_type: 'labor',
           source_id: h.id,
@@ -182,23 +234,36 @@ export async function draftInvoiceFromJob({
         });
       }
     } else {
-      baseLabor = roundCurrency(job.flat_rate || 0);
+      // Flat Rate Job: agreed flat rate is the billable labor item
       lineItems.push({
         source_type: 'labor',
         description: linkedJobTitle || 'Flat Rate Project Labor',
-        amount: baseLabor,
+        amount: roundCurrency(job.flat_rate || 0),
         is_billable: true
       });
+
+      // Logged hours on flat rate jobs are imported for work detail/reference (not charged extra by default)
+      for (const h of (hoursList || [])) {
+        lineItems.push({
+          source_type: 'labor',
+          source_id: h.id,
+          description: h.description || `${h.hours} hours logged`,
+          service_date: h.date,
+          amount: 0,
+          is_billable: false
+        });
+      }
     }
 
     // Build material line items
     for (const m of (materialsList || [])) {
+      const isBillable = job.rate_type !== 'flat';
       lineItems.push({
         source_type: 'material',
         source_id: m.id,
         description: m.description,
         amount: roundCurrency(m.cost),
-        is_billable: true
+        is_billable: isBillable
       });
     }
   }
@@ -224,8 +289,9 @@ export async function draftInvoiceFromJob({
   }
 
   // 3. Deterministic financial calculations via pricingEngine.js (Rule 10)
+  // All labor resides in billable line items (baseLaborAmount is 0)
   const financials = calculateInvoiceFinancials({
-    baseLaborAmount: baseLabor,
+    baseLaborAmount: 0,
     lineItems,
     markupAmount: markupAmount || 0,
     taxRatePercent: taxRatePercent || 0
@@ -446,13 +512,15 @@ export async function updateInvoiceDraft({
     lineItemsForCalc = items || [];
   }
 
+  const { labor_amount: ignoredLaborAmount, ...sanitizedRestData } = restData;
+
   const { laborAmount, materialsAmount, totalAmount } = calculateInvoiceFinancials({
-    baseLaborAmount: restData.labor_amount,
+    baseLaborAmount: 0,
     lineItems: lineItemsForCalc
   });
 
   const updatePayload = {
-    ...restData,
+    ...sanitizedRestData,
     labor_amount: laborAmount,
     materials_amount: materialsAmount,
     total_amount: totalAmount
@@ -545,13 +613,14 @@ export async function addInvoiceLineItem({
     .eq('invoice_id', invoiceId);
 
   const financials = calculateInvoiceFinancials({
-    baseLaborAmount: inv.labor_amount,
+    baseLaborAmount: 0,
     lineItems: allItems || []
   });
 
   const { data: updatedInvoice, error: invUpdErr } = await supabase
     .from('invoices')
     .update({
+      labor_amount: financials.laborAmount,
       materials_amount: financials.materialsAmount,
       total_amount: financials.totalAmount
     })
@@ -605,13 +674,14 @@ export async function updateInvoiceLineItem({
     .eq('invoice_id', invoiceId);
 
   const financials = calculateInvoiceFinancials({
-    baseLaborAmount: inv.labor_amount,
+    baseLaborAmount: 0,
     lineItems: allItems || []
   });
 
   await supabase
     .from('invoices')
     .update({
+      labor_amount: financials.laborAmount,
       materials_amount: financials.materialsAmount,
       total_amount: financials.totalAmount
     })
@@ -675,13 +745,14 @@ export async function deleteInvoiceLineItem({
     .eq('invoice_id', invoiceId);
 
   const financials = calculateInvoiceFinancials({
-    baseLaborAmount: inv.labor_amount,
+    baseLaborAmount: 0,
     lineItems: allItems || []
   });
 
   await supabase
     .from('invoices')
     .update({
+      labor_amount: financials.laborAmount,
       materials_amount: financials.materialsAmount,
       total_amount: financials.totalAmount
     })
