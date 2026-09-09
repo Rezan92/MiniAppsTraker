@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { useAiContext } from '../../contexts/AiContext';
 import { useAi } from '../../hooks/api/useAi';
 import { useDraggableResizableWindow } from '../../hooks/ui/useDraggableResizableWindow';
@@ -172,7 +173,9 @@ export const AiCopilotWidget = () => {
     }
   };
 
-  return (
+  if (typeof document === 'undefined') return null;
+
+  return createPortal(
     <>
       {/* Floating Action Button (FAB) */}
       {!isOpen && (
@@ -226,8 +229,8 @@ export const AiCopilotWidget = () => {
           }
           className={
             isMobile
-              ? "fixed inset-y-0 right-0 z-50 w-full sm:w-[440px] bg-white border-l border-gray-200 shadow-2xl flex flex-col animate-in slide-in-from-right duration-200 relative"
-              : `fixed z-50 bg-white border border-gray-300 shadow-2xl rounded-2xl flex flex-col overflow-hidden transition-[box-shadow] duration-150 relative ${
+              ? "fixed inset-y-0 right-0 z-50 w-full sm:w-[440px] bg-white border-l border-gray-200 shadow-2xl flex flex-col animate-in slide-in-from-right duration-200"
+              : `fixed z-50 bg-white border border-gray-300 shadow-2xl rounded-2xl flex flex-col overflow-hidden transition-[box-shadow] duration-150 ${
                   isDragging || isResizing ? 'select-none shadow-3xl ring-2 ring-primary/40' : ''
                 }`
           }
@@ -594,6 +597,7 @@ export const AiCopilotWidget = () => {
           )}
         </div>
       )}
-    </>
+    </>,
+    document.body
   );
 };

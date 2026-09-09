@@ -14,7 +14,7 @@ const COLLAPSED_HEIGHT = 54;
  */
 export function useDraggableResizableWindow() {
   const [isMobile, setIsMobile] = useState(() => {
-    return typeof window !== 'undefined' ? window.innerWidth < 640 : false;
+    return typeof window !== 'undefined' ? window.innerWidth < 768 : false;
   });
 
   const getDefaultPosition = useCallback((w = DEFAULT_WIDTH, h = DEFAULT_HEIGHT) => {
@@ -31,9 +31,13 @@ export function useDraggableResizableWindow() {
       if (saved) {
         const parsed = JSON.parse(saved);
         if (typeof parsed.x === 'number' && typeof parsed.y === 'number') {
-          // Clamp inside current screen
-          const clampedX = Math.max(0, Math.min(window.innerWidth - 100, parsed.x));
-          const clampedY = Math.max(0, Math.min(window.innerHeight - 60, parsed.y));
+          // Clamp inside current screen ensuring full window is visible
+          const w = typeof parsed.width === 'number' ? parsed.width : DEFAULT_WIDTH;
+          const h = typeof parsed.height === 'number' ? parsed.height : DEFAULT_HEIGHT;
+          const maxX = Math.max(16, window.innerWidth - w - 16);
+          const maxY = Math.max(16, window.innerHeight - (parsed.isCollapsed ? COLLAPSED_HEIGHT : h) - 16);
+          const clampedX = Math.max(16, Math.min(maxX, parsed.x));
+          const clampedY = Math.max(16, Math.min(maxY, parsed.y));
           return { x: clampedX, y: clampedY };
         }
       }
@@ -104,17 +108,17 @@ export function useDraggableResizableWindow() {
   // Update mobile status and clamp on viewport resize
   useEffect(() => {
     const handleResize = () => {
-      const mobile = window.innerWidth < 640;
+      const mobile = window.innerWidth < 768;
       setIsMobile(mobile);
 
       if (!mobile) {
         setPosition(prev => {
           const currentH = isCollapsed ? COLLAPSED_HEIGHT : size.height;
-          const maxX = Math.max(0, window.innerWidth - size.width);
-          const maxY = Math.max(0, window.innerHeight - currentH);
+          const maxX = Math.max(16, window.innerWidth - size.width - 16);
+          const maxY = Math.max(16, window.innerHeight - currentH - 16);
           return {
-            x: Math.max(0, Math.min(maxX, prev.x)),
-            y: Math.max(0, Math.min(maxY, prev.y))
+            x: Math.max(16, Math.min(maxX, prev.x)),
+            y: Math.max(16, Math.min(maxY, prev.y))
           };
         });
       }

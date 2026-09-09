@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { compressImage } from '../../utils/imageCompressor';
 
 export const CameraCaptureModal = ({ isOpen, onClose, onCapture }) => {
@@ -113,10 +114,10 @@ export const CameraCaptureModal = ({ isOpen, onClose, onCapture }) => {
     }
   };
 
-  if (!isOpen) return null;
+  if (!isOpen || typeof document === 'undefined') return null;
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-xs p-4 animate-in fade-in duration-150">
+  return createPortal(
+    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 backdrop-blur-xs p-4 animate-in fade-in duration-150">
       <div className="bg-gray-900 border border-gray-700 text-white rounded-2xl w-full max-w-lg overflow-hidden shadow-2xl flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between px-4 py-3 border-b border-gray-800">
@@ -224,6 +225,7 @@ export const CameraCaptureModal = ({ isOpen, onClose, onCapture }) => {
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };
