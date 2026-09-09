@@ -539,13 +539,12 @@ export const AiCopilotWidget = () => {
                     onClick={() => setIsInputExpanded((prev) => !prev)}
                     disabled={isLoading || isRecording || isTranscribingAudio}
                     title={isInputExpanded ? "Collapse text box" : "Expand text box"}
-                    className="p-1.5 text-gray-600 hover:text-black hover:bg-gray-100 border border-gray-200 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 text-xs font-semibold shadow-2xs"
+                    className="p-1.5 rounded-lg text-amber-700 bg-amber-50 hover:bg-amber-100/80 border border-amber-300/80 hover:border-amber-400 shadow-xs transition-all cursor-pointer flex items-center justify-center disabled:opacity-30 disabled:cursor-not-allowed"
                     aria-label={isInputExpanded ? "Collapse text box" : "Expand text box"}
                   >
-                    <span>{isInputExpanded ? "Collapse" : "Expand"}</span>
                     {isInputExpanded ? (
                       /* Two arrows against each other to collapse */
-                      <svg className="w-4 h-4 text-gray-700" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                      <svg className="w-4 h-4 text-amber-700" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round">
                         <polyline points="4 14 10 14 10 20" />
                         <polyline points="20 10 14 10 14 4" />
                         <line x1="14" y1="10" x2="21" y2="3" />
@@ -553,7 +552,7 @@ export const AiCopilotWidget = () => {
                       </svg>
                     ) : (
                       /* An arrow opening away from each other to expand */
-                      <svg className="w-4 h-4 text-gray-700" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                      <svg className="w-4 h-4 text-amber-700" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round">
                         <polyline points="15 3 21 3 21 9" />
                         <polyline points="9 21 3 21 3 15" />
                         <line x1="21" y1="3" x2="14" y2="10" />
