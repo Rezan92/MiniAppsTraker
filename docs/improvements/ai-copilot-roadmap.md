@@ -52,7 +52,12 @@
   - Autonomous batch material logging commits directly to `job_materials` via Gemini function calling and `jobService.logJobMaterialsBatch`.
   - Multimodal conversational attachments in chat with sliding window context pruning: heavy base64 payloads are sent exclusively on active turns and pruned to lightweight text markers on subsequent turns, preventing token accumulation and context bloat across conversations.
   - Full Work Item Lifecycle Management: Copilot can update or delete logged materials (by name, description, cost) and hours (by date, description, hours), strictly enforcing database integrity by preventing modifications to items currently locked to draft invoices (on_draft) or finalized invoices (billed).
-- [ ] **Live Voice Chat & Confirmation:**
+- [x] **Speech-to-Text & Voice Dictation (Phase 8.2):**
+  - Contractors can tap a dedicated microphone button in the Copilot messaging bar to dictate requests, task descriptions, or material purchases hands-free.
+  - Browser audio capture powered by `MediaRecorder` API (`useAudioRecorder` hook) supporting `audio/webm;codecs=opus` and `audio/mp4`.
+  - Transcribed with ultra-low latency using Groq's high-performance `whisper-large-v3-turbo` model via dedicated `/api/ai/transcribe` endpoint with MIME-matched explicit file extensions (`recording.webm`, `recording.mp4`).
+  - Populates transcribed speech directly into the message input field, allowing contractors to review, edit, and send with one tap.
+- [ ] **Live Voice Chat & Confirmation (Phase 8.3):**
   - Allow users to talk directly to the AI via voice to perform tasks hands-free.
   - When the AI receives a voice command, it must repeat the request back (improving and articulating the wording professionally) and ask for explicit confirmation before executing any actions.
 - [ ] **Asynchronous Background Tasks:**

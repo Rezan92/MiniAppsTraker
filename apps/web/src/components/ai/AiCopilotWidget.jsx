@@ -7,6 +7,7 @@ import { ChatMessage } from './ChatMessage';
 import { SuggestionChips } from './SuggestionChips';
 import { CameraCaptureModal } from './CameraCaptureModal';
 import { compressImage } from '../../utils/imageCompressor';
+import { useAudioRecorder } from '../../hooks/useAudioRecorder';
 
 export const AiCopilotWidget = () => {
   const { isOpen, toggleDrawer, closeDrawer, screenContext } = useAiContext();
@@ -20,7 +21,9 @@ export const AiCopilotWidget = () => {
     availableModels,
     selectedTier,
     setSelectedTier,
-    aiConfig
+    aiConfig,
+    transcribeSpeech,
+    hasGroqKey
   } = useAi();
 
   const {
@@ -44,11 +47,59 @@ export const AiCopilotWidget = () => {
   const [attachedImage, setAttachedImage] = useState(null);
   const [isCameraOpen, setIsCameraOpen] = useState(false);
   const [isDraggingFile, setIsDraggingFile] = useState(false);
+  const [isTranscribingAudio, setIsTranscribingAudio] = useState(false);
+  const [voiceError, setVoiceError] = useState(null);
+
+  const {
+    isRecording,
+    recordingDuration,
+    startRecording,
+    stopRecording,
+    cancelRecording
+  } = useAudioRecorder({ maxDurationSeconds: 60 });
 
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
   const fileInputRef = useRef(null);
   const nativeCameraInputRef = useRef(null);
+
+  const handleFinishRecording = async () => {
+    try {
+      setIsTranscribingAudio(true);
+      setVoiceError(null);
+      const { base64, mimeType } = await stopRecording();
+      const text = await transcribeSpeech(base64, mimeType);
+      if (text && text.trim()) {
+        setInput((prev) => (prev.trim() ? `${prev.trim()} ${text.trim()}` : text.trim()));
+      }
+      setTimeout(() => inputRef.current?.focus(), 100);
+    } catch (err) {
+      console.error('Speech transcription error:', err);
+      setVoiceError(err.message || 'Speech transcription failed');
+      setTimeout(() => setVoiceError(null), 6000);
+    } finally {
+      setIsTranscribingAudio(false);
+    }
+  };
+
+  const handleToggleMic = async () => {
+    setVoiceError(null);
+    if (isRecording) {
+      await handleFinishRecording();
+    } else {
+      try {
+        await startRecording();
+      } catch (err) {
+        setVoiceError(err.message || 'Microphone access denied');
+        setTimeout(() => setVoiceError(null), 6000);
+      }
+    }
+  };
+
+  const handleCancelVoice = () => {
+    cancelRecording();
+    setVoiceError(null);
+  };
 
   const processAndStageImage = async (file) => {
     if (!file) return;
@@ -484,12 +535,33 @@ export const AiCopilotWidget = () => {
                   </div>
                 )}
 
-                <div className="flex items-center gap-1 bg-gray-50 border border-gray-300 rounded-xl px-2 py-1.5 focus-within:border-primary focus-within:ring-1 focus-within:ring-primary focus-within:bg-white transition-all">
+                {/* Voice Dictation Error Alert */}
+                {voiceError && (
+                  <div className="mb-1.5 text-[11px] text-red-700 bg-red-50 border border-red-200 rounded-lg px-2.5 py-1 flex items-center justify-between shadow-xs">
+                    <div className="flex items-center gap-1.5 min-w-0">
+                      <span className="material-symbols-outlined text-[14px] text-red-500 shrink-0">error</span>
+                      <span className="truncate">{voiceError}</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setVoiceError(null)}
+                      className="ml-1 text-gray-400 hover:text-gray-600 cursor-pointer shrink-0"
+                    >
+                      <span className="material-symbols-outlined text-[14px]">close</span>
+                    </button>
+                  </div>
+                )}
+
+                <div className={`flex items-center gap-1 bg-gray-50 border rounded-xl px-2 py-1.5 transition-all ${
+                  isRecording 
+                    ? 'border-red-400 ring-1 ring-red-400 bg-red-50/40' 
+                    : 'border-gray-300 focus-within:border-primary focus-within:ring-1 focus-within:ring-primary focus-within:bg-white'
+                }`}>
                   {/* Camera Button */}
                   <button
                     type="button"
                     onClick={handleCameraClick}
-                    disabled={isLoading}
+                    disabled={isLoading || isRecording || isTranscribingAudio}
                     title="Take photo with camera"
                     className="p-1 text-gray-400 hover:text-gray-700 hover:bg-gray-200/60 rounded-lg transition-colors cursor-pointer shrink-0 disabled:opacity-30 disabled:cursor-not-allowed"
                   >
@@ -500,37 +572,102 @@ export const AiCopilotWidget = () => {
                   <button
                     type="button"
                     onClick={() => fileInputRef.current?.click()}
-                    disabled={isLoading}
+                    disabled={isLoading || isRecording || isTranscribingAudio}
                     title="Upload image or receipt file"
                     className="p-1 text-gray-400 hover:text-gray-700 hover:bg-gray-200/60 rounded-lg transition-colors cursor-pointer shrink-0 disabled:opacity-30 disabled:cursor-not-allowed"
                   >
                     <span className="material-symbols-outlined text-[20px] block">attach_file</span>
                   </button>
 
-                  <input
-                    ref={inputRef}
-                    type="text"
-                    value={input}
-                    onChange={(e) => setInput(e.target.value)}
-                    onKeyDown={handleInputKeyDown}
-                    placeholder={
-                      attachedImage
-                        ? "Add instructions for this photo (optional)..."
-                        : screenContext?.screen === 'JobDetails'
-                        ? "Ask about this job, log hours, or snap receipt..."
-                        : "Ask Copilot or drop receipt to log materials..."
-                    }
-                    disabled={isLoading}
-                    className="flex-1 bg-transparent border-none text-sm text-gray-800 focus:outline-none placeholder-gray-400 py-1 min-w-0"
-                  />
-
+                  {/* Voice Dictation (Groq Whisper) Button */}
                   <button
-                    type="submit"
-                    disabled={(!input.trim() && !attachedImage) || isLoading}
-                    className="p-1.5 bg-primary text-black rounded-lg hover:bg-opacity-90 disabled:opacity-30 disabled:cursor-not-allowed transition-all flex items-center justify-center shrink-0 cursor-pointer shadow-xs"
+                    type="button"
+                    onClick={handleToggleMic}
+                    disabled={isLoading || isTranscribingAudio}
+                    title={
+                      isRecording
+                        ? "Stop recording and transcribe"
+                        : hasGroqKey
+                        ? "Voice dictation (Groq Whisper)"
+                        : "Voice dictation (Requires GROQ_API_KEY in apps/api/.env)"
+                    }
+                    className={`p-1 rounded-lg transition-all cursor-pointer shrink-0 disabled:opacity-30 disabled:cursor-not-allowed ${
+                      isRecording
+                        ? 'text-red-600 bg-red-100 hover:bg-red-200 animate-pulse'
+                        : hasGroqKey
+                        ? 'text-gray-500 hover:text-primary hover:bg-gray-200/60'
+                        : 'text-gray-400 hover:text-gray-600 hover:bg-gray-200/60'
+                    }`}
                   >
-                    <span className="material-symbols-outlined text-[18px]">send</span>
+                    <span className="material-symbols-outlined text-[20px] block">
+                      {isRecording ? 'mic' : 'mic_none'}
+                    </span>
                   </button>
+
+                  {isRecording ? (
+                    <div className="flex-1 flex items-center justify-between gap-2 px-1 min-w-0">
+                      <div className="flex items-center gap-1.5 min-w-0">
+                        <span className="w-2.5 h-2.5 rounded-full bg-red-500 animate-ping shrink-0" />
+                        <span className="text-xs font-semibold text-red-600 shrink-0">
+                          {Math.floor(recordingDuration / 60)}:{String(recordingDuration % 60).padStart(2, '0')}
+                        </span>
+                        <span className="text-xs text-gray-500 truncate hidden sm:inline">
+                          Listening...
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-1 shrink-0">
+                        <button
+                          type="button"
+                          onClick={handleCancelVoice}
+                          className="p-1 text-gray-400 hover:text-red-500 hover:bg-gray-200/60 rounded-lg transition-colors cursor-pointer"
+                          title="Discard recording"
+                        >
+                          <span className="material-symbols-outlined text-[18px] block">close</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleFinishRecording}
+                          className="px-2 py-1 bg-emerald-600 text-white text-xs font-semibold rounded-lg hover:bg-emerald-700 transition-colors flex items-center gap-1 shadow-xs cursor-pointer"
+                          title="Stop and transcribe speech"
+                        >
+                          <span className="material-symbols-outlined text-[16px]">done</span>
+                          <span>Done</span>
+                        </button>
+                      </div>
+                    </div>
+                  ) : isTranscribingAudio ? (
+                    <div className="flex-1 flex items-center gap-2 px-2 py-1 text-xs text-primary font-medium min-w-0">
+                      <span className="w-3.5 h-3.5 border-2 border-primary border-t-transparent rounded-full animate-spin shrink-0" />
+                      <span className="truncate">Transcribing speech with Groq Whisper...</span>
+                    </div>
+                  ) : (
+                    <input
+                      ref={inputRef}
+                      type="text"
+                      value={input}
+                      onChange={(e) => setInput(e.target.value)}
+                      onKeyDown={handleInputKeyDown}
+                      placeholder={
+                        attachedImage
+                          ? "Add instructions for this photo (optional)..."
+                          : screenContext?.screen === 'JobDetails'
+                          ? "Ask about this job, log hours, or snap receipt..."
+                          : "Ask Copilot or drop receipt to log materials..."
+                      }
+                      disabled={isLoading}
+                      className="flex-1 bg-transparent border-none text-sm text-gray-800 focus:outline-none placeholder-gray-400 py-1 min-w-0"
+                    />
+                  )}
+
+                  {!isRecording && (
+                    <button
+                      type="submit"
+                      disabled={(!input.trim() && !attachedImage) || isLoading || isTranscribingAudio}
+                      className="p-1.5 bg-primary text-black rounded-lg hover:bg-opacity-90 disabled:opacity-30 disabled:cursor-not-allowed transition-all flex items-center justify-center shrink-0 cursor-pointer shadow-xs"
+                    >
+                      <span className="material-symbols-outlined text-[18px]">send</span>
+                    </button>
+                  )}
                 </div>
                 <div className="text-[10px] text-gray-400 text-center mt-1.5 flex items-center justify-center gap-2">
                   <span>AI operations automatically update your screen</span>

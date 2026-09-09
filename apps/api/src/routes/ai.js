@@ -4,6 +4,7 @@ import { authenticate } from '../middleware/auth.js';
 import { createApiError } from '../middleware/errorHandler.js';
 import { supabase } from '../config/supabase.js';
 import { ai, DEFAULT_AI_MODEL, getAiClient, getAiConfig } from '../services/ai/geminiClient.js';
+import { getGroqConfig, transcribeAudio } from '../services/ai/groqClient.js';
 import { AI_TOOLS } from '../services/ai/aiToolDefinitions.js';
 import { executeAiTool } from '../services/ai/aiToolExecutors.js';
 import { buildSystemInstruction } from '../services/ai/promptBuilder.js';
@@ -18,8 +19,38 @@ router.use(authenticate);
 router.get('/config', (req, res) => {
   res.json({
     success: true,
-    data: getAiConfig()
+    data: {
+      ...getAiConfig(),
+      ...getGroqConfig()
+    }
   });
+});
+
+const transcribeRequestSchema = z.object({
+  audio: z.string().min(1, 'Audio data is required'),
+  mimeType: z.string().default('audio/webm')
+});
+
+// POST /api/ai/transcribe — Groq Whisper Speech-to-Text
+router.post('/transcribe', async (req, res, next) => {
+  try {
+    const parseResult = transcribeRequestSchema.safeParse(req.body);
+    if (!parseResult.success) {
+      return next(parseResult.error);
+    }
+
+    const { audio, mimeType } = parseResult.data;
+    const rawBase64 = audio.includes('base64,') ? audio.split('base64,')[1] : audio;
+    const audioBuffer = Buffer.from(rawBase64, 'base64');
+
+    const result = await transcribeAudio({ audioBuffer, mimeType });
+    res.json({
+      success: true,
+      data: result
+    });
+  } catch (err) {
+    next(err);
+  }
 });
 
 const chatRequestSchema = z.object({

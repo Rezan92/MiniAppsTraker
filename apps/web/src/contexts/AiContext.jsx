@@ -256,6 +256,19 @@ export const AiContextProvider = ({ children }) => {
     setError(null);
   }, []);
 
+  const transcribeSpeech = useCallback(async (audioBase64, mimeType = 'audio/webm') => {
+    try {
+      const res = await apiClient.post('/api/ai/transcribe', {
+        audio: audioBase64,
+        mimeType
+      });
+      return res?.data?.text || '';
+    } catch (err) {
+      const translated = translateApiError(err);
+      throw new Error(translated || 'Failed to transcribe audio.');
+    }
+  }, []);
+
   return (
     <AiContext.Provider value={{
       isOpen,
@@ -273,11 +286,13 @@ export const AiContextProvider = ({ children }) => {
       selectedTier,
       setSelectedTier: handleSetTier,
       aiConfig,
+      hasGroqKey: Boolean(aiConfig?.hasGroqKey),
       activeFocus,
       availableModels: AVAILABLE_MODELS,
       sendMessage,
       confirmPendingAction,
-      clearChat
+      clearChat,
+      transcribeSpeech
     }}>
       {children}
     </AiContext.Provider>

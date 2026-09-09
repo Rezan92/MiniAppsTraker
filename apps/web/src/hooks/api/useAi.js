@@ -23,6 +23,8 @@ export const useAi = () => {
     availableModels: context.availableModels,
     sendMessage: context.sendMessage,
     confirmPendingAction: context.confirmPendingAction,
-    clearChat: context.clearChat
+    clearChat: context.clearChat,
+    transcribeSpeech: context.transcribeSpeech,
+    hasGroqKey: context.hasGroqKey
   };
 };
