@@ -5,7 +5,7 @@ import { useState, useRef, useCallback, useEffect } from 'react';
  * Encapsulates audio stream lifecycle, cross-browser MIME type selection,
  * active recording duration timer, and automatic audio track cleanup.
  */
-export const useAudioRecorder = ({ maxDurationSeconds = 60 } = {}) => {
+export const useAudioRecorder = ({ maxDurationSeconds = 900, onAutoStop } = {}) => {
   const [isRecording, setIsRecording] = useState(false);
   const [recordingDuration, setRecordingDuration] = useState(0);
   const [recordingError, setRecordingError] = useState(null);
@@ -16,6 +16,13 @@ export const useAudioRecorder = ({ maxDurationSeconds = 60 } = {}) => {
   const timerIntervalRef = useRef(null);
   const autoStopTimeoutRef = useRef(null);
   const mimeTypeRef = useRef('audio/webm');
+  const durationRef = useRef(0);
+  const onAutoStopRef = useRef(onAutoStop);
+  const stopRecordingRef = useRef(null);
+
+  useEffect(() => {
+    onAutoStopRef.current = onAutoStop;
+  }, [onAutoStop]);
 
   // Clean up any active microphone stream and timers on unmount
   const cleanupStream = useCallback(() => {
@@ -38,11 +45,67 @@ export const useAudioRecorder = ({ maxDurationSeconds = 60 } = {}) => {
   }, [cleanupStream]);
 
   /**
+   * Stops recording, releases hardware tracks, and resolves the base64-encoded audio payload.
+   * @returns {Promise<{ base64: string, mimeType: string, durationSeconds: number }>}
+   */
+  const stopRecording = useCallback(() => {
+    return new Promise((resolve, reject) => {
+      const recorder = mediaRecorderRef.current;
+      if (!recorder || recorder.state === 'inactive') {
+        cleanupStream();
+        setIsRecording(false);
+        return reject(new Error('Recorder is not active.'));
+      }
+
+      recorder.onstop = () => {
+        try {
+          const finalMime = mimeTypeRef.current || 'audio/webm';
+          const audioBlob = new Blob(audioChunksRef.current, { type: finalMime });
+          cleanupStream();
+          setIsRecording(false);
+
+          if (audioBlob.size === 0) {
+            return reject(new Error('Recorded audio was empty.'));
+          }
+
+          const reader = new FileReader();
+          reader.onloadend = () => {
+            const result = reader.result;
+            const base64 = typeof result === 'string' ? result : '';
+            resolve({
+              base64,
+              mimeType: finalMime,
+              durationSeconds: durationRef.current
+            });
+          };
+          reader.onerror = () => reject(new Error('Failed to read audio file buffer.'));
+          reader.readAsDataURL(audioBlob);
+        } catch (procErr) {
+          cleanupStream();
+          setIsRecording(false);
+          reject(procErr);
+        }
+      };
+
+      try {
+        recorder.stop();
+      } catch (stopErr) {
+        cleanupStream();
+        setIsRecording(false);
+        reject(stopErr);
+      }
+    });
+  }, [cleanupStream]);
+
+  stopRecordingRef.current = stopRecording;
+
+  /**
    * Starts microphone recording.
    */
   const startRecording = useCallback(async () => {
     setRecordingError(null);
     setRecordingDuration(0);
+    durationRef.current = 0;
     audioChunksRef.current = [];
 
     if (!navigator.mediaDevices?.getUserMedia || typeof window.MediaRecorder === 'undefined') {
@@ -90,13 +153,23 @@ export const useAudioRecorder = ({ maxDurationSeconds = 60 } = {}) => {
       // Duration counter
       const startTime = Date.now();
       timerIntervalRef.current = setInterval(() => {
-        setRecordingDuration(Math.floor((Date.now() - startTime) / 1000));
+        const sec = Math.floor((Date.now() - startTime) / 1000);
+        durationRef.current = sec;
+        setRecordingDuration(sec);
       }, 500);
 
-      // Auto-stop cap after maxDurationSeconds (e.g. 60s)
-      autoStopTimeoutRef.current = setTimeout(() => {
+      // Auto-stop safety cap after maxDurationSeconds (default: 900s = 15 minutes)
+      // If the maximum duration is ever reached, auto-transcribe instead of discarding
+      autoStopTimeoutRef.current = setTimeout(async () => {
         if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
-          stopRecording();
+          try {
+            const result = await stopRecordingRef.current?.();
+            if (result && onAutoStopRef.current) {
+              onAutoStopRef.current(result);
+            }
+          } catch (autoErr) {
+            console.error('Auto-stop recording error:', autoErr);
+          }
         }
       }, maxDurationSeconds * 1000);
 
@@ -115,59 +188,6 @@ export const useAudioRecorder = ({ maxDurationSeconds = 60 } = {}) => {
   }, [cleanupStream, maxDurationSeconds]);
 
   /**
-   * Stops recording, releases hardware tracks, and resolves the base64-encoded audio payload.
-   * @returns {Promise<{ base64: string, mimeType: string, durationSeconds: number }>}
-   */
-  const stopRecording = useCallback(() => {
-    return new Promise((resolve, reject) => {
-      const recorder = mediaRecorderRef.current;
-      if (!recorder || recorder.state === 'inactive') {
-        cleanupStream();
-        setIsRecording(false);
-        return reject(new Error('Recorder is not active.'));
-      }
-
-      recorder.onstop = () => {
-        try {
-          const finalMime = mimeTypeRef.current || 'audio/webm';
-          const audioBlob = new Blob(audioChunksRef.current, { type: finalMime });
-          cleanupStream();
-          setIsRecording(false);
-
-          if (audioBlob.size === 0) {
-            return reject(new Error('Recorded audio was empty.'));
-          }
-
-          const reader = new FileReader();
-          reader.onloadend = () => {
-            const result = reader.result;
-            const base64 = typeof result === 'string' ? result : '';
-            resolve({
-              base64,
-              mimeType: finalMime,
-              durationSeconds: recordingDuration
-            });
-          };
-          reader.onerror = () => reject(new Error('Failed to read audio file buffer.'));
-          reader.readAsDataURL(audioBlob);
-        } catch (procErr) {
-          cleanupStream();
-          setIsRecording(false);
-          reject(procErr);
-        }
-      };
-
-      try {
-        recorder.stop();
-      } catch (stopErr) {
-        cleanupStream();
-        setIsRecording(false);
-        reject(stopErr);
-      }
-    });
-  }, [cleanupStream, recordingDuration]);
-
-  /**
    * Cancels the active recording without saving or transcribing.
    */
   const cancelRecording = useCallback(() => {
@@ -183,6 +203,7 @@ export const useAudioRecorder = ({ maxDurationSeconds = 60 } = {}) => {
     cleanupStream();
     setIsRecording(false);
     setRecordingDuration(0);
+    durationRef.current = 0;
   }, [cleanupStream]);
 
   return {

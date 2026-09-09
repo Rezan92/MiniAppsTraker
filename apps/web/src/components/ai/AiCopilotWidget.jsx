@@ -63,13 +63,17 @@ export const AiCopilotWidget = () => {
 
   const showExpandButton = isInputExpanded || isAtScrollPoint;
 
+  const handleAutoStopRef = useRef(null);
   const {
     isRecording,
     recordingDuration,
     startRecording,
     stopRecording,
     cancelRecording
-  } = useAudioRecorder({ maxDurationSeconds: 60 });
+  } = useAudioRecorder({
+    maxDurationSeconds: 900, // 15 minutes limit
+    onAutoStop: (payload) => handleAutoStopRef.current?.(payload)
+  });
 
   const adjustTextareaHeight = useCallback(() => {
     const el = inputRef.current;
@@ -119,11 +123,10 @@ export const AiCopilotWidget = () => {
     return () => observer.disconnect();
   }, [adjustTextareaHeight]);
 
-  const handleFinishRecording = async () => {
+  const transcribeAudioPayload = async (base64, mimeType) => {
     try {
       setIsTranscribingAudio(true);
       setVoiceError(null);
-      const { base64, mimeType } = await stopRecording();
       const text = await transcribeSpeech(base64, mimeType);
       if (text && text.trim()) {
         setInput((prev) => (prev.trim() ? `${prev.trim()} ${text.trim()}` : text.trim()));
@@ -135,6 +138,24 @@ export const AiCopilotWidget = () => {
       setTimeout(() => setVoiceError(null), 6000);
     } finally {
       setIsTranscribingAudio(false);
+    }
+  };
+
+  handleAutoStopRef.current = ({ base64, mimeType }) => {
+    transcribeAudioPayload(base64, mimeType);
+  };
+
+  const handleFinishRecording = async () => {
+    try {
+      setIsTranscribingAudio(true);
+      setVoiceError(null);
+      const { base64, mimeType } = await stopRecording();
+      await transcribeAudioPayload(base64, mimeType);
+    } catch (err) {
+      console.error('Speech recording error:', err);
+      setVoiceError(err.message || 'Speech recording failed');
+      setIsTranscribingAudio(false);
+      setTimeout(() => setVoiceError(null), 6000);
     }
   };
 
