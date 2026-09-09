@@ -88,7 +88,12 @@ router.get('/config', (req, res) => {
 const chatRequestSchema = z.object({
   messages: z.array(z.object({
     role: z.enum(['user', 'model', 'assistant']),
-    content: z.string().min(1)
+    content: z.string().optional().default(''),
+    attachment: z.object({
+      mimeType: z.string(),
+      data: z.string(),
+      name: z.string().optional()
+    }).optional().nullable()
   })).min(1, 'At least one message is required'),
   screenContext: z.object({
     screen: z.string(),
@@ -132,7 +137,7 @@ router.post('/chat', async (req, res, next) => {
     const { messages, screenContext, activeFocus, model, tier } = parseResult.data;
     const { ai: aiClient, activeTier, isPaidKeyConfigured } = getAiClient(tier);
     const targetModel = model || DEFAULT_AI_MODEL;
-    const lastUserMsg = messages[messages.length - 1]?.content;
+    const lastUserMsg = messages[messages.length - 1]?.content || '(image attachment)';
     console.log(`\n🤖 [AI Request] Tier: ${activeTier.toUpperCase()} | Model: ${targetModel} | User: ${req.user.email} | Screen: ${screenContext?.screen || 'Global'} | Prompt: "${lastUserMsg}"`);
 
     let currentActiveFocus = activeFocus || null;
@@ -141,11 +146,33 @@ router.post('/chat', async (req, res, next) => {
     let pendingConfirmation = null;
     let invoiceCardData = null;
 
-    // Format chat history for @google/genai
-    const contents = messages.map(m => ({
-      role: m.role === 'assistant' ? 'model' : m.role,
-      parts: [{ text: m.content }]
-    }));
+    // Format chat history for @google/genai (supporting multimodal attachments)
+    const contents = messages.map(m => {
+      const parts = [];
+      if (m.attachment?.data && m.attachment?.mimeType) {
+        const rawBase64 = m.attachment.data.includes('base64,')
+          ? m.attachment.data.split('base64,')[1]
+          : m.attachment.data;
+
+        parts.push({
+          inlineData: {
+            mimeType: m.attachment.mimeType,
+            data: rawBase64
+          }
+        });
+      }
+
+      if (m.content && m.content.trim()) {
+        parts.push({ text: m.content });
+      } else if (parts.length === 0) {
+        parts.push({ text: ' ' });
+      }
+
+      return {
+        role: m.role === 'assistant' ? 'model' : m.role,
+        parts
+      };
+    });
 
     // Multi-turn tool execution loop (up to 5 turns)
     let currentTurn = 0;

@@ -143,14 +143,22 @@ export const AiContextProvider = ({ children }) => {
     }
   }, [queryClient]);
 
-  // Send message using current active screenContext and activeFocus
-  const sendMessage = useCallback(async (content) => {
-    if (!content || !content.trim()) return;
+  // Send message using current active screenContext, activeFocus, and optional image attachment
+  const sendMessage = useCallback(async (content, attachment = null) => {
+    const trimmedContent = (content || '').trim();
+    if (!trimmedContent && !attachment) return;
 
     const userMsg = {
       id: `usr_${Date.now()}`,
       role: 'user',
-      content: content.trim(),
+      content: trimmedContent,
+      attachment: attachment ? {
+        dataUrl: attachment.dataUrl,
+        data: attachment.base64,
+        mimeType: attachment.mimeType || 'image/jpeg',
+        name: attachment.name || 'image.jpg',
+        size: attachment.size || 0
+      } : null,
       timestamp: new Date().toISOString()
     };
 
@@ -162,7 +170,12 @@ export const AiContextProvider = ({ children }) => {
     try {
       const apiMessages = updatedHistory.map(m => ({
         role: m.role,
-        content: m.content
+        content: m.content || '',
+        attachment: m.attachment ? {
+          mimeType: m.attachment.mimeType,
+          data: m.attachment.data,
+          name: m.attachment.name
+        } : null
       }));
 
       const currentScreen = screenContextRef.current;

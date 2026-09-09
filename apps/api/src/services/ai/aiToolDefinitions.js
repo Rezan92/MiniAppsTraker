@@ -294,6 +294,50 @@ export const AI_TOOLS = [
       required: ['job_id', 'description', 'cost']
     }
   },
+  {
+    name: 'log_job_materials_batch',
+    description: 'Record multiple separate material or supply expenses for a specific job in a single batch.',
+    parameters: {
+      type: 'OBJECT',
+      properties: {
+        job_id: {
+          type: 'STRING',
+          description: 'UUID or title of the target job'
+        },
+        store: {
+          type: 'STRING',
+          description: 'Retailer or supplier name (e.g. "The Home Depot", "Lowe\'s")'
+        },
+        purchase_date: {
+          type: 'STRING',
+          description: 'Date purchased in YYYY-MM-DD format (defaults to today)'
+        },
+        items: {
+          type: 'ARRAY',
+          description: 'List of material items to log',
+          items: {
+            type: 'OBJECT',
+            properties: {
+              description: {
+                type: 'STRING',
+                description: 'Name or description of the material or tool'
+              },
+              cost: {
+                type: 'NUMBER',
+                description: 'Total line cost in dollars'
+              },
+              notes: {
+                type: 'STRING',
+                description: 'Optional line notes or quantity'
+              }
+            },
+            required: ['description', 'cost']
+          }
+        }
+      },
+      required: ['job_id', 'items']
+    }
+  },
 
   // --- Invoicing & Billing Tools (Phase 3) ---
   {

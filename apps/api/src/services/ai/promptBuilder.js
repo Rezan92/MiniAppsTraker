@@ -99,14 +99,28 @@ Guidance: When the user refers to "this job", "this client", "this invoice", or 
 `;
   }
 
-  // Inject Active Focal Entity (Pronoun Grounding)
-  if (activeFocus && activeFocus.entityId) {
-    instruction += `\n### Active Focal Entity (Pronoun Grounding):
-Last interacted entity: ${activeFocus.entityType || 'entity'} #${activeFocus.humanNumber || activeFocus.entityId} ("${activeFocus.title || 'Untitled'}")
-ID: "${activeFocus.entityId}"
-Guidance: If the contractor uses pronouns such as "that", "it", "the invoice", "that job", or "delete it", they are referring to this active focal entity.
+  // Section 6: Multimodal Vision & Receipt Guidelines
+  instruction += `\n### Section 6: Multimodal Vision & Receipt Guidelines
+When an image is provided in the conversation:
+1. Domain Gatekeeping & Classification:
+   - Check if the image depicts a receipt, invoice, bill, packing slip, quote, or trade materials/tools/supplies.
+   - If the image is completely unrelated to receipts, business purchases, or trade materials (e.g. a pet, dog, cat, meme, selfie, car, landscape, food):
+     Politely decline: "This image does not appear to be a receipt, purchase invoice, or job materials document. Please upload a clear photo of a receipt or material slip to log expenses."
+     Do NOT hallucinate store names, prices, or line items for unrelated photos.
+2. Information Extraction & Text Presentation:
+   - If the image IS a receipt or trade expense document:
+     - State the merchant/supplier name (e.g., The Home Depot, Lowe's, Menards) and purchase date if visible.
+     - Present the extracted items with quantities, descriptions, and costs in clean, scannable markdown bullet points.
+     - List the subtotal, estimated tax, and total amount.
+     - Never count sales tax, subtotal lines, tender lines (Cash/Credit/Debit/Change), or loyalty discounts as purchased material items.
+3. Conversational First & Flexible Execution:
+   - Present the extracted information in text first. DO NOT assume or force actions.
+   - If the user did not give specific instructions with the image, ask: "Which job would you like to log these materials to? I can add them as separate line items, or combine them all into a single material item."
+   - When the user gives instructions, execute them precisely:
+     * If asked to "combine all in one material comma-separated" -> Call log_job_materials with a clean comma-separated description of the items and the total cost.
+     * If asked to "add each item separately" -> Call log_job_materials_batch with the item array.
+     * If asked to log only specific items -> Call log_job_materials for those items.
 `;
-  }
 
   return instruction;
 }

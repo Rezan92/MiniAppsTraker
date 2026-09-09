@@ -57,7 +57,22 @@ export const ChatMessage = ({ message }) => {
             : 'bg-white text-gray-800 border border-gray-200 rounded-bl-xs'
         }`}
       >
-        <div className="font-body-md text-sm">{formatText(message.content)}</div>
+        {/* User Attached Image (Multimodal) */}
+        {isUser && message.attachment && (
+          <div className="mb-2">
+            <img
+              src={message.attachment.dataUrl || `data:${message.attachment.mimeType || 'image/jpeg'};base64,${message.attachment.data}`}
+              alt={message.attachment.name || 'Attached photo'}
+              className="max-w-[220px] max-h-[160px] rounded-lg object-cover border border-white/20 shadow-xs cursor-pointer hover:opacity-95 transition-opacity"
+              onClick={() => {
+                const src = message.attachment.dataUrl || `data:${message.attachment.mimeType || 'image/jpeg'};base64,${message.attachment.data}`;
+                window.open(src, '_blank');
+              }}
+            />
+          </div>
+        )}
+
+        {message.content && <div className="font-body-md text-sm">{formatText(message.content)}</div>}
 
         {/* Rich Action Cards (Phase 3) */}
         {!isUser && message.confirmationData && (

@@ -4,6 +4,8 @@ import { useAi } from '../../hooks/api/useAi';
 import { useDraggableResizableWindow } from '../../hooks/ui/useDraggableResizableWindow';
 import { ChatMessage } from './ChatMessage';
 import { SuggestionChips } from './SuggestionChips';
+import { CameraCaptureModal } from './CameraCaptureModal';
+import { compressImage } from '../../utils/imageCompressor';
 
 export const AiCopilotWidget = () => {
   const { isOpen, toggleDrawer, closeDrawer, screenContext } = useAiContext();
@@ -39,22 +41,70 @@ export const AiCopilotWidget = () => {
   } = useDraggableResizableWindow();
 
   const [input, setInput] = useState('');
+  const [attachedImage, setAttachedImage] = useState(null);
+  const [isCameraOpen, setIsCameraOpen] = useState(false);
+  const [isDraggingFile, setIsDraggingFile] = useState(false);
+
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
   const fileInputRef = useRef(null);
+  const nativeCameraInputRef = useRef(null);
 
-  const handleFileSelect = (e) => {
-    const file = e.target.files?.[0];
+  const processAndStageImage = async (file) => {
     if (!file) return;
 
-    if (file.size > 10 * 1024 * 1024) {
-      alert('Receipt image is too large. Please select an image under 10MB.');
-      e.target.value = '';
+    if (!file.type || !file.type.startsWith('image/')) {
+      alert('Please select an image file (JPEG, PNG, WebP, HEIC).');
       return;
     }
 
-    uploadReceipt(file);
-    e.target.value = '';
+    if (file.size > 15 * 1024 * 1024) {
+      alert('Image file exceeds 15MB limit. Please choose a smaller photo.');
+      return;
+    }
+
+    try {
+      const compressed = await compressImage(file, 1920, 0.85);
+      setAttachedImage(compressed);
+      setTimeout(() => inputRef.current?.focus(), 50);
+    } catch (err) {
+      console.error('Failed to compress image:', err);
+      alert('Failed to process image file. Please try another image.');
+    }
+  };
+
+  const handleCameraClick = () => {
+    if (isMobile) {
+      nativeCameraInputRef.current?.click();
+    } else {
+      setIsCameraOpen(true);
+    }
+  };
+
+  const handleDragOver = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.dataTransfer.types && Array.from(e.dataTransfer.types).includes('Files')) {
+      setIsDraggingFile(true);
+    }
+  };
+
+  const handleDragLeave = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!e.currentTarget.contains(e.relatedTarget)) {
+      setIsDraggingFile(false);
+    }
+  };
+
+  const handleDrop = async (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDraggingFile(false);
+    const file = e.dataTransfer.files?.[0];
+    if (file) {
+      await processAndStageImage(file);
+    }
   };
 
   // Auto-scroll on new messages
@@ -84,9 +134,10 @@ export const AiCopilotWidget = () => {
 
   const handleSend = (e) => {
     if (e) e.preventDefault();
-    if (!input.trim() || isLoading) return;
-    sendMessage(input);
+    if ((!input.trim() && !attachedImage) || isLoading) return;
+    sendMessage(input, attachedImage);
     setInput('');
+    setAttachedImage(null);
   };
 
   const getScreenFocusLabel = (sc) => {
@@ -159,6 +210,9 @@ export const AiCopilotWidget = () => {
       {/* Copilot Window (Floating on Desktop, Docked Drawer on Mobile) */}
       {isOpen && (
         <div
+          onDragOver={handleDragOver}
+          onDragLeave={handleDragLeave}
+          onDrop={handleDrop}
           style={
             isMobile
               ? undefined
@@ -172,12 +226,30 @@ export const AiCopilotWidget = () => {
           }
           className={
             isMobile
-              ? "fixed inset-y-0 right-0 z-50 w-full sm:w-[440px] bg-white border-l border-gray-200 shadow-2xl flex flex-col animate-in slide-in-from-right duration-200"
-              : `fixed z-50 bg-white border border-gray-300 shadow-2xl rounded-2xl flex flex-col overflow-hidden transition-[box-shadow] duration-150 ${
+              ? "fixed inset-y-0 right-0 z-50 w-full sm:w-[440px] bg-white border-l border-gray-200 shadow-2xl flex flex-col animate-in slide-in-from-right duration-200 relative"
+              : `fixed z-50 bg-white border border-gray-300 shadow-2xl rounded-2xl flex flex-col overflow-hidden transition-[box-shadow] duration-150 relative ${
                   isDragging || isResizing ? 'select-none shadow-3xl ring-2 ring-primary/40' : ''
                 }`
           }
         >
+          {/* Drag & Drop File Overlay */}
+          {isDraggingFile && (
+            <div className="absolute inset-0 z-50 bg-black/85 backdrop-blur-xs border-2 border-dashed border-primary flex flex-col items-center justify-center p-6 text-center text-white pointer-events-none rounded-2xl animate-in fade-in duration-100">
+              <span className="material-symbols-outlined text-[48px] text-primary mb-2 animate-bounce">cloud_upload</span>
+              <p className="font-bold text-base">Drop receipt or photo here</p>
+              <p className="text-xs text-gray-400 mt-1">Image will be staged for your next message</p>
+            </div>
+          )}
+
+          {/* Live Camera Snapshot Modal */}
+          <CameraCaptureModal
+            isOpen={isCameraOpen}
+            onClose={() => setIsCameraOpen(false)}
+            onCapture={(compressed) => {
+              setAttachedImage(compressed);
+              setTimeout(() => inputRef.current?.focus(), 50);
+            }}
+          />
           {/* Header Bar */}
           <div
             onPointerDown={handleDragStart}
@@ -357,25 +429,82 @@ export const AiCopilotWidget = () => {
               </div>
 
               {/* Input Area */}
-              <form onSubmit={handleSend} className="p-3 bg-white border-t border-gray-200">
+              <form onSubmit={handleSend} className="p-3 bg-white border-t border-gray-200 relative">
+                {/* Hidden File Inputs */}
+                <input
+                  type="file"
+                  ref={nativeCameraInputRef}
+                  accept="image/*"
+                  capture="environment"
+                  className="hidden"
+                  onChange={(e) => {
+                    if (e.target.files?.[0]) processAndStageImage(e.target.files[0]);
+                    e.target.value = '';
+                  }}
+                />
                 <input
                   type="file"
                   ref={fileInputRef}
                   accept="image/jpeg,image/png,image/webp,image/heic,image/jpg"
-                  capture="environment"
                   className="hidden"
-                  onChange={handleFileSelect}
+                  onChange={(e) => {
+                    if (e.target.files?.[0]) processAndStageImage(e.target.files[0]);
+                    e.target.value = '';
+                  }}
                 />
-                <div className="flex items-center gap-1.5 bg-gray-50 border border-gray-300 rounded-xl px-2.5 py-1.5 focus-within:border-primary focus-within:ring-1 focus-within:ring-primary focus-within:bg-white transition-all">
+
+                {/* Staged Image Thumbnail Chip */}
+                {attachedImage && (
+                  <div className="mb-2 px-2.5 py-1.5 flex items-center justify-between bg-gray-100 border border-gray-200 rounded-xl shadow-xs animate-in fade-in duration-150">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <img
+                        src={attachedImage.dataUrl}
+                        alt="Staged receipt"
+                        className="w-9 h-9 object-cover rounded-lg border border-gray-300 shrink-0"
+                      />
+                      <div className="min-w-0">
+                        <p className="text-xs font-semibold text-gray-800 truncate max-w-[180px]">
+                          {attachedImage.name}
+                        </p>
+                        <p className="text-[10px] text-gray-500">
+                          {(attachedImage.size / 1024).toFixed(0)} KB • Ready to send
+                        </p>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setAttachedImage(null)}
+                      className="p-1 text-gray-400 hover:text-red-500 rounded-md hover:bg-gray-200 transition-colors cursor-pointer shrink-0"
+                      title="Remove image"
+                    >
+                      <span className="material-symbols-outlined text-[16px] block">close</span>
+                    </button>
+                  </div>
+                )}
+
+                <div className="flex items-center gap-1 bg-gray-50 border border-gray-300 rounded-xl px-2 py-1.5 focus-within:border-primary focus-within:ring-1 focus-within:ring-primary focus-within:bg-white transition-all">
+                  {/* Camera Button */}
                   <button
                     type="button"
-                    onClick={() => fileInputRef.current?.click()}
+                    onClick={handleCameraClick}
                     disabled={isLoading}
-                    title="Upload or snap photo of receipt"
+                    title="Take photo with camera"
                     className="p-1 text-gray-400 hover:text-gray-700 hover:bg-gray-200/60 rounded-lg transition-colors cursor-pointer shrink-0 disabled:opacity-30 disabled:cursor-not-allowed"
                   >
                     <span className="material-symbols-outlined text-[20px] block">photo_camera</span>
                   </button>
+
+                  {/* Upload Image File Button */}
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={isLoading}
+                    title="Upload image or receipt file"
+                    className="p-1 text-gray-400 hover:text-gray-700 hover:bg-gray-200/60 rounded-lg transition-colors cursor-pointer shrink-0 disabled:opacity-30 disabled:cursor-not-allowed"
+                  >
+                    <span className="material-symbols-outlined text-[20px] block">attach_file</span>
+                  </button>
+
                   <input
                     ref={inputRef}
                     type="text"
@@ -383,16 +512,19 @@ export const AiCopilotWidget = () => {
                     onChange={(e) => setInput(e.target.value)}
                     onKeyDown={handleInputKeyDown}
                     placeholder={
-                      screenContext?.screen === 'JobDetails'
+                      attachedImage
+                        ? "Add instructions for this photo (optional)..."
+                        : screenContext?.screen === 'JobDetails'
                         ? "Ask about this job, log hours, or snap receipt..."
-                        : "Ask Copilot or upload receipt to log materials..."
+                        : "Ask Copilot or drop receipt to log materials..."
                     }
                     disabled={isLoading}
                     className="flex-1 bg-transparent border-none text-sm text-gray-800 focus:outline-none placeholder-gray-400 py-1 min-w-0"
                   />
+
                   <button
                     type="submit"
-                    disabled={!input.trim() || isLoading}
+                    disabled={(!input.trim() && !attachedImage) || isLoading}
                     className="p-1.5 bg-primary text-black rounded-lg hover:bg-opacity-90 disabled:opacity-30 disabled:cursor-not-allowed transition-all flex items-center justify-center shrink-0 cursor-pointer shadow-xs"
                   >
                     <span className="material-symbols-outlined text-[18px]">send</span>

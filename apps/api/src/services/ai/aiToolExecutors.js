@@ -377,6 +377,31 @@ export async function executeAiTool(toolName, args = {}, { tenantId, userId }) {
         }
       }
 
+      case 'log_job_materials_batch': {
+        const { job_id, store, purchase_date, items } = args;
+        const resolution = await resolveJobOrError(job_id, tenantId);
+        if (resolution.error) return { error: resolution.error };
+        const job = resolution.job;
+
+        try {
+          const data = await jobService.logJobMaterialsBatch({
+            tenantId,
+            userId,
+            jobId: job.id,
+            store,
+            purchaseDate: purchase_date,
+            items: (items || []).map(it => ({
+              description: it.description,
+              cost: it.cost,
+              notes: it.notes
+            }))
+          });
+          return { result: data, mutation: 'materials', entityId: job.id };
+        } catch (err) {
+          return { error: err.message };
+        }
+      }
+
       // --- Invoicing & Billing Tools (Phase 3 + Itemized Labor) ---
       case 'draft_invoice': {
         const { client_id, job_id, labor_title, due_date, tax_rate_percent, markup_amount, notes } = args;
