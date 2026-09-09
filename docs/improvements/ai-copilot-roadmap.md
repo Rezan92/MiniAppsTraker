@@ -47,9 +47,11 @@
 > **Objective:** Expand the AI from a Copilot into a fully autonomous workflow manager.
 
 - [x] **Vision / Multi-modal Input (Phase 8.1):**
-  - Contractors can capture or upload receipt photos directly in the AI Copilot.
-  - Multimodal OCR powered by Gemini (`gemini-3.1-flash-lite` default with dynamic model selection and `gemini-2.5-flash` fallback) extracts structured store, date, total, and line items with financial rounding.
-  - Interactive `ReceiptActionCard` enables line-item reviewing, editing, inclusion toggles, and atomic batch commit to `job_materials` via `jobService.logJobMaterialsBatch`.
+  - Contractors can capture (via live camera modal) or upload receipt and job-site photos directly into the multimodal AI Copilot.
+  - Multimodal vision powered by Gemini natively parses trade receipts, materials, and job details with prompt-driven formatting and automatic financial rounding.
+  - Autonomous batch material logging commits directly to `job_materials` via Gemini function calling and `jobService.logJobMaterialsBatch`.
+  - Multimodal conversational attachments in chat with sliding window context pruning: heavy base64 payloads are sent exclusively on active turns and pruned to lightweight text markers on subsequent turns, preventing token accumulation and context bloat across conversations.
+  - Full Work Item Lifecycle Management: Copilot can update or delete logged materials (by name, description, cost) and hours (by date, description, hours), strictly enforcing database integrity by preventing modifications to items currently locked to draft invoices (on_draft) or finalized invoices (billed).
 - [ ] **Live Voice Chat & Confirmation:**
   - Allow users to talk directly to the AI via voice to perform tasks hands-free.
   - When the AI receives a voice command, it must repeat the request back (improving and articulating the wording professionally) and ask for explicit confirmation before executing any actions.

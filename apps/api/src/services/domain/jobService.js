@@ -371,6 +371,13 @@ export async function updateJobHours({ tenantId, userId, jobId, hourId, updateDa
     throw err;
   }
 
+  if (existing.billing_status === 'on_draft') {
+    const err = new Error('Cannot modify items currently attached to a draft invoice. Remove the item from the draft invoice first.');
+    err.status = 403;
+    err.code = 'ITEM_ON_DRAFT';
+    throw err;
+  }
+
   const patch = { ...updateData };
   if (patch.description !== undefined) {
     const trimmed = patch.description.trim();
@@ -460,9 +467,16 @@ export async function deleteJobHours({ tenantId, userId, jobId, hourId }) {
   }
 
   if (existing.billing_status === 'billed') {
-    const err = new Error('Cannot modify items that have already been billed.');
+    const err = new Error('Cannot delete items that have already been billed.');
     err.status = 403;
     err.code = 'ITEM_LOCKED';
+    throw err;
+  }
+
+  if (existing.billing_status === 'on_draft') {
+    const err = new Error('Cannot delete items currently attached to a draft invoice. Remove the item from the draft invoice first.');
+    err.status = 403;
+    err.code = 'ITEM_ON_DRAFT';
     throw err;
   }
 
@@ -690,6 +704,13 @@ export async function updateJobMaterials({ tenantId, userId, jobId, materialId, 
     throw err;
   }
 
+  if (existing.billing_status === 'on_draft') {
+    const err = new Error('Cannot modify items currently attached to a draft invoice. Remove the item from the draft invoice first.');
+    err.status = 403;
+    err.code = 'ITEM_ON_DRAFT';
+    throw err;
+  }
+
   const patch = { ...updateData };
   if (patch.description !== undefined) {
     const trimmed = patch.description.trim();
@@ -776,9 +797,16 @@ export async function deleteJobMaterials({ tenantId, userId, jobId, materialId }
   }
 
   if (existing.billing_status === 'billed') {
-    const err = new Error('Cannot modify items that have already been billed.');
+    const err = new Error('Cannot delete items that have already been billed.');
     err.status = 403;
     err.code = 'ITEM_LOCKED';
+    throw err;
+  }
+
+  if (existing.billing_status === 'on_draft') {
+    const err = new Error('Cannot delete items currently attached to a draft invoice. Remove the item from the draft invoice first.');
+    err.status = 403;
+    err.code = 'ITEM_ON_DRAFT';
     throw err;
   }
 

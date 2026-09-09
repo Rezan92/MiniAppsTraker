@@ -228,7 +228,7 @@ export const AI_TOOLS = [
   },
   {
     name: 'update_job_hours',
-    description: 'Update an existing logged work hours entry for a job (e.g. adjust hours worked, work date, or task description). If hour_id is omitted, updates the most recent hours entry for the job.',
+    description: 'Update an existing logged work hours entry for a job (e.g. adjust hours worked, work date, start/end time, or task description). Targets the entry by UUID, work date, or task description keyword. Cannot modify entries linked to draft or billed invoices.',
     parameters: {
       type: 'OBJECT',
       properties: {
@@ -238,11 +238,11 @@ export const AI_TOOLS = [
         },
         hour_id: {
           type: 'STRING',
-          description: 'Optional UUID of the specific hours record. If omitted, updates the most recent hours entry for the job.'
+          description: 'Optional UUID, work date (e.g. "2026-05-22"), or task description of the hours record. If omitted, targets the most recent hours entry.'
         },
         hours: {
           type: 'NUMBER',
-          description: 'Updated number of hours worked (e.g. 4)'
+          description: 'Updated number of hours worked (e.g. 4.5)'
         },
         date: {
           type: 'STRING',
@@ -251,9 +251,35 @@ export const AI_TOOLS = [
         description: {
           type: 'STRING',
           description: 'Updated description of work completed'
+        },
+        start_time: {
+          type: 'STRING',
+          description: 'Updated start time (e.g. "08:30 AM")'
+        },
+        end_time: {
+          type: 'STRING',
+          description: 'Updated end time (e.g. "01:00 PM")'
         }
       },
       required: ['job_id']
+    }
+  },
+  {
+    name: 'delete_job_hours',
+    description: 'Delete a logged work hours entry from a job. Cannot delete entries attached to a draft invoice (on_draft) or finalized invoice (billed).',
+    parameters: {
+      type: 'OBJECT',
+      properties: {
+        job_id: {
+          type: 'STRING',
+          description: 'UUID or title of the job'
+        },
+        hour_id: {
+          type: 'STRING',
+          description: 'UUID, work date, or task description keyword identifying the hours record to delete'
+        }
+      },
+      required: ['job_id', 'hour_id']
     }
   },
   {
@@ -336,6 +362,66 @@ export const AI_TOOLS = [
         }
       },
       required: ['job_id', 'items']
+    }
+  },
+  {
+    name: 'update_job_material',
+    description: 'Update an existing material/expense item on a job by name, description, cost, or UUID (e.g. change price, description, store, or notes). Cannot modify items linked to draft or billed invoices.',
+    parameters: {
+      type: 'OBJECT',
+      properties: {
+        job_id: {
+          type: 'STRING',
+          description: 'UUID or title of the job'
+        },
+        material_id: {
+          type: 'STRING',
+          description: 'UUID, item name (e.g. "Homer Bucket", "sponge"), or price of the material to update'
+        },
+        description: {
+          type: 'STRING',
+          description: 'Updated item description or material name'
+        },
+        cost: {
+          type: 'NUMBER',
+          description: 'Updated total purchase cost in dollars'
+        },
+        store: {
+          type: 'STRING',
+          description: 'Updated retailer or supplier name (e.g. "Home Depot")'
+        },
+        purchase_date: {
+          type: 'STRING',
+          description: 'Updated purchase date in YYYY-MM-DD format'
+        },
+        notes: {
+          type: 'STRING',
+          description: 'Updated receipt notes'
+        },
+        is_from_stock: {
+          type: 'BOOLEAN',
+          description: 'Whether material came from inventory stock'
+        }
+      },
+      required: ['job_id', 'material_id']
+    }
+  },
+  {
+    name: 'delete_job_material',
+    description: 'Delete a material/expense item from a job. Cannot delete items attached to a draft invoice (on_draft) or finalized invoice (billed).',
+    parameters: {
+      type: 'OBJECT',
+      properties: {
+        job_id: {
+          type: 'STRING',
+          description: 'UUID or title of the job'
+        },
+        material_id: {
+          type: 'STRING',
+          description: 'UUID, item name (e.g. "Homer Bucket", "sponge"), or description of the material to delete'
+        }
+      },
+      required: ['job_id', 'material_id']
     }
   },
 

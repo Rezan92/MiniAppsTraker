@@ -22,7 +22,6 @@ export const useAi = () => {
     activeFocus: context.activeFocus,
     availableModels: context.availableModels,
     sendMessage: context.sendMessage,
-    uploadReceipt: context.uploadReceipt,
     confirmPendingAction: context.confirmPendingAction,
     clearChat: context.clearChat
   };

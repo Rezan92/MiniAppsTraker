@@ -2,7 +2,6 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { ActionConfirmationCard } from './ActionConfirmationCard';
 import { InvoiceActionCard } from './InvoiceActionCard';
-import { ReceiptActionCard } from './ReceiptActionCard';
 
 export const ChatMessage = ({ message }) => {
   const isUser = message.role === 'user';
@@ -60,15 +59,22 @@ export const ChatMessage = ({ message }) => {
         {/* User Attached Image (Multimodal) */}
         {isUser && message.attachment && (
           <div className="mb-2">
-            <img
-              src={message.attachment.dataUrl || `data:${message.attachment.mimeType || 'image/jpeg'};base64,${message.attachment.data}`}
-              alt={message.attachment.name || 'Attached photo'}
-              className="max-w-[220px] max-h-[160px] rounded-lg object-cover border border-white/20 shadow-xs cursor-pointer hover:opacity-95 transition-opacity"
-              onClick={() => {
-                const src = message.attachment.dataUrl || `data:${message.attachment.mimeType || 'image/jpeg'};base64,${message.attachment.data}`;
-                window.open(src, '_blank');
-              }}
-            />
+            {(message.attachment.dataUrl || message.attachment.data) ? (
+              <img
+                src={message.attachment.dataUrl || `data:${message.attachment.mimeType || 'image/jpeg'};base64,${message.attachment.data}`}
+                alt={message.attachment.name || 'Attached photo'}
+                className="max-w-[220px] max-h-[160px] rounded-lg object-cover border border-white/20 shadow-xs cursor-pointer hover:opacity-95 transition-opacity"
+                onClick={() => {
+                  const src = message.attachment.dataUrl || `data:${message.attachment.mimeType || 'image/jpeg'};base64,${message.attachment.data}`;
+                  window.open(src, '_blank');
+                }}
+              />
+            ) : (
+              <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded bg-white/10 text-xs text-gray-300 border border-white/10">
+                <span className="material-symbols-outlined text-[14px]">image</span>
+                <span>{message.attachment.name || 'Attached Photo'}</span>
+              </div>
+            )}
           </div>
         )}
 
@@ -81,10 +87,6 @@ export const ChatMessage = ({ message }) => {
 
         {!isUser && message.invoiceData && (
           <InvoiceActionCard invoiceData={message.invoiceData} />
-        )}
-
-        {!isUser && message.receiptData && (
-          <ReceiptActionCard receiptData={message.receiptData} />
         )}
 
         {/* Action Link Badges if entities were created */}

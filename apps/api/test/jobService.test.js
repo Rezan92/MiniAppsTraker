@@ -6,7 +6,11 @@ import {
   updateJobStatus, 
   deleteJob, 
   logJobHours, 
+  updateJobHours,
+  deleteJobHours,
   logJobMaterials,
+  updateJobMaterials,
+  deleteJobMaterials,
   logJobMaterialsBatch,
   normalizeTimeTo24Hour,
   addHoursToTime,
@@ -53,6 +57,34 @@ test('jobService guards require tenantId for all operations', async () => {
   await assert.rejects(
     async () => {
       await logJobMaterials({ tenantId: null, jobId: 'j-1', materialData: {} });
+    },
+    { message: 'Tenant context missing' }
+  );
+
+  await assert.rejects(
+    async () => {
+      await updateJobHours({ tenantId: null, jobId: 'j-1', hourId: 'h-1', updateData: {} });
+    },
+    { message: 'Tenant context missing' }
+  );
+
+  await assert.rejects(
+    async () => {
+      await deleteJobHours({ tenantId: null, jobId: 'j-1', hourId: 'h-1' });
+    },
+    { message: 'Tenant context missing' }
+  );
+
+  await assert.rejects(
+    async () => {
+      await updateJobMaterials({ tenantId: null, jobId: 'j-1', materialId: 'm-1', updateData: {} });
+    },
+    { message: 'Tenant context missing' }
+  );
+
+  await assert.rejects(
+    async () => {
+      await deleteJobMaterials({ tenantId: null, jobId: 'j-1', materialId: 'm-1' });
     },
     { message: 'Tenant context missing' }
   );

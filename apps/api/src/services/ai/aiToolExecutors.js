@@ -311,25 +311,32 @@ export async function executeAiTool(toolName, args = {}, { tenantId, userId }) {
       }
 
       case 'update_job_hours': {
-        const { job_id, hour_id, hours, description, date } = args;
+        const { job_id, hour_id, hours, description, date, start_time, end_time } = args;
         const resolution = await resolveJobOrError(job_id, tenantId);
         if (resolution.error) return { error: resolution.error };
         const job = resolution.job;
 
-        let targetHourId = hour_id;
-        if (!targetHourId) {
-          const { data: recentHours, error: findErr } = await supabase
-            .from('job_hours')
-            .select('id')
-            .eq('job_id', job.id)
-            .eq('tenant_id', tenantId)
-            .order('created_at', { ascending: false })
-            .limit(1);
+        const hourRes = await entityResolver.resolveJobHour(hour_id, job.id, tenantId);
+        if (hourRes.status === 'not_found') {
+          return { error: `No matching hours record found for ${hour_id ? `"${hour_id}" on ` : ''}Job "${job.title}".` };
+        }
+        if (hourRes.status === 'ambiguous') {
+          const list = hourRes.candidates.map(h => `${h.date}: ${h.hours}hrs ("${h.description || 'work'}")`).join(', ');
+          return { error: `Multiple hours entries match "${hour_id}": ${list}. Please specify which one to update.` };
+        }
+        const targetHour = hourRes.entity;
 
-          if (findErr || !recentHours || recentHours.length === 0) {
-            return { error: 'No recent hours entry found to update for this job.' };
+        if (targetHour.billing_status === 'on_draft') {
+          let invNumber = targetHour.invoice_id;
+          if (targetHour.invoice_id) {
+            const { data: inv } = await supabase.from('invoices').select('invoice_number').eq('id', targetHour.invoice_id).single();
+            if (inv?.invoice_number) invNumber = `#${inv.invoice_number}`;
           }
-          targetHourId = recentHours[0].id;
+          return { error: `Cannot modify hours for "${targetHour.description || targetHour.date}" because it is currently linked to Draft Invoice ${invNumber || ''}. Please remove it from the draft invoice first, or delete the draft invoice.` };
+        }
+
+        if (targetHour.billing_status === 'billed') {
+          return { error: `Cannot modify hours for "${targetHour.description || targetHour.date}" because it has already been finalized on a billed invoice.` };
         }
 
         try {
@@ -337,15 +344,63 @@ export async function executeAiTool(toolName, args = {}, { tenantId, userId }) {
           if (hours !== undefined) updateData.hours = hours;
           if (description !== undefined) updateData.description = description;
           if (date !== undefined) updateData.date = date;
+          if (start_time !== undefined) updateData.start_time = start_time;
+          if (end_time !== undefined) updateData.end_time = end_time;
 
           const data = await jobService.updateJobHours({
             tenantId,
             userId,
             jobId: job.id,
-            hourId: targetHourId,
+            hourId: targetHour.id,
             updateData
           });
           return { result: data, mutation: 'hours', entityId: job.id };
+        } catch (err) {
+          return { error: err.message };
+        }
+      }
+
+      case 'delete_job_hours': {
+        const { job_id, hour_id } = args;
+        const resolution = await resolveJobOrError(job_id, tenantId);
+        if (resolution.error) return { error: resolution.error };
+        const job = resolution.job;
+
+        const hourRes = await entityResolver.resolveJobHour(hour_id, job.id, tenantId);
+        if (hourRes.status === 'not_found') {
+          return { error: `No matching hours record found for "${hour_id}" on Job "${job.title}".` };
+        }
+        if (hourRes.status === 'ambiguous') {
+          const list = hourRes.candidates.map(h => `${h.date}: ${h.hours}hrs ("${h.description || 'work'}")`).join(', ');
+          return { error: `Multiple hours entries match "${hour_id}": ${list}. Please specify which one to delete.` };
+        }
+        const targetHour = hourRes.entity;
+
+        if (targetHour.billing_status === 'on_draft') {
+          let invNumber = targetHour.invoice_id;
+          if (targetHour.invoice_id) {
+            const { data: inv } = await supabase.from('invoices').select('invoice_number').eq('id', targetHour.invoice_id).single();
+            if (inv?.invoice_number) invNumber = `#${inv.invoice_number}`;
+          }
+          return { error: `Cannot delete hours entry "${targetHour.description || targetHour.date}" because it is currently linked to Draft Invoice ${invNumber || ''}. Please remove it from the draft invoice first, or delete the draft invoice.` };
+        }
+
+        if (targetHour.billing_status === 'billed') {
+          return { error: `Cannot delete hours entry "${targetHour.description || targetHour.date}" because it has already been finalized on a billed invoice.` };
+        }
+
+        try {
+          await jobService.deleteJobHours({
+            tenantId,
+            userId,
+            jobId: job.id,
+            hourId: targetHour.id
+          });
+          return {
+            result: { success: true, deletedHour: targetHour, message: `Successfully deleted ${targetHour.hours} hrs ("${targetHour.description || 'work'}") from Job "${job.title}".` },
+            mutation: 'hours',
+            entityId: job.id
+          };
         } catch (err) {
           return { error: err.message };
         }
@@ -397,6 +452,103 @@ export async function executeAiTool(toolName, args = {}, { tenantId, userId }) {
             }))
           });
           return { result: data, mutation: 'materials', entityId: job.id };
+        } catch (err) {
+          return { error: err.message };
+        }
+      }
+
+      case 'update_job_material': {
+        const { job_id, material_id, description, cost, store, purchase_date, notes, is_from_stock } = args;
+        const resolution = await resolveJobOrError(job_id, tenantId);
+        if (resolution.error) return { error: resolution.error };
+        const job = resolution.job;
+
+        const matRes = await entityResolver.resolveJobMaterial(material_id, job.id, tenantId);
+        if (matRes.status === 'not_found') {
+          return { error: `No matching material found for "${material_id}" on Job "${job.title}".` };
+        }
+        if (matRes.status === 'ambiguous') {
+          const list = matRes.candidates.map(m => `"${m.description}" ($${m.cost})`).join(', ');
+          return { error: `Multiple materials match "${material_id}": ${list}. Please specify which one to update.` };
+        }
+        const targetMaterial = matRes.entity;
+
+        if (targetMaterial.billing_status === 'on_draft') {
+          let invNumber = targetMaterial.invoice_id;
+          if (targetMaterial.invoice_id) {
+            const { data: inv } = await supabase.from('invoices').select('invoice_number').eq('id', targetMaterial.invoice_id).single();
+            if (inv?.invoice_number) invNumber = `#${inv.invoice_number}`;
+          }
+          return { error: `Cannot modify material "${targetMaterial.description}" because it is currently linked to Draft Invoice ${invNumber || ''}. Please remove it from the draft invoice first, or delete the draft invoice.` };
+        }
+
+        if (targetMaterial.billing_status === 'billed') {
+          return { error: `Cannot modify material "${targetMaterial.description}" because it has already been finalized on a billed invoice.` };
+        }
+
+        try {
+          const updateData = {};
+          if (description !== undefined) updateData.description = description;
+          if (cost !== undefined) updateData.cost = cost;
+          if (store !== undefined) updateData.store = store;
+          if (purchase_date !== undefined) updateData.purchase_date = purchase_date;
+          if (notes !== undefined) updateData.notes = notes;
+          if (is_from_stock !== undefined) updateData.is_from_stock = is_from_stock;
+
+          const data = await jobService.updateJobMaterials({
+            tenantId,
+            userId,
+            jobId: job.id,
+            materialId: targetMaterial.id,
+            updateData
+          });
+          return { result: data, mutation: 'materials', entityId: job.id };
+        } catch (err) {
+          return { error: err.message };
+        }
+      }
+
+      case 'delete_job_material': {
+        const { job_id, material_id } = args;
+        const resolution = await resolveJobOrError(job_id, tenantId);
+        if (resolution.error) return { error: resolution.error };
+        const job = resolution.job;
+
+        const matRes = await entityResolver.resolveJobMaterial(material_id, job.id, tenantId);
+        if (matRes.status === 'not_found') {
+          return { error: `No matching material found for "${material_id}" on Job "${job.title}".` };
+        }
+        if (matRes.status === 'ambiguous') {
+          const list = matRes.candidates.map(m => `"${m.description}" ($${m.cost})`).join(', ');
+          return { error: `Multiple materials match "${material_id}": ${list}. Please specify which one to delete.` };
+        }
+        const targetMaterial = matRes.entity;
+
+        if (targetMaterial.billing_status === 'on_draft') {
+          let invNumber = targetMaterial.invoice_id;
+          if (targetMaterial.invoice_id) {
+            const { data: inv } = await supabase.from('invoices').select('invoice_number').eq('id', targetMaterial.invoice_id).single();
+            if (inv?.invoice_number) invNumber = `#${inv.invoice_number}`;
+          }
+          return { error: `Cannot delete material "${targetMaterial.description}" because it is currently linked to Draft Invoice ${invNumber || ''}. Please remove it from the draft invoice first, or delete the draft invoice.` };
+        }
+
+        if (targetMaterial.billing_status === 'billed') {
+          return { error: `Cannot delete material "${targetMaterial.description}" because it has already been finalized on a billed invoice.` };
+        }
+
+        try {
+          await jobService.deleteJobMaterials({
+            tenantId,
+            userId,
+            jobId: job.id,
+            materialId: targetMaterial.id
+          });
+          return {
+            result: { success: true, deletedMaterial: targetMaterial, message: `Successfully deleted "${targetMaterial.description}" ($${targetMaterial.cost}) from Job "${job.title}".` },
+            mutation: 'materials',
+            entityId: job.id
+          };
         } catch (err) {
           return { error: err.message };
         }

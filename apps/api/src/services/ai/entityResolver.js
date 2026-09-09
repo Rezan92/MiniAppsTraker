@@ -201,5 +201,164 @@ export const entityResolver = {
     }
 
     return { status: 'ambiguous', candidates: fuzzyMatches };
+  },
+
+  /**
+   * Resolves a job material item by UUID, description substring, or cost.
+   * @param {string} identifier - UUID, description (e.g. "Homer Bucket", "sponge"), or cost
+   * @param {string} jobId - Job boundary
+   * @param {string} tenantId - Tenant boundary
+   * @returns {Promise<{ status: 'resolved'|'ambiguous'|'not_found', entity?: any, candidates?: any[] }>}
+   */
+  async resolveJobMaterial(identifier, jobId, tenantId) {
+    if (!identifier || !jobId || !tenantId) return { status: 'not_found' };
+    const raw = String(identifier).trim();
+
+    // Verify job exists and belongs to tenant
+    const { data: job, error: jobErr } = await supabase
+      .from('jobs')
+      .select('id')
+      .eq('id', jobId)
+      .eq('tenant_id', tenantId)
+      .single();
+
+    if (jobErr || !job) {
+      return { status: 'not_found' };
+    }
+
+    // 1. Fetch all materials for this job
+    const { data: materials, error } = await supabase
+      .from('job_materials')
+      .select('*')
+      .eq('job_id', jobId)
+      .order('created_at', { ascending: false });
+
+    if (error || !materials || materials.length === 0) {
+      return { status: 'not_found' };
+    }
+
+    // 2. Direct UUID Match
+    if (UUID_REGEX.test(raw)) {
+      const match = materials.find(m => m.id.toLowerCase() === raw.toLowerCase());
+      if (match) return { status: 'resolved', entity: match };
+    }
+
+    // 3. Exact Description Match (case-insensitive)
+    const exactMatches = materials.filter(m => m.description?.toLowerCase() === raw.toLowerCase());
+    if (exactMatches.length === 1) {
+      return { status: 'resolved', entity: exactMatches[0] };
+    }
+    if (exactMatches.length > 1) {
+      return { status: 'ambiguous', candidates: exactMatches };
+    }
+
+    // 4. Substring Description Match (case-insensitive)
+    const lowerRaw = raw.toLowerCase().replace(/^\$/, '');
+    const substringMatches = materials.filter(m => 
+      m.description?.toLowerCase().includes(lowerRaw) ||
+      (m.store && m.store.toLowerCase().includes(lowerRaw))
+    );
+
+    if (substringMatches.length === 1) {
+      return { status: 'resolved', entity: substringMatches[0] };
+    }
+    if (substringMatches.length > 1) {
+      return { status: 'ambiguous', candidates: substringMatches };
+    }
+
+    // 5. Cost Match (if identifier is a number like 45.80 or $45.80)
+    const parsedCost = parseFloat(lowerRaw);
+    if (!isNaN(parsedCost)) {
+      const costMatches = materials.filter(m => Math.abs(Number(m.cost) - parsedCost) < 0.01);
+      if (costMatches.length === 1) {
+        return { status: 'resolved', entity: costMatches[0] };
+      }
+      if (costMatches.length > 1) {
+        return { status: 'ambiguous', candidates: costMatches };
+      }
+    }
+
+    return { status: 'not_found' };
+  },
+
+  /**
+   * Resolves a job hours record by UUID, work date, or task description.
+   * @param {string} [identifier] - UUID, date ("2026-05-22"), or task description ("drywall")
+   * @param {string} jobId - Job boundary
+   * @param {string} tenantId - Tenant boundary
+   * @returns {Promise<{ status: 'resolved'|'ambiguous'|'not_found', entity?: any, candidates?: any[] }>}
+   */
+  async resolveJobHour(identifier, jobId, tenantId) {
+    if (!jobId || !tenantId) return { status: 'not_found' };
+
+    // Verify job exists and belongs to tenant
+    const { data: job, error: jobErr } = await supabase
+      .from('jobs')
+      .select('id')
+      .eq('id', jobId)
+      .eq('tenant_id', tenantId)
+      .single();
+
+    if (jobErr || !job) {
+      return { status: 'not_found' };
+    }
+
+    // Fetch all hours for this job
+    const { data: hoursList, error } = await supabase
+      .from('job_hours')
+      .select('*')
+      .eq('job_id', jobId)
+      .order('created_at', { ascending: false });
+
+    if (error || !hoursList || hoursList.length === 0) {
+      return { status: 'not_found' };
+    }
+
+    // If no identifier provided, default to the most recent unbilled entry (or most recent entry)
+    if (!identifier || !String(identifier).trim()) {
+      const unbilled = hoursList.find(h => h.billing_status === 'unbilled');
+      return { status: 'resolved', entity: unbilled || hoursList[0] };
+    }
+
+    const raw = String(identifier).trim();
+
+    // 1. Direct UUID Match
+    if (UUID_REGEX.test(raw)) {
+      const match = hoursList.find(h => h.id.toLowerCase() === raw.toLowerCase());
+      if (match) return { status: 'resolved', entity: match };
+    }
+
+    // 2. Exact Date Match (YYYY-MM-DD)
+    const dateMatches = hoursList.filter(h => h.date === raw);
+    if (dateMatches.length === 1) {
+      return { status: 'resolved', entity: dateMatches[0] };
+    }
+    if (dateMatches.length > 1) {
+      return { status: 'ambiguous', candidates: dateMatches };
+    }
+
+    // 3. Substring Task Description Match
+    const lowerRaw = raw.toLowerCase();
+    const descMatches = hoursList.filter(h => h.description?.toLowerCase().includes(lowerRaw));
+    if (descMatches.length === 1) {
+      return { status: 'resolved', entity: descMatches[0] };
+    }
+    if (descMatches.length > 1) {
+      return { status: 'ambiguous', candidates: descMatches };
+    }
+
+    // 4. Hours Amount Match (e.g. "4 hours" or "4")
+    const parsedHours = parseFloat(raw.replace(/[^\d.]/g, ''));
+    if (!isNaN(parsedHours)) {
+      const hoursAmountMatches = hoursList.filter(h => Math.abs(Number(h.hours) - parsedHours) < 0.01);
+      if (hoursAmountMatches.length === 1) {
+        return { status: 'resolved', entity: hoursAmountMatches[0] };
+      }
+      if (hoursAmountMatches.length > 1) {
+        return { status: 'ambiguous', candidates: hoursAmountMatches };
+      }
+    }
+
+    return { status: 'not_found' };
   }
 };

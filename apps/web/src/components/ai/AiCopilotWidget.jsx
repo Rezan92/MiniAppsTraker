@@ -14,7 +14,6 @@ export const AiCopilotWidget = () => {
     messages, 
     isLoading, 
     sendMessage, 
-    uploadReceipt,
     clearChat, 
     selectedModel, 
     setSelectedModel, 
