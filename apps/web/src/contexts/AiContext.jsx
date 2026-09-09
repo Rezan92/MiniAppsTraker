@@ -10,11 +10,11 @@ import {
   invalidateInvoiceCascade 
 } from '../lib/cacheInvalidator';
 
+export const DEFAULT_AI_MODEL = 'gemini-3.1-flash-lite';
+
 export const AVAILABLE_MODELS = [
-  { id: 'gemini-2.5-flash', label: 'Gemini 2.5 Flash' },
-  { id: 'gemini-2.5-flash-lite', label: 'Gemini 2.5 Flash Lite' },
-  { id: 'gemini-3-flash', label: 'Gemini 3 Flash' },
   { id: 'gemini-3.1-flash-lite', label: 'Gemini 3.1 Flash Lite' },
+  { id: 'gemini-3-flash', label: 'Gemini 3 Flash' },
   { id: 'gemini-3.5-flash', label: 'Gemini 3.5 Flash' },
   { id: 'gemini-3.5-flash-lite', label: 'Gemini 3.5 Flash Lite' },
   { id: 'gemini-3.6-flash', label: 'Gemini 3.6 Flash' },
@@ -40,7 +40,12 @@ export const AiContextProvider = ({ children }) => {
   const [messages, setMessages] = useState([INITIAL_ASSISTANT_MESSAGE]);
   const [activeFocus, setActiveFocus] = useState(null);
   const [selectedModel, setSelectedModel] = useState(() => {
-    return localStorage.getItem('miniapps_ai_model') || 'gemini-2.5-flash';
+    const stored = localStorage.getItem('miniapps_ai_model');
+    if (!stored || stored.includes('2.5') || !AVAILABLE_MODELS.some(m => m.id === stored)) {
+      localStorage.setItem('miniapps_ai_model', DEFAULT_AI_MODEL);
+      return DEFAULT_AI_MODEL;
+    }
+    return stored;
   });
   const [selectedTier, setSelectedTierState] = useState(() => {
     return localStorage.getItem('miniapps_ai_tier') || 'free';

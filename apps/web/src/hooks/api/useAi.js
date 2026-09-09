@@ -1,6 +1,6 @@
-import { useAiContext, AVAILABLE_MODELS, INITIAL_ASSISTANT_MESSAGE } from '../../contexts/AiContext';
+import { useAiContext, AVAILABLE_MODELS, DEFAULT_AI_MODEL, INITIAL_ASSISTANT_MESSAGE } from '../../contexts/AiContext';
 
-export { AVAILABLE_MODELS, INITIAL_ASSISTANT_MESSAGE };
+export { AVAILABLE_MODELS, DEFAULT_AI_MODEL, INITIAL_ASSISTANT_MESSAGE };
 
 /**
  * Domain Hook for AI Copilot

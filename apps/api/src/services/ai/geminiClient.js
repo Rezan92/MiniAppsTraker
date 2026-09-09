@@ -5,7 +5,7 @@ const clientCache = {
   paid: null
 };
 
-export const DEFAULT_AI_MODEL = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
+export const DEFAULT_AI_MODEL = process.env.GEMINI_MODEL || 'gemini-3.1-flash-lite';
 
 /**
  * Returns configuration status for Gemini API keys.

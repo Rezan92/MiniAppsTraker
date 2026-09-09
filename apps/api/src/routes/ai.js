@@ -73,7 +73,7 @@ router.post('/chat', async (req, res, next) => {
 
     const { messages, screenContext, activeFocus, model, tier } = parseResult.data;
     const { ai: aiClient, activeTier, isPaidKeyConfigured } = getAiClient(tier);
-    const targetModel = model || DEFAULT_AI_MODEL;
+    const targetModel = (model && !model.includes('2.5')) ? model : DEFAULT_AI_MODEL;
     const lastUserMsg = messages[messages.length - 1]?.content || '(image attachment)';
     console.log(`\n🤖 [AI Request] Tier: ${activeTier.toUpperCase()} | Model: ${targetModel} | User: ${req.user.email} | Screen: ${screenContext?.screen || 'Global'} | Prompt: "${lastUserMsg}"`);
 
