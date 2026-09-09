@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { useAiContext } from '../../contexts/AiContext';
 import { useAi } from '../../hooks/api/useAi';
@@ -49,6 +49,14 @@ export const AiCopilotWidget = () => {
   const [isDraggingFile, setIsDraggingFile] = useState(false);
   const [isTranscribingAudio, setIsTranscribingAudio] = useState(false);
   const [voiceError, setVoiceError] = useState(null);
+  const [isInputExpanded, setIsInputExpanded] = useState(false);
+  const [textareaHeight, setTextareaHeight] = useState(24);
+
+  const SINGLE_LINE_HEIGHT = 24;
+  const MAX_COLLAPSED_HEIGHT = 112; // Approx 4-5 lines of text
+  const EXPANDED_HEIGHT = 220; // Height in expanded mode
+
+  const isStacked = isInputExpanded || textareaHeight >= 56;
 
   const {
     isRecording,
@@ -62,6 +70,53 @@ export const AiCopilotWidget = () => {
   const inputRef = useRef(null);
   const fileInputRef = useRef(null);
   const nativeCameraInputRef = useRef(null);
+
+  const adjustTextareaHeight = useCallback(() => {
+    const el = inputRef.current;
+    if (!el) return;
+
+    el.style.height = 'auto';
+    const scrollH = el.scrollHeight;
+
+    if (isInputExpanded) {
+      const targetHeight = Math.min(Math.max(scrollH, EXPANDED_HEIGHT), 360);
+      el.style.height = `${targetHeight}px`;
+      el.style.overflowY = scrollH > 360 ? 'auto' : 'hidden';
+      setTextareaHeight(targetHeight);
+    } else {
+      if (!el.value) {
+        el.style.height = `${SINGLE_LINE_HEIGHT}px`;
+        el.style.overflowY = 'hidden';
+        setTextareaHeight(SINGLE_LINE_HEIGHT);
+        return;
+      }
+
+      const targetHeight = Math.min(Math.max(scrollH, SINGLE_LINE_HEIGHT), MAX_COLLAPSED_HEIGHT);
+      el.style.height = `${targetHeight}px`;
+      el.style.overflowY = scrollH > MAX_COLLAPSED_HEIGHT ? 'auto' : 'hidden';
+      setTextareaHeight(targetHeight);
+    }
+  }, [isInputExpanded]);
+
+  useEffect(() => {
+    adjustTextareaHeight();
+  }, [input, isInputExpanded, adjustTextareaHeight]);
+
+  useEffect(() => {
+    const el = inputRef.current;
+    if (!el || typeof ResizeObserver === 'undefined') return;
+    let prevWidth = el.clientWidth;
+    const observer = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        if (entry.contentRect.width !== prevWidth) {
+          prevWidth = entry.contentRect.width;
+          adjustTextareaHeight();
+        }
+      }
+    });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [adjustTextareaHeight]);
 
   const handleFinishRecording = async () => {
     try {
@@ -189,6 +244,7 @@ export const AiCopilotWidget = () => {
     sendMessage(input, attachedImage);
     setInput('');
     setAttachedImage(null);
+    setIsInputExpanded(false);
   };
 
   const getScreenFocusLabel = (sc) => {
@@ -552,32 +608,37 @@ export const AiCopilotWidget = () => {
                   </div>
                 )}
 
-                <div className={`flex items-center gap-1 bg-gray-50 border rounded-xl px-2 py-1.5 transition-all ${
+                <div className={`flex ${
+                  isStacked ? 'items-end' : 'items-center'
+                } gap-1 bg-gray-50 border rounded-xl px-2 py-1.5 transition-all ${
                   isRecording 
                     ? 'border-red-400 ring-1 ring-red-400 bg-red-50/40' 
                     : 'border-gray-300 focus-within:border-primary focus-within:ring-1 focus-within:ring-primary focus-within:bg-white'
                 }`}>
-                  {/* Camera Button */}
-                  <button
-                    type="button"
-                    onClick={handleCameraClick}
-                    disabled={isLoading || isRecording || isTranscribingAudio}
-                    title="Take photo with camera"
-                    className="p-1 text-gray-400 hover:text-gray-700 hover:bg-gray-200/60 rounded-lg transition-colors cursor-pointer shrink-0 disabled:opacity-30 disabled:cursor-not-allowed"
-                  >
-                    <span className="material-symbols-outlined text-[20px] block">photo_camera</span>
-                  </button>
+                  {/* Left Action Buttons: Camera & File Upload */}
+                  <div className={`flex items-center gap-0.5 shrink-0 ${isStacked ? 'self-end mb-0.5' : ''}`}>
+                    {/* Camera Button */}
+                    <button
+                      type="button"
+                      onClick={handleCameraClick}
+                      disabled={isLoading || isRecording || isTranscribingAudio}
+                      title="Take photo with camera"
+                      className="p-1 text-gray-400 hover:text-gray-700 hover:bg-gray-200/60 rounded-lg transition-colors cursor-pointer shrink-0 disabled:opacity-30 disabled:cursor-not-allowed"
+                    >
+                      <span className="material-symbols-outlined text-[20px] block">photo_camera</span>
+                    </button>
 
-                  {/* Upload Image File Button */}
-                  <button
-                    type="button"
-                    onClick={() => fileInputRef.current?.click()}
-                    disabled={isLoading || isRecording || isTranscribingAudio}
-                    title="Upload image or receipt file"
-                    className="p-1 text-gray-400 hover:text-gray-700 hover:bg-gray-200/60 rounded-lg transition-colors cursor-pointer shrink-0 disabled:opacity-30 disabled:cursor-not-allowed"
-                  >
-                    <span className="material-symbols-outlined text-[20px] block">attach_file</span>
-                  </button>
+                    {/* Upload Image File Button */}
+                    <button
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      disabled={isLoading || isRecording || isTranscribingAudio}
+                      title="Upload image or receipt file"
+                      className="p-1 text-gray-400 hover:text-gray-700 hover:bg-gray-200/60 rounded-lg transition-colors cursor-pointer shrink-0 disabled:opacity-30 disabled:cursor-not-allowed"
+                    >
+                      <span className="material-symbols-outlined text-[20px] block">attach_file</span>
+                    </button>
+                  </div>
 
                   {isRecording ? (
                     <div className="flex-1 flex items-center justify-between gap-2 px-1 min-w-0">
@@ -616,9 +677,9 @@ export const AiCopilotWidget = () => {
                       <span className="truncate">Transcribing speech with Groq Whisper...</span>
                     </div>
                   ) : (
-                    <input
+                    <textarea
                       ref={inputRef}
-                      type="text"
+                      rows={1}
                       value={input}
                       onChange={(e) => setInput(e.target.value)}
                       onKeyDown={handleInputKeyDown}
@@ -630,44 +691,68 @@ export const AiCopilotWidget = () => {
                           : "Ask Copilot or drop receipt to log materials..."
                       }
                       disabled={isLoading}
-                      className="flex-1 bg-transparent border-none text-sm text-gray-800 focus:outline-none placeholder-gray-400 py-1 min-w-0"
+                      className="flex-1 bg-transparent border-0 border-none text-sm text-gray-800 focus:outline-none focus:ring-0 placeholder-gray-400 py-1 px-1 min-w-0 resize-none leading-5 transition-[height] duration-100 ease-out"
                     />
                   )}
 
-                  {/* Voice Dictation (Groq Whisper) Button - Positioned next to Send */}
-                  <button
-                    type="button"
-                    onClick={handleToggleMic}
-                    disabled={isLoading || isTranscribingAudio}
-                    title={
-                      isRecording
-                        ? "Stop recording and transcribe"
-                        : hasGroqKey
-                        ? "Voice dictation (Groq Whisper)"
-                        : "Voice dictation (Requires GROQ_API_KEY in apps/api/.env)"
-                    }
-                    className={`p-1 rounded-lg transition-all cursor-pointer shrink-0 disabled:opacity-30 disabled:cursor-not-allowed ${
-                      isRecording
-                        ? 'text-red-600 bg-red-100 hover:bg-red-200 animate-pulse'
-                        : hasGroqKey
-                        ? 'text-gray-500 hover:text-primary hover:bg-gray-200/60'
-                        : 'text-gray-400 hover:text-gray-600 hover:bg-gray-200/60'
+                  {/* Right Action Group: Expand / Collapse in Corner + Voice & Send */}
+                  <div
+                    className={`flex shrink-0 ${
+                      isStacked
+                        ? 'flex-col justify-between items-end self-stretch py-0.5'
+                        : 'items-center gap-1'
                     }`}
                   >
-                    <span className="material-symbols-outlined text-[20px] block">
-                      {isRecording ? 'mic' : 'mic_none'}
-                    </span>
-                  </button>
-
-                  {!isRecording && (
+                    {/* Expand / Collapse Button in Corner */}
                     <button
-                      type="submit"
-                      disabled={(!input.trim() && !attachedImage) || isLoading || isTranscribingAudio}
-                      className="p-1.5 bg-primary text-black rounded-lg hover:bg-opacity-90 disabled:opacity-30 disabled:cursor-not-allowed transition-all flex items-center justify-center shrink-0 cursor-pointer shadow-xs"
+                      type="button"
+                      onClick={() => setIsInputExpanded((prev) => !prev)}
+                      disabled={isLoading || isRecording || isTranscribingAudio}
+                      title={isInputExpanded ? "Collapse text box" : "Expand text box"}
+                      className="p-1 text-gray-400 hover:text-gray-700 hover:bg-gray-200/60 rounded-lg transition-colors cursor-pointer shrink-0 disabled:opacity-30 disabled:cursor-not-allowed"
                     >
-                      <span className="material-symbols-outlined text-[18px]">send</span>
+                      <span className="material-symbols-outlined text-[18px] block">
+                        {isInputExpanded ? 'close_fullscreen' : 'fullscreen'}
+                      </span>
                     </button>
-                  )}
+
+                    {/* Voice Dictation (Groq Whisper) and Send Button */}
+                    <div className="flex items-center gap-1 shrink-0">
+                      <button
+                        type="button"
+                        onClick={handleToggleMic}
+                        disabled={isLoading || isTranscribingAudio}
+                        title={
+                          isRecording
+                            ? "Stop recording and transcribe"
+                            : hasGroqKey
+                            ? "Voice dictation (Groq Whisper)"
+                            : "Voice dictation (Requires GROQ_API_KEY in apps/api/.env)"
+                        }
+                        className={`p-1 rounded-lg transition-all cursor-pointer shrink-0 disabled:opacity-30 disabled:cursor-not-allowed ${
+                          isRecording
+                            ? 'text-red-600 bg-red-100 hover:bg-red-200 animate-pulse'
+                            : hasGroqKey
+                            ? 'text-gray-500 hover:text-primary hover:bg-gray-200/60'
+                            : 'text-gray-400 hover:text-gray-600 hover:bg-gray-200/60'
+                        }`}
+                      >
+                        <span className="material-symbols-outlined text-[20px] block">
+                          {isRecording ? 'mic' : 'mic_none'}
+                        </span>
+                      </button>
+
+                      {!isRecording && (
+                        <button
+                          type="submit"
+                          disabled={(!input.trim() && !attachedImage) || isLoading || isTranscribingAudio}
+                          className="p-1.5 bg-primary text-black rounded-lg hover:bg-opacity-90 disabled:opacity-30 disabled:cursor-not-allowed transition-all flex items-center justify-center shrink-0 cursor-pointer shadow-xs"
+                        >
+                          <span className="material-symbols-outlined text-[18px]">send</span>
+                        </button>
+                      )}
+                    </div>
+                  </div>
                 </div>
                 <div className="text-[10px] text-gray-400 text-center mt-1.5 flex items-center justify-center gap-2">
                   <span>AI operations automatically update your screen</span>

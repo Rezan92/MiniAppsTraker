@@ -57,6 +57,7 @@
   - Browser audio capture powered by `MediaRecorder` API (`useAudioRecorder` hook) supporting `audio/webm;codecs=opus` and `audio/mp4`.
   - Transcribed with ultra-low latency using Groq's high-performance `whisper-large-v3-turbo` model via dedicated `/api/ai/transcribe` endpoint with MIME-matched explicit file extensions (`recording.webm`, `recording.mp4`).
   - Populates transcribed speech directly into the message input field, allowing contractors to review, edit, and send with one tap.
+  - Responsive auto-growing multiline textarea with smooth word wrapping, 4-5 line scroll cap (`overflow-y: auto`), `Shift+Enter` multiline support, and corner expand/collapse toggle button (`fullscreen` / `close_fullscreen`) for drafting long prompts matching modern ChatGPT/Gemini UX standards.
 - [ ] **Live Voice Chat & Confirmation (Phase 8.3):**
   - Allow users to talk directly to the AI via voice to perform tasks hands-free.
   - When the AI receives a voice command, it must repeat the request back (improving and articulating the wording professionally) and ask for explicit confirmation before executing any actions.
