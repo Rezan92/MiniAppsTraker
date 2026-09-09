@@ -1,5 +1,6 @@
 import express from 'express';
 import { z } from 'zod';
+import multer from 'multer';
 import { authenticate } from '../middleware/auth.js';
 import { createApiError } from '../middleware/errorHandler.js';
 import { supabase } from '../config/supabase.js';
@@ -9,6 +10,69 @@ import { executeAiTool } from '../services/ai/aiToolExecutors.js';
 import { buildSystemInstruction } from '../services/ai/promptBuilder.js';
 import { pendingActionManager } from '../services/ai/pendingActionManager.js';
 import { invoiceService, jobService, clientService } from '../services/domain/index.js';
+import { roundCurrency } from '../services/pricingEngine.js';
+
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB
+  fileFilter: (req, file, cb) => {
+    const allowedMimes = ['image/jpeg', 'image/png', 'image/webp', 'image/heic', 'image/jpg'];
+    if (allowedMimes.includes(file.mimetype.toLowerCase()) || file.mimetype.startsWith('image/')) {
+      cb(null, true);
+    } else {
+      const err = new Error('Invalid file format. Only JPEG, PNG, WEBP, and HEIC images are supported.');
+      err.status = 400;
+      cb(err);
+    }
+  }
+});
+
+const DEFAULT_RECEIPT_MODEL = 'gemini-3.1-flash-lite';
+
+const RECEIPT_SCHEMA = {
+  type: 'OBJECT',
+  properties: {
+    store: {
+      type: 'STRING',
+      description: 'Store or merchant name, e.g. Home Depot, Lowe\'s, Menards, Ace Hardware'
+    },
+    date: {
+      type: 'STRING',
+      description: 'Receipt purchase date in YYYY-MM-DD format if visible, otherwise null'
+    },
+    totalAmount: {
+      type: 'NUMBER',
+      description: 'Total receipt monetary amount'
+    },
+    items: {
+      type: 'ARRAY',
+      description: 'List of purchased physical materials, supplies, tools, or items',
+      items: {
+        type: 'OBJECT',
+        properties: {
+          description: {
+            type: 'STRING',
+            description: 'Specific name or description of the purchased material or item. Expand supplier shorthand if obvious.'
+          },
+          quantity: {
+            type: 'NUMBER',
+            description: 'Item quantity purchased, default 1'
+          },
+          unitPrice: {
+            type: 'NUMBER',
+            description: 'Price per unit if available'
+          },
+          cost: {
+            type: 'NUMBER',
+            description: 'Total line cost (quantity * unitPrice) for this item'
+          }
+        },
+        required: ['description', 'cost']
+      }
+    }
+  },
+  required: ['items']
+};
 
 const router = express.Router();
 router.use(authenticate);
@@ -347,6 +411,178 @@ router.post('/confirm-action', async (req, res, next) => {
       success: true,
       message: `Successfully executed: ${action.description}`,
       triggered_mutations: triggeredMutations
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// POST /api/ai/receipt — Multimodal Receipt OCR & Extraction
+router.post('/receipt', upload.single('file'), async (req, res, next) => {
+  try {
+    const tenantId = req.user?.tenant_id;
+    if (!tenantId) {
+      return next(createApiError('Tenant context missing from authenticated session', 400, 'TENANT_REQUIRED'));
+    }
+
+    if (!req.file) {
+      return next(createApiError('Receipt image file is required', 400, 'FILE_REQUIRED'));
+    }
+
+    const tier = req.body.tier === 'paid' ? 'paid' : 'free';
+    const requestedModel = req.body.model || DEFAULT_RECEIPT_MODEL;
+    const { ai: aiClient, activeTier } = getAiClient(tier);
+
+    console.log(`\n📸 [Receipt Vision Request] Tier: ${activeTier.toUpperCase()} | Model: ${requestedModel} | File: ${req.file.originalname} (${(req.file.size / 1024).toFixed(1)} KB)`);
+
+    const visionInstruction = `You are an expert OCR and procurement assistant for residential contractors, electricians, plumbers, and trade professionals.
+Analyze the provided receipt image and extract structured purchase details.
+Guidelines:
+1. ONLY extract physical materials, tools, parts, hardware, supplies, and equipment purchased.
+2. EXCLUDE sales tax, subtotal lines, tender lines (Cash/Credit/Debit), change due, store discounts, and loyalty savings as line items.
+3. If an item line shows a discount or return, adjust the cost to reflect the final net cost paid for that item.
+4. Expand cryptic hardware/lumber/trade abbreviations into clean, professional descriptions (e.g. "2x4x8 SPF Stud", "1/2 in EMT Conduit", "Romex 12/2 250ft", "Wire Nuts 100pk").
+5. If the store name or purchase date is clearly legible, extract it. Otherwise, set date to null.`;
+
+    const contents = [
+      {
+        role: 'user',
+        parts: [
+          {
+            inlineData: {
+              mimeType: req.file.mimetype || 'image/jpeg',
+              data: req.file.buffer.toString('base64')
+            }
+          },
+          {
+            text: 'Extract all purchased materials, items, merchant name, purchase date, and total amount from this receipt image. Ensure each item has a specific description and non-negative cost.'
+          }
+        ]
+      }
+    ];
+
+    let activeModel = requestedModel;
+    let response;
+
+    try {
+      response = await aiClient.models.generateContent({
+        model: activeModel,
+        contents,
+        config: {
+          systemInstruction: visionInstruction,
+          responseMimeType: 'application/json',
+          responseSchema: RECEIPT_SCHEMA
+        }
+      });
+    } catch (callErr) {
+      const isNotFound = callErr.message && (callErr.message.includes('not found') || callErr.message.includes('404') || callErr.status === 404);
+      if (isNotFound && activeModel !== DEFAULT_AI_MODEL) {
+        console.warn(`⚠️ [Receipt Vision] Model "${activeModel}" not available on Google API. Gracefully falling back to "${DEFAULT_AI_MODEL}".`);
+        activeModel = DEFAULT_AI_MODEL;
+        response = await aiClient.models.generateContent({
+          model: DEFAULT_AI_MODEL,
+          contents,
+          config: {
+            systemInstruction: visionInstruction,
+            responseMimeType: 'application/json',
+            responseSchema: RECEIPT_SCHEMA
+          }
+        });
+      } else {
+        throw callErr;
+      }
+    }
+
+    const responseText = response.text || response.candidates?.[0]?.content?.parts?.map(p => p.text).filter(Boolean).join('');
+    if (!responseText) {
+      return next(createApiError('No response received from vision model', 502, 'AI_NO_RESPONSE'));
+    }
+
+    let parsedReceipt;
+    try {
+      parsedReceipt = JSON.parse(responseText);
+    } catch (pErr) {
+      console.error('Failed to parse Gemini receipt JSON output:', responseText, pErr);
+      return next(createApiError('Failed to parse structured receipt data from vision model', 502, 'AI_PARSING_FAILED'));
+    }
+
+    const items = (parsedReceipt.items || []).map(item => ({
+      description: item.description || 'General Material',
+      quantity: Number(item.quantity) || 1,
+      unitPrice: item.unitPrice ? roundCurrency(item.unitPrice) : null,
+      cost: roundCurrency(item.cost || 0)
+    }));
+
+    const calculatedTotal = roundCurrency(items.reduce((acc, curr) => acc + curr.cost, 0));
+    const totalAmount = parsedReceipt.totalAmount ? roundCurrency(parsedReceipt.totalAmount) : calculatedTotal;
+
+    console.log(`📸 [Receipt Vision Success] Parsed ${items.length} items from ${parsedReceipt.store || 'Unknown'} (Total: $${totalAmount})`);
+
+    res.json({
+      success: true,
+      data: {
+        receipt: {
+          store: parsedReceipt.store || null,
+          date: parsedReceipt.date || null,
+          totalAmount,
+          items
+        },
+        suggestedJobId: req.body.jobId || null,
+        model_used: activeModel,
+        tier_used: activeTier
+      }
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+const commitReceiptSchema = z.object({
+  jobId: z.string().min(1, 'Target Job ID is required'),
+  store: z.string().optional().nullable(),
+  purchaseDate: z.string().optional().nullable(),
+  items: z.array(z.object({
+    description: z.string().min(1, 'Description is required'),
+    cost: z.number().nonnegative('Cost must be non-negative'),
+    notes: z.string().optional().nullable(),
+    is_from_stock: z.boolean().optional().default(false)
+  })).min(1, 'At least one material item is required')
+});
+
+// POST /api/ai/receipt/commit — Atomic Batch Commit to job_materials
+router.post('/receipt/commit', async (req, res, next) => {
+  try {
+    const tenantId = req.user?.tenant_id;
+    if (!tenantId) {
+      return next(createApiError('Tenant context missing from authenticated session', 400, 'TENANT_REQUIRED'));
+    }
+
+    const parseResult = commitReceiptSchema.safeParse(req.body);
+    if (!parseResult.success) {
+      return next(parseResult.error);
+    }
+
+    const { jobId, store, purchaseDate, items } = parseResult.data;
+
+    const result = await jobService.logJobMaterialsBatch({
+      tenantId,
+      userId: req.user.id,
+      jobId,
+      items,
+      store,
+      purchaseDate
+    });
+
+    console.log(`📦 [Receipt Commit] Successfully logged ${result.count} materials to Job ${jobId}`);
+
+    res.json({
+      success: true,
+      count: result.count,
+      jobId,
+      triggered_mutations: [
+        { type: 'materials', entityId: jobId },
+        { type: 'jobs', entityId: jobId }
+      ]
     });
   } catch (err) {
     next(err);

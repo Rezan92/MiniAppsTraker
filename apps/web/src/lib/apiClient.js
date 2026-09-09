@@ -9,9 +9,10 @@ async function getAuthToken() {
 
 async function request(endpoint, options = {}) {
   const token = options.token || await getAuthToken();
+  const isFormData = typeof FormData !== 'undefined' && options.body instanceof FormData;
   
   const headers = {
-    'Content-Type': 'application/json',
+    ...(isFormData ? {} : { 'Content-Type': 'application/json' }),
     ...(token ? { Authorization: `Bearer ${token}` } : {}),
     ...options.headers
   };
@@ -23,7 +24,7 @@ async function request(endpoint, options = {}) {
     headers
   };
 
-  if (options.body && typeof options.body === 'object' && !(options.body instanceof FormData)) {
+  if (options.body && typeof options.body === 'object' && !isFormData) {
     config.body = JSON.stringify(options.body);
   }
 

@@ -11,6 +11,7 @@ export const AiCopilotWidget = () => {
     messages, 
     isLoading, 
     sendMessage, 
+    uploadReceipt,
     clearChat, 
     selectedModel, 
     setSelectedModel, 
@@ -40,6 +41,21 @@ export const AiCopilotWidget = () => {
   const [input, setInput] = useState('');
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
+  const fileInputRef = useRef(null);
+
+  const handleFileSelect = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 10 * 1024 * 1024) {
+      alert('Receipt image is too large. Please select an image under 10MB.');
+      e.target.value = '';
+      return;
+    }
+
+    uploadReceipt(file);
+    e.target.value = '';
+  };
 
   // Auto-scroll on new messages
   useEffect(() => {
@@ -342,7 +358,24 @@ export const AiCopilotWidget = () => {
 
               {/* Input Area */}
               <form onSubmit={handleSend} className="p-3 bg-white border-t border-gray-200">
-                <div className="flex items-center gap-2 bg-gray-50 border border-gray-300 rounded-xl px-3 py-1.5 focus-within:border-primary focus-within:ring-1 focus-within:ring-primary focus-within:bg-white transition-all">
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  accept="image/jpeg,image/png,image/webp,image/heic,image/jpg"
+                  capture="environment"
+                  className="hidden"
+                  onChange={handleFileSelect}
+                />
+                <div className="flex items-center gap-1.5 bg-gray-50 border border-gray-300 rounded-xl px-2.5 py-1.5 focus-within:border-primary focus-within:ring-1 focus-within:ring-primary focus-within:bg-white transition-all">
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={isLoading}
+                    title="Upload or snap photo of receipt"
+                    className="p-1 text-gray-400 hover:text-gray-700 hover:bg-gray-200/60 rounded-lg transition-colors cursor-pointer shrink-0 disabled:opacity-30 disabled:cursor-not-allowed"
+                  >
+                    <span className="material-symbols-outlined text-[20px] block">photo_camera</span>
+                  </button>
                   <input
                     ref={inputRef}
                     type="text"
@@ -351,11 +384,11 @@ export const AiCopilotWidget = () => {
                     onKeyDown={handleInputKeyDown}
                     placeholder={
                       screenContext?.screen === 'JobDetails'
-                        ? "Ask about this job or log hours/materials..."
-                        : "Ask Copilot to schedule, search, or summarize..."
+                        ? "Ask about this job, log hours, or snap receipt..."
+                        : "Ask Copilot or upload receipt to log materials..."
                     }
                     disabled={isLoading}
-                    className="flex-1 bg-transparent border-none text-sm text-gray-800 focus:outline-none placeholder-gray-400 py-1"
+                    className="flex-1 bg-transparent border-none text-sm text-gray-800 focus:outline-none placeholder-gray-400 py-1 min-w-0"
                   />
                   <button
                     type="submit"

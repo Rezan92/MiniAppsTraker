@@ -2,6 +2,7 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { ActionConfirmationCard } from './ActionConfirmationCard';
 import { InvoiceActionCard } from './InvoiceActionCard';
+import { ReceiptActionCard } from './ReceiptActionCard';
 
 export const ChatMessage = ({ message }) => {
   const isUser = message.role === 'user';
@@ -65,6 +66,10 @@ export const ChatMessage = ({ message }) => {
 
         {!isUser && message.invoiceData && (
           <InvoiceActionCard invoiceData={message.invoiceData} />
+        )}
+
+        {!isUser && message.receiptData && (
+          <ReceiptActionCard receiptData={message.receiptData} />
         )}
 
         {/* Action Link Badges if entities were created */}

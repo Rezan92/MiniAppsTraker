@@ -19,3 +19,9 @@ export const formatDate = (dateString) => {
     day: 'numeric',
   }).format(localDate);
 };
+
+export const roundCurrency = (amount) => {
+  const num = Number(amount) || 0;
+  return Math.round((num + Number.EPSILON) * 100) / 100;
+};
+

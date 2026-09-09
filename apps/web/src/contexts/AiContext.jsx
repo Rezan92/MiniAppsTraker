@@ -228,6 +228,77 @@ export const AiContextProvider = ({ children }) => {
     }
   }, [handleTriggeredMutations]);
 
+  const uploadReceipt = useCallback(async (file, targetJobId = null) => {
+    if (!file) return;
+
+    // 1. Optimistic user message
+    const userMsg = {
+      id: `usr_${Date.now()}`,
+      role: 'user',
+      content: `📎 Uploaded receipt: **${file.name}** (${(file.size / 1024).toFixed(1)} KB)`,
+      timestamp: new Date().toISOString()
+    };
+
+    setMessages(prev => [...prev, userMsg]);
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('tier', selectedTier);
+      formData.append('model', selectedModel);
+
+      const resolvedJobId = targetJobId || (screenContextRef.current?.screen === 'JobDetails' ? screenContextRef.current.entityId : null);
+      if (resolvedJobId) {
+        formData.append('jobId', resolvedJobId);
+      }
+
+      const response = await apiClient.post('/api/ai/receipt', formData);
+      const receipt = response?.receipt;
+      const suggestedJobId = response?.suggestedJobId || resolvedJobId;
+
+      if (!receipt || !receipt.items) {
+        throw new Error('No receipt items were detected in the uploaded image.');
+      }
+
+      const storeName = receipt.store || 'the supplier';
+      const totalAmount = Number(receipt.totalAmount || 0).toFixed(2);
+      const itemCount = receipt.items.length;
+
+      const assistantMsg = {
+        id: `ast_${Date.now()}`,
+        role: 'assistant',
+        content: `I parsed the receipt from **${storeName}** ($${totalAmount}, ${itemCount} items). Review the materials below and confirm which job to add them to:`,
+        timestamp: new Date().toISOString(),
+        receiptData: {
+          store: receipt.store,
+          date: receipt.date || new Date().toISOString().split('T')[0],
+          totalAmount: receipt.totalAmount,
+          items: receipt.items,
+          suggestedJobId
+        }
+      };
+
+      setMessages(prev => [...prev, assistantMsg]);
+    } catch (err) {
+      const errorMessage = translateApiError(err);
+      setError(errorMessage);
+      setMessages(prev => [
+        ...prev,
+        {
+          id: `err_${Date.now()}`,
+          role: 'assistant',
+          content: `Failed to process receipt: ${errorMessage}`,
+          isError: true,
+          timestamp: new Date().toISOString()
+        }
+      ]);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [selectedTier, selectedModel]);
+
   const clearChat = useCallback(() => {
     setMessages([INITIAL_ASSISTANT_MESSAGE]);
     setActiveFocus(null);
@@ -254,6 +325,7 @@ export const AiContextProvider = ({ children }) => {
       activeFocus,
       availableModels: AVAILABLE_MODELS,
       sendMessage,
+      uploadReceipt,
       confirmPendingAction,
       clearChat
     }}>

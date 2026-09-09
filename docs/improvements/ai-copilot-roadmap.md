@@ -46,8 +46,10 @@
 ### Phase 8: Advanced Agentic Capabilities (Future-Proofing / Optional)
 > **Objective:** Expand the AI from a Copilot into a fully autonomous workflow manager.
 
-- [ ] **Vision / Multi-modal Input:**
-  - Allow users to upload a photo of a Home Depot receipt. Gemini parses the image and automatically calls `log_job_materials` with the exact line items.
+- [x] **Vision / Multi-modal Input (Phase 8.1):**
+  - Contractors can capture or upload receipt photos directly in the AI Copilot.
+  - Multimodal OCR powered by Gemini (`gemini-3.1-flash-lite` default with dynamic model selection and `gemini-2.5-flash` fallback) extracts structured store, date, total, and line items with financial rounding.
+  - Interactive `ReceiptActionCard` enables line-item reviewing, editing, inclusion toggles, and atomic batch commit to `job_materials` via `jobService.logJobMaterialsBatch`.
 - [ ] **Live Voice Chat & Confirmation:**
   - Allow users to talk directly to the AI via voice to perform tasks hands-free.
   - When the AI receives a voice command, it must repeat the request back (improving and articulating the wording professionally) and ask for explicit confirmation before executing any actions.

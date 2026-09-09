@@ -548,6 +548,94 @@ export async function logJobMaterials({ tenantId, userId, jobId, materialData })
 }
 
 /**
+ * Atomically validates and batch-logs materials for a job.
+ * Enforces zero-assumption policy against generic placeholder material descriptions,
+ * validates non-negative cost, rounds each cost via roundCurrency, and guarantees unbilled status.
+ * @param {Object} params
+ * @param {string} params.tenantId
+ * @param {string} [params.userId]
+ * @param {string} params.jobId
+ * @param {Array<Object>} params.items - [{ description, cost, notes, is_from_stock }]
+ * @param {string} [params.store] - Store or merchant name
+ * @param {string} [params.purchaseDate] - Purchase date YYYY-MM-DD
+ * @returns {Promise<{ count: number, data: Array<Object> }>} Inserted job_materials records
+ */
+export async function logJobMaterialsBatch({ tenantId, userId, jobId, items, store, purchaseDate }) {
+  assertTenant(tenantId);
+  if (!jobId) {
+    const err = new Error('Job ID is required');
+    err.status = 400;
+    throw err;
+  }
+
+  if (!Array.isArray(items) || items.length === 0) {
+    const err = new Error('At least one material item is required');
+    err.status = 400;
+    throw err;
+  }
+
+  // Ensure job exists and belongs to tenant
+  const { data: job, error: jobErr } = await supabase
+    .from('jobs')
+    .select('id')
+    .eq('id', jobId)
+    .eq('tenant_id', tenantId)
+    .single();
+
+  if (jobErr || !job) {
+    const err = new Error('Job not found');
+    err.status = 404;
+    err.code = 'NOT_FOUND';
+    throw err;
+  }
+
+  const defaultPurchaseDate = purchaseDate || new Date().toISOString().split('T')[0];
+  const trimmedStore = store ? store.trim() : null;
+
+  // Validate all items up-front before any database insertion
+  const payloads = items.map((item, idx) => {
+    const trimmedDesc = (item.description || '').trim();
+    if (!trimmedDesc || GENERIC_MATERIAL_PLACEHOLDERS.includes(trimmedDesc.toLowerCase())) {
+      const err = new Error(`Item #${idx + 1}: Missing required material description. A specific name or description is required.`);
+      err.status = 400;
+      err.code = 'MISSING_MATERIAL_DESCRIPTION';
+      throw err;
+    }
+
+    const parsedCost = parseFloat(item.cost);
+    if (isNaN(parsedCost) || parsedCost < 0) {
+      const err = new Error(`Item #${idx + 1} ("${trimmedDesc}"): Invalid material cost. Cost must be non-negative.`);
+      err.status = 400;
+      err.code = 'INVALID_MATERIAL_COST';
+      throw err;
+    }
+
+    return {
+      job_id: job.id,
+      description: trimmedDesc,
+      cost: roundCurrency(parsedCost),
+      store: item.store ? item.store.trim() : trimmedStore,
+      purchase_date: item.purchase_date || defaultPurchaseDate,
+      notes: item.notes || null,
+      is_from_stock: Boolean(item.is_from_stock),
+      billing_status: 'unbilled'
+    };
+  });
+
+  const { data, error } = await supabase
+    .from('job_materials')
+    .insert(payloads)
+    .select();
+
+  if (error) throw error;
+
+  return {
+    count: data.length,
+    data
+  };
+}
+
+/**
  * Updates a job materials entry, enforcing edit lock on billed items.
  * @param {Object} params
  * @param {string} params.tenantId

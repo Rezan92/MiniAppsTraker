@@ -7,6 +7,7 @@ import {
   deleteJob, 
   logJobHours, 
   logJobMaterials,
+  logJobMaterialsBatch,
   normalizeTimeTo24Hour,
   addHoursToTime,
   GENERIC_LABOR_PLACEHOLDERS,
@@ -147,3 +148,30 @@ test('jobHoursSchema accepts valid hours payloads with or without invoice_id', a
   });
   assert.equal(parsed3.success, true);
 });
+
+test('logJobMaterialsBatch guards enforce tenantId, jobId, non-empty items, and valid item rows', async () => {
+  // Missing tenantId
+  await assert.rejects(
+    async () => {
+      await logJobMaterialsBatch({ tenantId: null, jobId: 'j-1', items: [{ description: 'Stud', cost: 10 }] });
+    },
+    { message: 'Tenant context missing' }
+  );
+
+  // Missing jobId
+  await assert.rejects(
+    async () => {
+      await logJobMaterialsBatch({ tenantId: 't-1', jobId: null, items: [{ description: 'Stud', cost: 10 }] });
+    },
+    { message: 'Job ID is required' }
+  );
+
+  // Empty items array
+  await assert.rejects(
+    async () => {
+      await logJobMaterialsBatch({ tenantId: 't-1', jobId: 'j-1', items: [] });
+    },
+    { message: 'At least one material item is required' }
+  );
+});
+
