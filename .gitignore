@@ -18,6 +18,8 @@ build/
 .next/
 out/
 .nuxt/
+# CodeGraph local index and SQLite cache
+.codegraph/
 
 # Environment variables
 .env

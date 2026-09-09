@@ -76,4 +76,12 @@ At the conclusion of every implementation, provide a targeted checklist of manua
 **Never duplicate database mutations across REST controllers and AI tool executors.**
 All database mutations, business domain invariants, and cascade side effects must be isolated inside centralized Domain Services under `apps/api/src/services/domain/` (e.g. `invoiceService.js`, `jobService.js`, `clientService.js`). Both manual REST route handlers and AI tool executors/actions must act strictly as thin controllers delegating to the domain service with `{ tenantId, userId, ... }`. Any future service or database mutation must follow this single-source-of-truth pattern to prevent dual-path divergence.
 
+## Rule 15: CodeGraph-First Navigation & Impact Analysis (Token Optimization)
+**Always use CodeGraph to trace symbols, callers, and dependencies before reading files.**
+To minimize context bloat and token consumption:
+1. **Graph First**: When investigating unfamiliar code, tracing imports, or locating callers/callees, use the MCP tool `codegraph_explore` or CLI commands (`codegraph impact <symbol>`, `codegraph callers <symbol>`) instead of broad greps or reading entire source files.
+2. **Surgical Line-Bounded Reads**: Use the exact line numbers identified by CodeGraph to view only targeted ranges (`view_file` with `StartLine`/`EndLine`) rather than loading full files into context.
+3. **Blast Radius Analysis**: Before modifying shared utilities, domain services (`apps/api/src/services/domain/`), or shared hooks, check their blast radius with `codegraph impact` to identify all dependent routes, UI components, and test files upfront.
+
+
 
