@@ -1,16 +1,17 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 
 const STORAGE_KEY = 'miniapps_copilot_window_state';
+const STORAGE_CIRCLE_KEY = 'miniapps_copilot_circle_pos';
 
 const DEFAULT_WIDTH = 440;
 const DEFAULT_HEIGHT = 620;
 const MIN_WIDTH = 340;
 const MIN_HEIGHT = 380;
-const COLLAPSED_HEIGHT = 54;
+const CIRCLE_SIZE = 56;
 
 /**
  * Custom hook providing draggable, resizable, collapsible, and maximizable window state
- * with viewport boundary clamping and localStorage persistence.
+ * with viewport boundary clamping, floating circle state, and localStorage persistence.
  */
 export function useDraggableResizableWindow() {
   const [isMobile, setIsMobile] = useState(() => {
@@ -24,6 +25,13 @@ export function useDraggableResizableWindow() {
     return { x, y };
   }, []);
 
+  const getDefaultCirclePosition = useCallback(() => {
+    if (typeof window === 'undefined') return { x: 24, y: 24 };
+    const x = Math.max(16, window.innerWidth - CIRCLE_SIZE - 24);
+    const y = Math.max(16, window.innerHeight - CIRCLE_SIZE - 24);
+    return { x, y };
+  }, []);
+
   const [position, setPosition] = useState(() => {
     if (typeof window === 'undefined') return { x: 24, y: 24 };
     try {
@@ -31,20 +39,35 @@ export function useDraggableResizableWindow() {
       if (saved) {
         const parsed = JSON.parse(saved);
         if (typeof parsed.x === 'number' && typeof parsed.y === 'number') {
-          // Clamp inside current screen ensuring full window is visible
           const w = typeof parsed.width === 'number' ? parsed.width : DEFAULT_WIDTH;
           const h = typeof parsed.height === 'number' ? parsed.height : DEFAULT_HEIGHT;
           const maxX = Math.max(16, window.innerWidth - w - 16);
-          const maxY = Math.max(16, window.innerHeight - (parsed.isCollapsed ? COLLAPSED_HEIGHT : h) - 16);
+          const maxY = Math.max(16, window.innerHeight - h - 16);
           const clampedX = Math.max(16, Math.min(maxX, parsed.x));
           const clampedY = Math.max(16, Math.min(maxY, parsed.y));
           return { x: clampedX, y: clampedY };
         }
       }
-    } catch {
-      // Fallback on corrupt JSON
-    }
+    } catch {}
     return getDefaultPosition();
+  });
+
+  const [circlePosition, setCirclePosition] = useState(() => {
+    if (typeof window === 'undefined') return { x: 24, y: 24 };
+    try {
+      const saved = localStorage.getItem(STORAGE_CIRCLE_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (typeof parsed.x === 'number' && typeof parsed.y === 'number') {
+          const maxX = Math.max(16, window.innerWidth - CIRCLE_SIZE - 16);
+          const maxY = Math.max(16, window.innerHeight - CIRCLE_SIZE - 16);
+          const clampedX = Math.max(16, Math.min(maxX, parsed.x));
+          const clampedY = Math.max(16, Math.min(maxY, parsed.y));
+          return { x: clampedX, y: clampedY };
+        }
+      }
+    } catch {}
+    return getDefaultCirclePosition();
   });
 
   const [size, setSize] = useState(() => {
@@ -59,9 +82,7 @@ export function useDraggableResizableWindow() {
           return { width: w, height: h };
         }
       }
-    } catch {
-      // Fallback
-    }
+    } catch {}
     const maxAllowedHeight = typeof window !== 'undefined' ? Math.min(DEFAULT_HEIGHT, window.innerHeight - 60) : DEFAULT_HEIGHT;
     return { width: DEFAULT_WIDTH, height: Math.max(MIN_HEIGHT, maxAllowedHeight) };
   });
@@ -71,25 +92,25 @@ export function useDraggableResizableWindow() {
       const saved = localStorage.getItem(STORAGE_KEY);
       if (saved) {
         const parsed = JSON.parse(saved);
-        return Boolean(parsed.isCollapsed);
+        if (typeof parsed.isCollapsed === 'boolean') {
+          return parsed.isCollapsed;
+        }
       }
-    } catch {
-      // Ignore
-    }
-    return false;
+    } catch {}
+    return true; // Default to collapsed circle state
   });
 
   const [isMaximized, setIsMaximized] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [isResizing, setIsResizing] = useState(false);
+  const [isDraggingCircle, setIsDraggingCircle] = useState(false);
 
-  // Pre-maximized cache to restore when unmaximizing
   const preMaxStateRef = useRef({ position, size });
-
   const dragStateRef = useRef(null);
   const resizeStateRef = useRef(null);
+  const circleDragRef = useRef(null);
 
-  // Persist state to localStorage
+  // Persist window state to localStorage
   const persistState = useCallback((pos, sz, collapsed) => {
     try {
       const toSave = {
@@ -100,22 +121,34 @@ export function useDraggableResizableWindow() {
         isCollapsed: Boolean(collapsed)
       };
       localStorage.setItem(STORAGE_KEY, JSON.stringify(toSave));
-    } catch {
-      // Ignore localStorage errors (e.g. quota/private mode)
-    }
+    } catch {}
   }, []);
 
-  // Update mobile status and clamp on viewport resize
+  const persistCirclePos = useCallback((cPos) => {
+    try {
+      localStorage.setItem(STORAGE_CIRCLE_KEY, JSON.stringify(cPos));
+    } catch {}
+  }, []);
+
+  // Viewport resize handling
   useEffect(() => {
     const handleResize = () => {
       const mobile = window.innerWidth < 768;
       setIsMobile(mobile);
 
+      setCirclePosition(prev => {
+        const maxX = Math.max(16, window.innerWidth - CIRCLE_SIZE - 16);
+        const maxY = Math.max(16, window.innerHeight - CIRCLE_SIZE - 16);
+        return {
+          x: Math.max(16, Math.min(maxX, prev.x)),
+          y: Math.max(16, Math.min(maxY, prev.y))
+        };
+      });
+
       if (!mobile) {
         setPosition(prev => {
-          const currentH = isCollapsed ? COLLAPSED_HEIGHT : size.height;
           const maxX = Math.max(16, window.innerWidth - size.width - 16);
-          const maxY = Math.max(16, window.innerHeight - currentH - 16);
+          const maxY = Math.max(16, window.innerHeight - size.height - 16);
           return {
             x: Math.max(16, Math.min(maxX, prev.x)),
             y: Math.max(16, Math.min(maxY, prev.y))
@@ -126,21 +159,156 @@ export function useDraggableResizableWindow() {
 
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
-  }, [size, isCollapsed]);
+  }, [size]);
 
-  // --- Drag Handling ---
+  // --- Expand / Collapse Actions ---
+  const expandToWindow = useCallback(() => {
+    if (isMaximized) setIsMaximized(false);
+
+    if (!isMobile) {
+      setPosition(prev => {
+        const w = size.width;
+        const h = size.height;
+        const maxX = Math.max(16, window.innerWidth - w - 16);
+        const maxY = Math.max(16, window.innerHeight - h - 16);
+
+        let targetX;
+        let targetY;
+
+        // Quadrant-aware anchor: open window anchored near the circle
+        if (circlePosition.x > window.innerWidth / 2) {
+          targetX = Math.max(16, Math.min(maxX, circlePosition.x + CIRCLE_SIZE - w));
+        } else {
+          targetX = Math.max(16, Math.min(maxX, circlePosition.x));
+        }
+
+        if (circlePosition.y > window.innerHeight / 2) {
+          targetY = Math.max(16, Math.min(maxY, circlePosition.y + CIRCLE_SIZE - h));
+        } else {
+          targetY = Math.max(16, Math.min(maxY, circlePosition.y));
+        }
+
+        const newPos = { x: targetX, y: targetY };
+        persistState(newPos, size, false);
+        return newPos;
+      });
+    } else {
+      persistState(position, size, false);
+    }
+
+    setIsCollapsed(false);
+  }, [isMaximized, isMobile, size, circlePosition, position, persistState]);
+
+  const collapseToCircle = useCallback(() => {
+    if (isMaximized) setIsMaximized(false);
+
+    if (!isMobile) {
+      setCirclePosition(prev => {
+        let cx;
+        let cy;
+        const maxCX = Math.max(16, window.innerWidth - CIRCLE_SIZE - 16);
+        const maxCY = Math.max(16, window.innerHeight - CIRCLE_SIZE - 16);
+
+        if (position.x > window.innerWidth / 2 - size.width / 2) {
+          cx = Math.max(16, Math.min(maxCX, position.x + size.width - CIRCLE_SIZE));
+        } else {
+          cx = Math.max(16, Math.min(maxCX, position.x));
+        }
+
+        if (position.y > window.innerHeight / 2 - size.height / 2) {
+          cy = Math.max(16, Math.min(maxCY, position.y + size.height - CIRCLE_SIZE));
+        } else {
+          cy = Math.max(16, Math.min(maxCY, position.y));
+        }
+
+        const newCirclePos = { x: cx, y: cy };
+        persistCirclePos(newCirclePos);
+        return newCirclePos;
+      });
+    }
+
+    setIsCollapsed(true);
+    persistState(position, size, true);
+  }, [isMaximized, isMobile, position, size, persistState, persistCirclePos]);
+
+  const toggleCollapse = useCallback(() => {
+    if (isCollapsed) {
+      expandToWindow();
+    } else {
+      collapseToCircle();
+    }
+  }, [isCollapsed, expandToWindow, collapseToCircle]);
+
+  // --- Circle Drag Handling ---
+  const handleCirclePointerDown = useCallback((e) => {
+    if (e.button !== 0) return;
+    try {
+      e.currentTarget.setPointerCapture(e.pointerId);
+    } catch {}
+
+    circleDragRef.current = {
+      pointerId: e.pointerId,
+      startX: e.clientX,
+      startY: e.clientY,
+      initialX: circlePosition.x,
+      initialY: circlePosition.y,
+      hasMoved: false
+    };
+  }, [circlePosition]);
+
+  const handleCirclePointerMove = useCallback((e) => {
+    if (!circleDragRef.current || circleDragRef.current.pointerId !== e.pointerId) return;
+
+    const dx = e.clientX - circleDragRef.current.startX;
+    const dy = e.clientY - circleDragRef.current.startY;
+
+    if (!circleDragRef.current.hasMoved && (Math.abs(dx) > 3 || Math.abs(dy) > 3)) {
+      circleDragRef.current.hasMoved = true;
+      setIsDraggingCircle(true);
+    }
+
+    if (circleDragRef.current.hasMoved) {
+      const maxX = Math.max(16, window.innerWidth - CIRCLE_SIZE - 16);
+      const maxY = Math.max(16, window.innerHeight - CIRCLE_SIZE - 16);
+      const newX = Math.max(16, Math.min(maxX, circleDragRef.current.initialX + dx));
+      const newY = Math.max(16, Math.min(maxY, circleDragRef.current.initialY + dy));
+      setCirclePosition({ x: newX, y: newY });
+    }
+  }, []);
+
+  const handleCirclePointerUp = useCallback((e) => {
+    if (!circleDragRef.current || circleDragRef.current.pointerId !== e.pointerId) return;
+
+    try {
+      e.currentTarget.releasePointerCapture(e.pointerId);
+    } catch {}
+
+    const moved = circleDragRef.current.hasMoved;
+    circleDragRef.current = null;
+    setIsDraggingCircle(false);
+
+    if (!moved) {
+      // Tap / Click -> Expand to full window
+      expandToWindow();
+    } else {
+      // Drag release -> save circle position
+      setCirclePosition(pos => {
+        persistCirclePos(pos);
+        return pos;
+      });
+    }
+  }, [expandToWindow, persistCirclePos]);
+
+  // --- Window Drag Handling ---
   const handleDragStart = useCallback((e) => {
     if (isMobile || isMaximized || e.button !== 0) return;
-    // Don't initiate drag if clicking interactive child elements in header
     if (e.target.closest('button, select, input, textarea, a, [data-no-drag]')) {
       return;
     }
 
     try {
       e.currentTarget.setPointerCapture(e.pointerId);
-    } catch {
-      // Ignore pointer capture errors
-    }
+    } catch {}
 
     dragStateRef.current = {
       pointerId: e.pointerId,
@@ -157,25 +325,22 @@ export function useDraggableResizableWindow() {
 
     const dx = e.clientX - dragStateRef.current.pointerX;
     const dy = e.clientY - dragStateRef.current.pointerY;
-    const currentH = isCollapsed ? COLLAPSED_HEIGHT : size.height;
 
     const maxX = Math.max(0, window.innerWidth - size.width);
-    const maxY = Math.max(0, window.innerHeight - currentH);
+    const maxY = Math.max(0, window.innerHeight - size.height);
 
     const newX = Math.max(0, Math.min(maxX, dragStateRef.current.windowX + dx));
     const newY = Math.max(0, Math.min(maxY, dragStateRef.current.windowY + dy));
 
     setPosition({ x: newX, y: newY });
-  }, [isCollapsed, size]);
+  }, [size]);
 
   const handleDragEnd = useCallback((e) => {
     if (!dragStateRef.current || dragStateRef.current.pointerId !== e.pointerId) return;
 
     try {
       e.currentTarget.releasePointerCapture(e.pointerId);
-    } catch {
-      // Ignore
-    }
+    } catch {}
 
     dragStateRef.current = null;
     setIsDragging(false);
@@ -194,9 +359,7 @@ export function useDraggableResizableWindow() {
 
     try {
       e.currentTarget.setPointerCapture(e.pointerId);
-    } catch {
-      // Ignore
-    }
+    } catch {}
 
     resizeStateRef.current = {
       direction,
@@ -226,7 +389,6 @@ export function useDraggableResizableWindow() {
     const maxWidth = window.innerWidth - 16;
     const maxHeight = window.innerHeight - 16;
 
-    // Horizontal resizing
     if (direction.includes('w')) {
       const rawW = width - dx;
       newWidth = Math.max(MIN_WIDTH, Math.min(maxWidth, rawW));
@@ -237,7 +399,6 @@ export function useDraggableResizableWindow() {
       newWidth = Math.max(MIN_WIDTH, Math.min(maxWidth, rawW));
     }
 
-    // Vertical resizing
     if (direction.includes('n')) {
       const rawH = height - dy;
       newHeight = Math.max(MIN_HEIGHT, Math.min(maxHeight, rawH));
@@ -257,9 +418,7 @@ export function useDraggableResizableWindow() {
 
     try {
       e.currentTarget.releasePointerCapture(e.pointerId);
-    } catch {
-      // Ignore
-    }
+    } catch {}
 
     resizeStateRef.current = null;
     setIsResizing(false);
@@ -275,10 +434,12 @@ export function useDraggableResizableWindow() {
 
   // Window-level safety listeners during active dragging or resizing
   useEffect(() => {
-    if (!isDragging && !isResizing) return;
+    if (!isDragging && !isResizing && !isDraggingCircle) return;
 
     const onPointerMove = (e) => {
-      if (isDragging) {
+      if (isDraggingCircle) {
+        handleCirclePointerMove(e);
+      } else if (isDragging) {
         handleDragMove(e);
       } else if (isResizing) {
         handleResizeMove(e);
@@ -286,7 +447,9 @@ export function useDraggableResizableWindow() {
     };
 
     const onPointerUp = (e) => {
-      if (isDragging) {
+      if (isDraggingCircle) {
+        handleCirclePointerUp(e);
+      } else if (isDragging) {
         handleDragEnd(e);
       } else if (isResizing) {
         handleResizeEnd(e);
@@ -302,28 +465,26 @@ export function useDraggableResizableWindow() {
       window.removeEventListener('pointerup', onPointerUp);
       window.removeEventListener('pointercancel', onPointerUp);
     };
-  }, [isDragging, isResizing, handleDragMove, handleResizeMove, handleDragEnd, handleResizeEnd]);
-
-  // --- Window Actions ---
-  const toggleCollapse = useCallback(() => {
-    if (isMaximized) setIsMaximized(false);
-    setIsCollapsed(prev => {
-      const next = !prev;
-      persistState(position, size, next);
-      return next;
-    });
-  }, [isMaximized, position, size, persistState]);
+  }, [
+    isDragging,
+    isResizing,
+    isDraggingCircle,
+    handleCirclePointerMove,
+    handleCirclePointerUp,
+    handleDragMove,
+    handleResizeMove,
+    handleDragEnd,
+    handleResizeEnd
+  ]);
 
   const toggleMaximize = useCallback(() => {
     if (isCollapsed) setIsCollapsed(false);
 
     if (isMaximized) {
-      // Restore previous position and size
       setPosition(preMaxStateRef.current.position);
       setSize(preMaxStateRef.current.size);
       setIsMaximized(false);
     } else {
-      // Save current state and maximize
       preMaxStateRef.current = { position, size };
       const maxW = Math.max(MIN_WIDTH, window.innerWidth - 32);
       const maxH = Math.max(MIN_HEIGHT, window.innerHeight - 32);
@@ -336,12 +497,15 @@ export function useDraggableResizableWindow() {
   const resetPosition = useCallback(() => {
     const defaultPos = getDefaultPosition(DEFAULT_WIDTH, DEFAULT_HEIGHT);
     const defaultSz = { width: DEFAULT_WIDTH, height: DEFAULT_HEIGHT };
+    const defaultCirclePos = getDefaultCirclePosition();
     setPosition(defaultPos);
     setSize(defaultSz);
+    setCirclePosition(defaultCirclePos);
     setIsCollapsed(false);
     setIsMaximized(false);
     persistState(defaultPos, defaultSz, false);
-  }, [getDefaultPosition, persistState]);
+    persistCirclePos(defaultCirclePos);
+  }, [getDefaultPosition, getDefaultCirclePosition, persistState, persistCirclePos]);
 
   return {
     isMobile,
@@ -351,6 +515,11 @@ export function useDraggableResizableWindow() {
     isMaximized,
     isDragging,
     isResizing,
+    circlePosition,
+    isDraggingCircle,
+    handleCirclePointerDown,
+    handleCirclePointerMove,
+    handleCirclePointerUp,
     handleDragStart,
     handleDragMove,
     handleDragEnd,
@@ -358,6 +527,8 @@ export function useDraggableResizableWindow() {
     handleResizeMove,
     handleResizeEnd,
     toggleCollapse,
+    collapseToCircle,
+    expandToWindow,
     toggleMaximize,
     resetPosition
   };

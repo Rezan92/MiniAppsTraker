@@ -34,11 +34,20 @@ export const AiCopilotWidget = () => {
     isMaximized,
     isDragging,
     isResizing,
+    circlePosition,
+    isDraggingCircle,
+    handleCirclePointerDown,
+    handleCirclePointerMove,
+    handleCirclePointerUp,
     handleDragStart,
     handleDragMove,
     handleDragEnd,
     handleResizeStart,
+    handleResizeMove,
+    handleResizeEnd,
     toggleCollapse,
+    collapseToCircle,
+    expandToWindow,
     toggleMaximize,
     resetPosition
   } = useDraggableResizableWindow();
@@ -52,6 +61,7 @@ export const AiCopilotWidget = () => {
   const [isInputExpanded, setIsInputExpanded] = useState(false);
   const [isAtScrollPoint, setIsAtScrollPoint] = useState(false);
 
+  const windowRef = useRef(null);
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
   const fileInputRef = useRef(null);
@@ -237,28 +247,47 @@ export const AiCopilotWidget = () => {
 
   // Auto-scroll on new messages
   useEffect(() => {
-    if (isOpen && !isCollapsed) {
+    if (!isCollapsed) {
       messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     }
-  }, [messages, isLoading, isOpen, isCollapsed]);
+  }, [messages, isLoading, isCollapsed]);
 
   // Focus input when opened
   useEffect(() => {
-    if (isOpen && !isCollapsed) {
+    if (!isCollapsed) {
       setTimeout(() => inputRef.current?.focus(), 150);
     }
-  }, [isOpen, isCollapsed]);
+  }, [isCollapsed]);
 
-  // Escape key listener to close drawer
+  // Escape key listener to collapse to circle
   useEffect(() => {
     const handleKeyDown = (e) => {
-      if (e.key === 'Escape' && isOpen) {
-        closeDrawer();
+      if (e.key === 'Escape' && !isCollapsed) {
+        collapseToCircle();
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen, closeDrawer]);
+  }, [isCollapsed, collapseToCircle]);
+
+  // Click anywhere outside on the screen -> collapse to circle
+  useEffect(() => {
+    if (isCollapsed) return;
+
+    const handlePointerDownOutside = (e) => {
+      if (isDragging || isResizing || isDraggingCircle) return;
+      if (isCameraOpen) return;
+      if (windowRef.current && windowRef.current.contains(e.target)) return;
+      if (e.target.closest('[data-copilot-modal], .camera-modal-overlay')) return;
+
+      collapseToCircle();
+    };
+
+    document.addEventListener('pointerdown', handlePointerDownOutside);
+    return () => {
+      document.removeEventListener('pointerdown', handlePointerDownOutside);
+    };
+  }, [isCollapsed, isDragging, isResizing, isDraggingCircle, isCameraOpen, collapseToCircle]);
 
   const handleSend = (e) => {
     if (e) e.preventDefault();
@@ -306,42 +335,65 @@ export const AiCopilotWidget = () => {
 
   return createPortal(
     <>
-      {/* Floating Action Button (FAB) */}
-      {!isOpen && (
-        <button
-          onClick={toggleDrawer}
-          aria-label="Open AI Copilot"
-          className="fixed bottom-6 right-6 z-40 bg-black text-white p-3.5 rounded-full shadow-xl hover:shadow-2xl hover:scale-105 transition-all duration-200 flex items-center gap-2.5 border border-primary/40 cursor-pointer group"
+      {/* Collapsed State: Draggable Floating Circle (Orb) */}
+      {isCollapsed && (
+        <div
+          style={{
+            left: `${circlePosition.x}px`,
+            top: `${circlePosition.y}px`
+          }}
+          onPointerDown={handleCirclePointerDown}
+          onPointerMove={handleCirclePointerMove}
+          onPointerUp={handleCirclePointerUp}
+          onPointerCancel={handleCirclePointerUp}
+          title="MiniApps Copilot • Click to expand • Drag to place anywhere"
+          className={`fixed z-50 w-14 h-14 rounded-full bg-gray-950 text-white border-2 border-primary/60 shadow-[0_10px_30px_-5px_rgba(0,0,0,0.5)] flex items-center justify-center cursor-grab active:cursor-grabbing select-none hover:scale-105 active:scale-95 transition-transform duration-150 animate-in zoom-in-75 fade-in duration-200 group ${
+            isDraggingCircle ? 'scale-105 shadow-3xl ring-2 ring-primary/60 cursor-grabbing' : ''
+          }`}
         >
-          <div className="w-6 h-6 rounded-full bg-primary flex items-center justify-center text-black">
-            <span className="material-symbols-outlined text-[16px]">smart_toy</span>
+          {/* Inner Glowing AI Orb Icon */}
+          <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-black shadow-xs group-hover:rotate-6 transition-transform">
+            <span className="material-symbols-outlined text-[18px]">smart_toy</span>
           </div>
-          <span className="font-bold text-sm text-white pr-1 group-hover:text-primary transition-colors">
-            Copilot
-          </span>
+
+          {/* Active Screen Context Pulse */}
+          {screenContext?.screen && (
+            <span
+              className="absolute -top-0.5 -right-0.5 w-3.5 h-3.5 rounded-full bg-emerald-400 border-2 border-gray-950 animate-pulse"
+              title={`Focus: ${screenContext.screen}`}
+            />
+          )}
+
+          {/* Paid Tier Badge */}
           {selectedTier === 'paid' && (
-            <span className="text-[10px] bg-amber-400 text-black font-extrabold px-1.5 py-0.5 rounded shadow-xs">
-              ⚡ PAID
+            <span
+              className="absolute -bottom-0.5 -right-0.5 text-[9px] bg-amber-400 text-black font-extrabold px-1 rounded-full border border-gray-950 shadow-xs"
+              title="Paid Tier active"
+            >
+              ⚡
             </span>
           )}
-          {screenContext?.screen && (
-            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" title={`Focusing on ${screenContext.screen}`}></span>
+
+          {/* Active Audio Transcription / AI Loading Spinner Ring */}
+          {(isLoading || isTranscribingAudio) && (
+            <div className="absolute inset-0 rounded-full border-2 border-primary border-t-transparent animate-spin pointer-events-none" />
           )}
-        </button>
+        </div>
       )}
 
-      {/* Backdrop for Mobile Screen Dismissal ONLY (never on desktop so user can see & interact behind window) */}
-      {isOpen && isMobile && (
+      {/* Backdrop for Mobile Screen Dismissal ONLY */}
+      {!isCollapsed && isMobile && (
         <div
-          onClick={closeDrawer}
+          onClick={collapseToCircle}
           className="fixed inset-0 z-50 bg-black/40 backdrop-blur-xs transition-opacity sm:hidden"
           aria-hidden="true"
         />
       )}
 
-      {/* Copilot Window (Floating on Desktop, Docked Drawer on Mobile) */}
-      {isOpen && (
+      {/* Expanded Copilot Window */}
+      {!isCollapsed && (
         <div
+          ref={windowRef}
           onDragOver={handleDragOver}
           onDragLeave={handleDragLeave}
           onDrop={handleDrop}
@@ -352,14 +404,14 @@ export const AiCopilotWidget = () => {
                   left: `${position.x}px`,
                   top: `${position.y}px`,
                   width: `${size.width}px`,
-                  height: isCollapsed ? 'auto' : `${size.height}px`,
-                  maxHeight: isCollapsed ? 'auto' : 'calc(100vh - 16px)'
+                  height: `${size.height}px`,
+                  maxHeight: 'calc(100vh - 16px)'
                 }
           }
           className={
             isMobile
               ? "fixed inset-y-0 right-0 z-50 w-full sm:w-[440px] bg-white border-l border-gray-200 shadow-2xl flex flex-col animate-in slide-in-from-right duration-200"
-              : `fixed z-50 bg-white border border-gray-300 shadow-2xl rounded-2xl flex flex-col overflow-hidden transition-[box-shadow] duration-150 ${
+              : `fixed z-50 bg-white border border-gray-300 shadow-2xl rounded-2xl flex flex-col overflow-hidden animate-in zoom-in-95 fade-in duration-200 ease-out transition-[box-shadow] ${
                   isDragging || isResizing ? 'select-none shadow-3xl ring-2 ring-primary/40' : ''
                 }`
           }
@@ -390,13 +442,13 @@ export const AiCopilotWidget = () => {
             onPointerCancel={handleDragEnd}
             onDoubleClick={(e) => {
               if (!isMobile && !e.target.closest('button, select, input, textarea, a, [data-no-drag]')) {
-                toggleCollapse();
+                collapseToCircle();
               }
             }}
             className={`p-3 sm:p-3.5 border-b border-gray-800 flex items-center justify-between bg-gray-900 text-white select-none ${
               !isMobile && !isMaximized ? 'cursor-move' : ''
             }`}
-            title={!isMobile && !isMaximized ? "Click and drag to move • Double click to collapse/expand" : undefined}
+            title={!isMobile && !isMaximized ? "Click and drag to move • Double click to collapse to circle" : undefined}
           >
             <div className="flex items-center gap-2 min-w-0 flex-1 mr-2">
               <div className="w-8 h-8 rounded-lg bg-primary text-black flex items-center justify-center shadow-xs shrink-0">
@@ -493,12 +545,12 @@ export const AiCopilotWidget = () => {
               {!isMobile && (
                 <button
                   type="button"
-                  onClick={toggleCollapse}
-                  title={isCollapsed ? "Expand window" : "Minimize / Collapse window"}
+                  onClick={collapseToCircle}
+                  title="Collapse to circle"
                   className="p-1 text-gray-400 hover:text-white rounded hover:bg-gray-800 transition-colors cursor-pointer"
                 >
                   <span className="material-symbols-outlined text-[18px]">
-                    {isCollapsed ? 'expand_more' : 'remove'}
+                    close_fullscreen
                   </span>
                 </button>
               )}
@@ -511,15 +563,15 @@ export const AiCopilotWidget = () => {
                   className="p-1 text-gray-400 hover:text-white rounded hover:bg-gray-800 transition-colors cursor-pointer"
                 >
                   <span className="material-symbols-outlined text-[18px]">
-                    {isMaximized ? 'close_fullscreen' : 'fullscreen'}
+                    {isMaximized ? 'filter_none' : 'fullscreen'}
                   </span>
                 </button>
               )}
 
               <button
                 type="button"
-                onClick={closeDrawer}
-                title="Close Copilot"
+                onClick={collapseToCircle}
+                title="Collapse to circle"
                 className="p-1 text-gray-400 hover:text-white rounded hover:bg-gray-800 transition-colors cursor-pointer"
               >
                 <span className="material-symbols-outlined text-[20px]">close</span>
@@ -527,10 +579,9 @@ export const AiCopilotWidget = () => {
             </div>
           </div>
 
-          {/* Body Section (Hidden when collapsed on desktop) */}
-          {(!isCollapsed || isMobile) && (
-            <>
-              {/* Messages Scroll Area */}
+          {/* Body Section */}
+          <>
+            {/* Messages Scroll Area */}
               <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-50/60 min-h-0">
                 {messages.map((msg) => (
                   <ChatMessage key={msg.id} message={msg} />
@@ -794,10 +845,9 @@ export const AiCopilotWidget = () => {
                 </div>
               </form>
             </>
-          )}
 
-          {/* Desktop Resize Handles (only when floating, not maximized, not collapsed) */}
-          {!isMobile && !isMaximized && !isCollapsed && (
+          {/* Desktop Resize Handles (only when floating and not maximized) */}
+          {!isMobile && !isMaximized && (
             <>
               {/* Edges */}
               <div

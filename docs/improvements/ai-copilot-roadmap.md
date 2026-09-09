@@ -58,6 +58,8 @@
   - Transcribed with ultra-low latency using Groq's high-performance `whisper-large-v3-turbo` model via dedicated `/api/ai/transcribe` endpoint with MIME-matched explicit file extensions (`recording.webm`, `recording.mp4`).
   - Populates transcribed speech directly into the message input field, allowing contractors to review, edit, and send with one tap.
   - Responsive auto-growing multiline textarea with smooth word wrapping, 4-5 line scroll cap (`overflow-y: auto`), `Shift+Enter` multiline support, and conditional expand/collapse toggle positioned above everything (even above suggestion responses) appearing exclusively when text reaches the scrolling point, featuring outward-opening arrows to expand and inward-opposing arrows to collapse.
+  - Draggable floating circular assistant orb (`w-14 h-14 rounded-full`): Copilot smoothly collapses into a sleek, glowing circular orb that can be placed anywhere on screen via pointer drag-and-drop with viewport boundary clamping and localStorage position persistence.
+  - Click-outside collapse & fluid animations: Clicking anywhere on the screen outside of the Copilot window (or clicking minimize/close, or double-clicking the header) smoothly animates and collapses the window into the circle; clicking the circle expands it back to the full window with quadrant-aware screen positioning.
 - [ ] **Live Voice Chat & Confirmation (Phase 8.3):**
   - Allow users to talk directly to the AI via voice to perform tasks hands-free.
   - When the AI receives a voice command, it must repeat the request back (improving and articulating the wording professionally) and ask for explicit confirmation before executing any actions.
