@@ -262,7 +262,7 @@ export const AiContextProvider = ({ children }) => {
         audio: audioBase64,
         mimeType
       });
-      return res?.data?.text || '';
+      return res?.text || res?.data?.text || (typeof res === 'string' ? res : '');
     } catch (err) {
       const translated = translateApiError(err);
       throw new Error(translated || 'Failed to transcribe audio.');

@@ -579,31 +579,6 @@ export const AiCopilotWidget = () => {
                     <span className="material-symbols-outlined text-[20px] block">attach_file</span>
                   </button>
 
-                  {/* Voice Dictation (Groq Whisper) Button */}
-                  <button
-                    type="button"
-                    onClick={handleToggleMic}
-                    disabled={isLoading || isTranscribingAudio}
-                    title={
-                      isRecording
-                        ? "Stop recording and transcribe"
-                        : hasGroqKey
-                        ? "Voice dictation (Groq Whisper)"
-                        : "Voice dictation (Requires GROQ_API_KEY in apps/api/.env)"
-                    }
-                    className={`p-1 rounded-lg transition-all cursor-pointer shrink-0 disabled:opacity-30 disabled:cursor-not-allowed ${
-                      isRecording
-                        ? 'text-red-600 bg-red-100 hover:bg-red-200 animate-pulse'
-                        : hasGroqKey
-                        ? 'text-gray-500 hover:text-primary hover:bg-gray-200/60'
-                        : 'text-gray-400 hover:text-gray-600 hover:bg-gray-200/60'
-                    }`}
-                  >
-                    <span className="material-symbols-outlined text-[20px] block">
-                      {isRecording ? 'mic' : 'mic_none'}
-                    </span>
-                  </button>
-
                   {isRecording ? (
                     <div className="flex-1 flex items-center justify-between gap-2 px-1 min-w-0">
                       <div className="flex items-center gap-1.5 min-w-0">
@@ -658,6 +633,31 @@ export const AiCopilotWidget = () => {
                       className="flex-1 bg-transparent border-none text-sm text-gray-800 focus:outline-none placeholder-gray-400 py-1 min-w-0"
                     />
                   )}
+
+                  {/* Voice Dictation (Groq Whisper) Button - Positioned next to Send */}
+                  <button
+                    type="button"
+                    onClick={handleToggleMic}
+                    disabled={isLoading || isTranscribingAudio}
+                    title={
+                      isRecording
+                        ? "Stop recording and transcribe"
+                        : hasGroqKey
+                        ? "Voice dictation (Groq Whisper)"
+                        : "Voice dictation (Requires GROQ_API_KEY in apps/api/.env)"
+                    }
+                    className={`p-1 rounded-lg transition-all cursor-pointer shrink-0 disabled:opacity-30 disabled:cursor-not-allowed ${
+                      isRecording
+                        ? 'text-red-600 bg-red-100 hover:bg-red-200 animate-pulse'
+                        : hasGroqKey
+                        ? 'text-gray-500 hover:text-primary hover:bg-gray-200/60'
+                        : 'text-gray-400 hover:text-gray-600 hover:bg-gray-200/60'
+                    }`}
+                  >
+                    <span className="material-symbols-outlined text-[20px] block">
+                      {isRecording ? 'mic' : 'mic_none'}
+                    </span>
+                  </button>
 
                   {!isRecording && (
                     <button
