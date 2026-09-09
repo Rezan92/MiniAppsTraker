@@ -56,7 +56,8 @@ export const AiCopilotWidget = () => {
   const MAX_COLLAPSED_HEIGHT = 112; // Approx 4-5 lines of text
   const EXPANDED_HEIGHT = 220; // Height in expanded mode
 
-  const isStacked = isInputExpanded || textareaHeight >= 56;
+  const isAtScrollPoint = textareaHeight >= 100 || (inputRef.current && inputRef.current.scrollHeight > 100);
+  const showExpandButton = isInputExpanded || isAtScrollPoint;
 
   const {
     isRecording,
@@ -529,8 +530,41 @@ export const AiCopilotWidget = () => {
                 <div ref={messagesEndRef} />
               </div>
 
+              {/* Expand / Collapse Control (Appears above everything, even above suggestion responses, when text reaches scroll point or is expanded) */}
+              {showExpandButton && (
+                <div className="px-3 pt-2 pb-0.5 bg-white border-t border-gray-100 flex items-center justify-end animate-in fade-in duration-150">
+                  <button
+                    type="button"
+                    onClick={() => setIsInputExpanded((prev) => !prev)}
+                    disabled={isLoading || isRecording || isTranscribingAudio}
+                    title={isInputExpanded ? "Collapse text box" : "Expand text box"}
+                    className="p-1.5 text-gray-600 hover:text-black hover:bg-gray-100 border border-gray-200 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 text-xs font-semibold shadow-2xs"
+                    aria-label={isInputExpanded ? "Collapse text box" : "Expand text box"}
+                  >
+                    <span>{isInputExpanded ? "Collapse" : "Expand"}</span>
+                    {isInputExpanded ? (
+                      /* Two arrows against each other to collapse */
+                      <svg className="w-4 h-4 text-gray-700" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                        <polyline points="4 14 10 14 10 20" />
+                        <polyline points="20 10 14 10 14 4" />
+                        <line x1="14" y1="10" x2="21" y2="3" />
+                        <line x1="3" y1="21" x2="10" y2="14" />
+                      </svg>
+                    ) : (
+                      /* An arrow opening away from each other to expand */
+                      <svg className="w-4 h-4 text-gray-700" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                        <polyline points="15 3 21 3 21 9" />
+                        <polyline points="9 21 3 21 3 15" />
+                        <line x1="21" y1="3" x2="14" y2="10" />
+                        <line x1="3" y1="21" x2="10" y2="14" />
+                      </svg>
+                    )}
+                  </button>
+                </div>
+              )}
+
               {/* Contextual Suggestion Chips */}
-              <div className="px-3 pt-2 bg-white border-t border-gray-100">
+              <div className="px-3 pt-1.5 bg-white border-t border-gray-100">
                 <SuggestionChips
                   screenContext={screenContext}
                   onSelectPrompt={(prompt) => sendMessage(prompt)}
@@ -608,15 +642,13 @@ export const AiCopilotWidget = () => {
                   </div>
                 )}
 
-                <div className={`flex ${
-                  isStacked ? 'items-end' : 'items-center'
-                } gap-1 bg-gray-50 border rounded-xl px-2 py-1.5 transition-all ${
+                <div className={`flex items-end gap-1 bg-gray-50 border rounded-xl px-2 py-1.5 transition-all ${
                   isRecording 
                     ? 'border-red-400 ring-1 ring-red-400 bg-red-50/40' 
                     : 'border-gray-300 focus-within:border-primary focus-within:ring-1 focus-within:ring-primary focus-within:bg-white'
                 }`}>
                   {/* Left Action Buttons: Camera & File Upload */}
-                  <div className={`flex items-center gap-0.5 shrink-0 ${isStacked ? 'self-end mb-0.5' : ''}`}>
+                  <div className="flex items-center gap-0.5 shrink-0 self-end mb-0.5">
                     {/* Camera Button */}
                     <button
                       type="button"
@@ -695,63 +727,41 @@ export const AiCopilotWidget = () => {
                     />
                   )}
 
-                  {/* Right Action Group: Expand / Collapse in Corner + Voice & Send */}
-                  <div
-                    className={`flex shrink-0 ${
-                      isStacked
-                        ? 'flex-col justify-between items-end self-stretch py-0.5'
-                        : 'items-center gap-1'
-                    }`}
-                  >
-                    {/* Expand / Collapse Button in Corner */}
+                  {/* Right Action Group: Voice Dictation & Send Button */}
+                  <div className="flex items-center gap-1 shrink-0 self-end mb-0.5">
                     <button
                       type="button"
-                      onClick={() => setIsInputExpanded((prev) => !prev)}
-                      disabled={isLoading || isRecording || isTranscribingAudio}
-                      title={isInputExpanded ? "Collapse text box" : "Expand text box"}
-                      className="p-1 text-gray-400 hover:text-gray-700 hover:bg-gray-200/60 rounded-lg transition-colors cursor-pointer shrink-0 disabled:opacity-30 disabled:cursor-not-allowed"
+                      onClick={handleToggleMic}
+                      disabled={isLoading || isTranscribingAudio}
+                      title={
+                        isRecording
+                          ? "Stop recording and transcribe"
+                          : hasGroqKey
+                          ? "Voice dictation (Groq Whisper)"
+                          : "Voice dictation (Requires GROQ_API_KEY in apps/api/.env)"
+                      }
+                      className={`p-1 rounded-lg transition-all cursor-pointer shrink-0 disabled:opacity-30 disabled:cursor-not-allowed ${
+                        isRecording
+                          ? 'text-red-600 bg-red-100 hover:bg-red-200 animate-pulse'
+                          : hasGroqKey
+                          ? 'text-gray-500 hover:text-primary hover:bg-gray-200/60'
+                          : 'text-gray-400 hover:text-gray-600 hover:bg-gray-200/60'
+                      }`}
                     >
-                      <span className="material-symbols-outlined text-[18px] block">
-                        {isInputExpanded ? 'close_fullscreen' : 'fullscreen'}
+                      <span className="material-symbols-outlined text-[20px] block">
+                        {isRecording ? 'mic' : 'mic_none'}
                       </span>
                     </button>
 
-                    {/* Voice Dictation (Groq Whisper) and Send Button */}
-                    <div className="flex items-center gap-1 shrink-0">
+                    {!isRecording && (
                       <button
-                        type="button"
-                        onClick={handleToggleMic}
-                        disabled={isLoading || isTranscribingAudio}
-                        title={
-                          isRecording
-                            ? "Stop recording and transcribe"
-                            : hasGroqKey
-                            ? "Voice dictation (Groq Whisper)"
-                            : "Voice dictation (Requires GROQ_API_KEY in apps/api/.env)"
-                        }
-                        className={`p-1 rounded-lg transition-all cursor-pointer shrink-0 disabled:opacity-30 disabled:cursor-not-allowed ${
-                          isRecording
-                            ? 'text-red-600 bg-red-100 hover:bg-red-200 animate-pulse'
-                            : hasGroqKey
-                            ? 'text-gray-500 hover:text-primary hover:bg-gray-200/60'
-                            : 'text-gray-400 hover:text-gray-600 hover:bg-gray-200/60'
-                        }`}
+                        type="submit"
+                        disabled={(!input.trim() && !attachedImage) || isLoading || isTranscribingAudio}
+                        className="p-1.5 bg-primary text-black rounded-lg hover:bg-opacity-90 disabled:opacity-30 disabled:cursor-not-allowed transition-all flex items-center justify-center shrink-0 cursor-pointer shadow-xs"
                       >
-                        <span className="material-symbols-outlined text-[20px] block">
-                          {isRecording ? 'mic' : 'mic_none'}
-                        </span>
+                        <span className="material-symbols-outlined text-[18px]">send</span>
                       </button>
-
-                      {!isRecording && (
-                        <button
-                          type="submit"
-                          disabled={(!input.trim() && !attachedImage) || isLoading || isTranscribingAudio}
-                          className="p-1.5 bg-primary text-black rounded-lg hover:bg-opacity-90 disabled:opacity-30 disabled:cursor-not-allowed transition-all flex items-center justify-center shrink-0 cursor-pointer shadow-xs"
-                        >
-                          <span className="material-symbols-outlined text-[18px]">send</span>
-                        </button>
-                      )}
-                    </div>
+                    )}
                   </div>
                 </div>
                 <div className="text-[10px] text-gray-400 text-center mt-1.5 flex items-center justify-center gap-2">
