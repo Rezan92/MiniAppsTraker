@@ -50,13 +50,17 @@ export const AiCopilotWidget = () => {
   const [isTranscribingAudio, setIsTranscribingAudio] = useState(false);
   const [voiceError, setVoiceError] = useState(null);
   const [isInputExpanded, setIsInputExpanded] = useState(false);
-  const [textareaHeight, setTextareaHeight] = useState(24);
+  const [isAtScrollPoint, setIsAtScrollPoint] = useState(false);
+
+  const messagesEndRef = useRef(null);
+  const inputRef = useRef(null);
+  const fileInputRef = useRef(null);
+  const nativeCameraInputRef = useRef(null);
 
   const SINGLE_LINE_HEIGHT = 24;
   const MAX_COLLAPSED_HEIGHT = 112; // Approx 4-5 lines of text
   const EXPANDED_HEIGHT = 220; // Height in expanded mode
 
-  const isAtScrollPoint = textareaHeight >= 100 || (inputRef.current && inputRef.current.scrollHeight > 100);
   const showExpandButton = isInputExpanded || isAtScrollPoint;
 
   const {
@@ -66,11 +70,6 @@ export const AiCopilotWidget = () => {
     stopRecording,
     cancelRecording
   } = useAudioRecorder({ maxDurationSeconds: 60 });
-
-  const messagesEndRef = useRef(null);
-  const inputRef = useRef(null);
-  const fileInputRef = useRef(null);
-  const nativeCameraInputRef = useRef(null);
 
   const adjustTextareaHeight = useCallback(() => {
     const el = inputRef.current;
@@ -83,19 +82,20 @@ export const AiCopilotWidget = () => {
       const targetHeight = Math.min(Math.max(scrollH, EXPANDED_HEIGHT), 360);
       el.style.height = `${targetHeight}px`;
       el.style.overflowY = scrollH > 360 ? 'auto' : 'hidden';
-      setTextareaHeight(targetHeight);
+      setIsAtScrollPoint(true);
     } else {
       if (!el.value) {
         el.style.height = `${SINGLE_LINE_HEIGHT}px`;
         el.style.overflowY = 'hidden';
-        setTextareaHeight(SINGLE_LINE_HEIGHT);
+        setIsAtScrollPoint(false);
         return;
       }
 
+      const reachedScroll = scrollH >= MAX_COLLAPSED_HEIGHT;
       const targetHeight = Math.min(Math.max(scrollH, SINGLE_LINE_HEIGHT), MAX_COLLAPSED_HEIGHT);
       el.style.height = `${targetHeight}px`;
-      el.style.overflowY = scrollH > MAX_COLLAPSED_HEIGHT ? 'auto' : 'hidden';
-      setTextareaHeight(targetHeight);
+      el.style.overflowY = reachedScroll ? 'auto' : 'hidden';
+      setIsAtScrollPoint(reachedScroll);
     }
   }, [isInputExpanded]);
 
@@ -246,6 +246,7 @@ export const AiCopilotWidget = () => {
     setInput('');
     setAttachedImage(null);
     setIsInputExpanded(false);
+    setIsAtScrollPoint(false);
   };
 
   const getScreenFocusLabel = (sc) => {
@@ -564,7 +565,7 @@ export const AiCopilotWidget = () => {
               )}
 
               {/* Contextual Suggestion Chips */}
-              <div className="px-3 pt-1.5 bg-white border-t border-gray-100">
+              <div className={`px-3 pt-1.5 bg-white ${showExpandButton ? '' : 'border-t border-gray-100'}`}>
                 <SuggestionChips
                   screenContext={screenContext}
                   onSelectPrompt={(prompt) => sendMessage(prompt)}
