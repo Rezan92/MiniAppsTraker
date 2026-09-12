@@ -6,6 +6,9 @@ import {
   createViewDay
 } from '@schedule-x/calendar';
 import { createDragAndDropPlugin } from '@schedule-x/drag-and-drop';
+import { createResizePlugin } from '@schedule-x/resize';
+import { createCurrentTimePlugin } from '@schedule-x/current-time';
+import { createCalendarControlsPlugin } from '@schedule-x/calendar-controls';
 import '@schedule-x/theme-default/dist/index.css';
 import { Temporal } from 'temporal-polyfill';
 
@@ -17,6 +20,7 @@ import {
 } from '../../hooks/api/useAppointments';
 import { AddAppointmentModal } from './AddAppointmentModal';
 import { AppointmentDetailsModal } from './AppointmentDetailsModal';
+import { CalendarSidebar } from './CalendarSidebar';
 
 // Converts an appointment DB record to Schedule-X v4 event with Temporal objects
 function toScheduleXEvent(apt, timezone) {
@@ -39,12 +43,21 @@ function toScheduleXEvent(apt, timezone) {
       end = Temporal.Instant.fromEpochMilliseconds(endMs).toZonedDateTimeISO(timezone);
     }
 
+    // Dynamic color tag fallback based on status if not specified
+    let calendarId = apt.color_tag;
+    if (!calendarId) {
+      if (apt.status === 'in_progress') calendarId = 'amber';
+      else if (apt.status === 'completed') calendarId = 'green';
+      else if (apt.status === 'cancelled') calendarId = 'red';
+      else calendarId = 'blue';
+    }
+
     return {
       id: String(apt.id),
       title: apt.title || 'Untitled',
       start,
       end,
-      calendarId: apt.color_tag || 'blue',
+      calendarId,
       _raw: apt
     };
   } catch (err) {
@@ -83,29 +96,42 @@ function fromScheduleXFormat(val) {
   }
 }
 
-const STATUS_FILTERS = [
-  { id: 'all', label: 'All Events' },
-  { id: 'scheduled', label: 'Scheduled' },
-  { id: 'in_progress', label: 'In Progress' },
-  { id: 'completed', label: 'Completed' }
-];
+const VIEW_LABELS = {
+  day: 'Day',
+  week: 'Week',
+  'month-grid': 'Month'
+};
 
 export const CalendarView = () => {
-  const [statusFilter, setStatusFilter] = useState('all');
+  const [calendarSidebarOpen, setCalendarSidebarOpen] = useState(true);
+  const [activeStatuses, setActiveStatuses] = useState(['scheduled', 'in_progress', 'completed']);
+  const [currentView, setCurrentView] = useState('week');
+  const [viewDropdownOpen, setViewDropdownOpen] = useState(false);
+  const [currentRange, setCurrentRange] = useState(null);
+
+  const userTimezone = useMemo(
+    () => Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC',
+    []
+  );
+
+  const todayPlainDate = useMemo(
+    () => Temporal.Now.plainDateISO(userTimezone),
+    [userTimezone]
+  );
+
+  const [selectedDateStr, setSelectedDateStr] = useState(() => todayPlainDate.toString());
+
+  // Modals state
   const [addModalOpen, setAddModalOpen] = useState(false);
   const [detailsModalOpen, setDetailsModalOpen] = useState(false);
   const [selectedAppointment, setSelectedAppointment] = useState(null);
   const [clickedDate, setClickedDate] = useState(null);
   const [editingAppointment, setEditingAppointment] = useState(null);
 
-  // Stable filters object for TanStack Query
-  const queryFilters = useMemo(
-    () => (statusFilter === 'all' ? {} : { status: statusFilter }),
-    [statusFilter]
-  );
+  const viewDropdownRef = useRef(null);
 
-  // Queries & Mutations
-  const { data: appointments = [], isLoading } = useAppointments(queryFilters);
+  // TanStack Queries & Mutations (fetch all workspace appointments, filter locally)
+  const { data: appointments = [], isLoading } = useAppointments();
   const createAppointmentMutation = useCreateAppointment();
   const updateAppointmentMutation = useUpdateAppointment();
   const deleteAppointmentMutation = useDeleteAppointment();
@@ -140,6 +166,15 @@ export const CalendarView = () => {
       setClickedDate(dtStr);
       setEditingAppointment(null);
       setAddModalOpen(true);
+    },
+    onRangeUpdate: (range) => {
+      setCurrentRange(range);
+    },
+    onSelectedDateUpdate: (date) => {
+      const dStr = date ? (typeof date.toString === 'function' ? date.toString() : String(date)) : null;
+      if (dStr) {
+        setSelectedDateStr(dStr);
+      }
     }
   };
 
@@ -182,15 +217,18 @@ export const CalendarView = () => {
     }
   }), []);
 
-  const userTimezone = useMemo(
-    () => Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC',
-    []
-  );
-
   // Initialize plugins
   const dragAndDropPlugin = useMemo(() => createDragAndDropPlugin(15), []);
+  const resizePlugin = useMemo(() => createResizePlugin(15), []);
+  const currentTimePlugin = useMemo(() => createCurrentTimePlugin(), []);
+  const calendarControlsPlugin = useMemo(() => createCalendarControlsPlugin(), []);
 
-  // Initialize Schedule-X instance with config and plugins array as second arg
+  const plugins = useMemo(
+    () => [dragAndDropPlugin, resizePlugin, currentTimePlugin, calendarControlsPlugin],
+    [dragAndDropPlugin, resizePlugin, currentTimePlugin, calendarControlsPlugin]
+  );
+
+  // Initialize Schedule-X instance
   const calendar = useCalendarApp({
     views: [createViewWeek(), createViewMonthGrid(), createViewDay()],
     defaultView: 'week',
@@ -200,18 +238,177 @@ export const CalendarView = () => {
       onEventUpdate: (event) => callbacksRef.current.onEventUpdate?.(event),
       onEventClick: (event) => callbacksRef.current.onEventClick?.(event),
       onClickDate: (date) => callbacksRef.current.onClickDate?.(date),
-      onClickDateTime: (dateTime) => callbacksRef.current.onClickDateTime?.(dateTime)
+      onClickDateTime: (dateTime) => callbacksRef.current.onClickDateTime?.(dateTime),
+      onRangeUpdate: (range) => callbacksRef.current.onRangeUpdate?.(range),
+      onSelectedDateUpdate: (date) => callbacksRef.current.onSelectedDateUpdate?.(date)
     }
-  }, [dragAndDropPlugin]);
+  }, plugins);
 
-  // Sync React TanStack Query appointments into Schedule-X
+  // In-memory status filtering
+  const filteredAppointments = useMemo(() => {
+    if (!appointments || !Array.isArray(appointments)) return [];
+    return appointments.filter(apt => {
+      const status = (apt.status || 'scheduled').toLowerCase();
+      return activeStatuses.includes(status);
+    });
+  }, [appointments, activeStatuses]);
+
+  // Sync filtered appointments into Schedule-X
   useEffect(() => {
     if (!calendar?.events) return;
-    const sxEvents = appointments
+    const sxEvents = filteredAppointments
       .map(apt => toScheduleXEvent(apt, userTimezone))
       .filter(Boolean);
     calendar.events.set(sxEvents);
-  }, [calendar, appointments, userTimezone]);
+  }, [calendar, filteredAppointments, userTimezone]);
+
+  // Close dropdown on click outside
+  useEffect(() => {
+    const handleDocumentClick = (e) => {
+      if (viewDropdownRef.current && !viewDropdownRef.current.contains(e.target)) {
+        setViewDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleDocumentClick);
+    return () => document.removeEventListener('mousedown', handleDocumentClick);
+  }, []);
+
+  // Programmatic Date Navigation
+  const jumpToDate = (targetDate) => {
+    try {
+      const plainDate = targetDate instanceof Temporal.PlainDate
+        ? targetDate
+        : Temporal.PlainDate.from(String(targetDate).split('T')[0]);
+
+      calendarControlsPlugin.setDate(plainDate);
+      if (calendarControlsPlugin.$app?.calendarState?.setRange) {
+        calendarControlsPlugin.$app.calendarState.setRange(plainDate);
+      }
+      setSelectedDateStr(plainDate.toString());
+    } catch (err) {
+      console.error('Failed to jump to date:', err);
+    }
+  };
+
+  const handleJumpToToday = () => {
+    const today = Temporal.Now.plainDateISO(userTimezone);
+    jumpToDate(today);
+  };
+
+  const handlePrevPeriod = () => {
+    try {
+      let baseDate;
+      try {
+        baseDate = calendarControlsPlugin.getDate() || Temporal.PlainDate.from(selectedDateStr);
+      } catch {
+        baseDate = Temporal.Now.plainDateISO(userTimezone);
+      }
+
+      let newDate;
+      if (currentView === 'day') {
+        newDate = baseDate.subtract({ days: 1 });
+      } else if (currentView === 'month-grid') {
+        newDate = baseDate.subtract({ months: 1 });
+      } else {
+        newDate = baseDate.subtract({ days: 7 });
+      }
+      jumpToDate(newDate);
+    } catch (err) {
+      console.error('Failed to navigate previous period:', err);
+    }
+  };
+
+  const handleNextPeriod = () => {
+    try {
+      let baseDate;
+      try {
+        baseDate = calendarControlsPlugin.getDate() || Temporal.PlainDate.from(selectedDateStr);
+      } catch {
+        baseDate = Temporal.Now.plainDateISO(userTimezone);
+      }
+
+      let newDate;
+      if (currentView === 'day') {
+        newDate = baseDate.add({ days: 1 });
+      } else if (currentView === 'month-grid') {
+        newDate = baseDate.add({ months: 1 });
+      } else {
+        newDate = baseDate.add({ days: 7 });
+      }
+      jumpToDate(newDate);
+    } catch (err) {
+      console.error('Failed to navigate next period:', err);
+    }
+  };
+
+  const handleSelectView = (viewName) => {
+    try {
+      calendarControlsPlugin.setView(viewName);
+      setCurrentView(viewName);
+      setViewDropdownOpen(false);
+    } catch (err) {
+      console.error('Failed to set view:', err);
+    }
+  };
+
+  const handleSelectDateFromMini = (dateStr) => {
+    jumpToDate(dateStr);
+  };
+
+  const handleToggleStatus = (statusId) => {
+    setActiveStatuses(prev => {
+      if (prev.includes(statusId)) {
+        return prev.filter(s => s !== statusId);
+      }
+      return [...prev, statusId];
+    });
+  };
+
+  const toggleCalendarSidebar = () => {
+    setCalendarSidebarOpen(prev => !prev);
+    // Dispatch window resize event so Schedule-X recalculates time grid width smoothly
+    setTimeout(() => {
+      window.dispatchEvent(new Event('resize'));
+    }, 320);
+  };
+
+  // Dynamic Google Calendar Period Title
+  const periodTitle = useMemo(() => {
+    try {
+      const plainDate = Temporal.PlainDate.from(selectedDateStr);
+
+      if (currentView === 'month-grid') {
+        const d = new Date(plainDate.year, plainDate.month - 1, 1);
+        return d.toLocaleString('en-US', { month: 'long', year: 'numeric' });
+      }
+
+      if (currentView === 'day') {
+        const d = new Date(plainDate.year, plainDate.month - 1, plainDate.day);
+        return d.toLocaleString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+      }
+
+      // Week view
+      if (currentRange && currentRange.start && currentRange.end) {
+        const startZoned = currentRange.start;
+        const endZoned = currentRange.end;
+        const startMonth = new Date(startZoned.year, startZoned.month - 1, 1).toLocaleString('en-US', { month: 'long' });
+        const endMonth = new Date(endZoned.year, endZoned.month - 1, 1).toLocaleString('en-US', { month: 'long' });
+
+        if (startZoned.month === endZoned.month && startZoned.year === endZoned.year) {
+          return `${startMonth} ${startZoned.year}`;
+        } else if (startZoned.year === endZoned.year) {
+          return `${startMonth.slice(0, 3)} – ${endMonth.slice(0, 3)} ${startZoned.year}`;
+        } else {
+          return `${startMonth.slice(0, 3)} ${startZoned.year} – ${endMonth.slice(0, 3)} ${endZoned.year}`;
+        }
+      }
+
+      const d = new Date(plainDate.year, plainDate.month - 1, plainDate.day);
+      return d.toLocaleString('en-US', { month: 'long', year: 'numeric' });
+    } catch {
+      return 'Calendar';
+    }
+  }, [currentRange, selectedDateStr, currentView]);
 
   // Modal actions
   const handleOpenNewAppointment = () => {
@@ -251,58 +448,225 @@ export const CalendarView = () => {
     setSelectedAppointment(prev => prev ? { ...prev, status } : null);
   };
 
+  const todayDayNum = todayPlainDate.day;
+
   return (
-    <div className="flex flex-col">
-      {/* Top Header Bar */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
-        <div>
-          <h1 className="font-headline-lg text-headline-lg font-bold text-on-surface">Calendar & Scheduling</h1>
-          <p className="font-body-md text-gray-500 mt-1">
-            Manage field appointments, walkthroughs, and scheduled job timelines.
-          </p>
-        </div>
+    <div className="flex flex-col h-[calc(100vh-140px)] min-h-[720px] bg-white rounded-2xl border border-gray-200 shadow-xs overflow-hidden select-none">
+      {/* Schedule-X Style Overrides & Plugins Styles */}
+      <style>{`
+        /* Hide default Schedule-X header */
+        .sx__calendar-header {
+          display: none !important;
+        }
+        /* Full height and transparent wrapper borders */
+        .sx__calendar-wrapper {
+          width: 100% !important;
+          height: 100% !important;
+          border: none !important;
+        }
+        .sx__week-wrapper, .sx__day-wrapper, .sx__month-grid-wrapper {
+          border: none !important;
+        }
+        /* Live Current Time Red Indicator Line */
+        .sx__current-time-indicator {
+          position: absolute;
+          left: 0;
+          right: 0;
+          height: 2px;
+          background-color: #ea4335;
+          z-index: 25;
+          pointer-events: none;
+        }
+        .sx__current-time-indicator::before {
+          content: '';
+          position: absolute;
+          left: -5px;
+          top: -4px;
+          width: 10px;
+          height: 10px;
+          border-radius: 50%;
+          background-color: #ea4335;
+          box-shadow: 0 0 3px rgba(234, 67, 53, 0.4);
+        }
+        /* Event Resize Drag Handles */
+        .sx__time-grid-event-resize-handle {
+          position: absolute;
+          bottom: 0;
+          left: 0;
+          right: 0;
+          height: 8px;
+          cursor: ns-resize;
+          z-index: 15;
+        }
+        .sx__date-grid-event-resize-handle {
+          position: absolute;
+          top: 0;
+          bottom: 0;
+          right: 0;
+          width: 8px;
+          cursor: ew-resize;
+          z-index: 15;
+        }
+      `}</style>
 
-        <div className="flex items-center gap-3 w-full md:w-auto justify-between md:justify-end">
-          {/* Status Filter Pills */}
-          <div className="flex space-x-1 p-1 bg-gray-100 rounded-xl border border-gray-200 inline-flex overflow-x-auto">
-            {STATUS_FILTERS.map(f => (
-              <button
-                key={f.id}
-                type="button"
-                onClick={() => setStatusFilter(f.id)}
-                className={`px-4 py-1.5 text-sm font-medium rounded-md whitespace-nowrap transition-colors cursor-pointer ${
-                  statusFilter === f.id
-                    ? 'bg-white text-gray-900 shadow-sm border border-gray-200'
-                    : 'text-gray-600 hover:text-gray-900 hover:bg-white/50 border border-transparent'
-                }`}
-              >
-                {f.label}
-              </button>
-            ))}
-          </div>
-
-          {/* New Appointment Button */}
+      {/* Google Calendar Top Navigation Header Bar */}
+      <header className="h-16 border-b border-gray-200 bg-white px-4 flex items-center justify-between shrink-0">
+        {/* Left cluster: Hamburger, Badge, Today, < >, Dynamic Period */}
+        <div className="flex items-center gap-2 sm:gap-4">
           <button
             type="button"
-            onClick={handleOpenNewAppointment}
-            className="flex items-center justify-center gap-2 bg-primary text-black px-4 py-2 rounded font-body-md font-bold cursor-pointer hover:bg-opacity-90 transition-colors shadow-[0_0_10px_rgba(245,158,11,0.15)] h-11 whitespace-nowrap shrink-0"
+            onClick={toggleCalendarSidebar}
+            className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-gray-100 text-gray-700 transition-colors cursor-pointer"
+            aria-label="Toggle calendar sidebar"
+            title={calendarSidebarOpen ? "Collapse sidebar" : "Expand sidebar"}
           >
-            <span className="material-symbols-outlined text-[18px]">add</span>
-            New Appointment
+            <span className="material-symbols-outlined text-[22px]">menu</span>
           </button>
-        </div>
-      </div>
 
-      {/* Schedule-X Calendar Viewport Wrapper */}
-      <div className="flex-1 min-h-[700px] bg-white rounded-xl border border-gray-200 shadow-xs overflow-hidden flex flex-col isolate relative">
-        {isLoading && (
-          <div className="w-full bg-blue-50 text-blue-700 text-xs px-4 py-1.5 flex items-center gap-2">
-            <div className="inline-block animate-spin rounded-full h-3 w-3 border-2 border-blue-600 border-t-transparent"></div>
-            Syncing appointments...
+          {/* Calendar Badge */}
+          <div className="flex items-center gap-2.5 mr-2">
+            <div className="w-9 h-9 rounded-lg border border-gray-200 bg-white flex flex-col items-center justify-center shadow-xs overflow-hidden">
+              <div className="w-full h-2.5 bg-blue-600"></div>
+              <div className="flex-1 flex items-center justify-center">
+                <span className="text-xs font-bold text-blue-600 leading-none">
+                  {todayDayNum}
+                </span>
+              </div>
+            </div>
+            <span className="text-xl font-semibold text-gray-800 tracking-tight hidden sm:inline">
+              Calendar
+            </span>
           </div>
-        )}
-        <div className="flex-1 p-2 md:p-4">
-          <ScheduleXCalendar calendarApp={calendar} />
+
+          {/* Today Button */}
+          <button
+            type="button"
+            onClick={handleJumpToToday}
+            className="px-4 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 transition-colors cursor-pointer"
+          >
+            Today
+          </button>
+
+          {/* Previous / Next Chevrons */}
+          <div className="flex items-center">
+            <button
+              type="button"
+              onClick={handlePrevPeriod}
+              aria-label="Previous period"
+              className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 text-gray-600 transition-colors cursor-pointer"
+            >
+              <span className="material-symbols-outlined text-xl">chevron_left</span>
+            </button>
+            <button
+              type="button"
+              onClick={handleNextPeriod}
+              aria-label="Next period"
+              className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 text-gray-600 transition-colors cursor-pointer"
+            >
+              <span className="material-symbols-outlined text-xl">chevron_right</span>
+            </button>
+          </div>
+
+          {/* Period Title */}
+          <h2 className="text-base sm:text-xl font-semibold text-gray-800 tracking-tight truncate max-w-[180px] sm:max-w-none">
+            {periodTitle}
+          </h2>
+        </div>
+
+        {/* Right cluster: Loading indicator, View Dropdown, New Appointment */}
+        <div className="flex items-center gap-3">
+          {isLoading && (
+            <div className="hidden md:flex items-center gap-2 text-xs text-blue-600 bg-blue-50 px-2.5 py-1 rounded-full border border-blue-100">
+              <div className="w-2 h-2 rounded-full bg-blue-600 animate-ping"></div>
+              Syncing
+            </div>
+          )}
+
+          {/* View Selector Dropdown */}
+          <div className="relative" ref={viewDropdownRef}>
+            <button
+              type="button"
+              onClick={() => setViewDropdownOpen(prev => !prev)}
+              className="flex items-center gap-2 px-3.5 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 transition-colors cursor-pointer"
+            >
+              <span>{VIEW_LABELS[currentView] || 'Week'}</span>
+              <span className="material-symbols-outlined text-base">expand_more</span>
+            </button>
+
+            {viewDropdownOpen && (
+              <div className="absolute right-0 mt-1 w-32 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-50">
+                <button
+                  type="button"
+                  onClick={() => handleSelectView('day')}
+                  className={`w-full text-left px-4 py-2 text-sm flex items-center justify-between hover:bg-gray-50 transition-colors cursor-pointer ${
+                    currentView === 'day' ? 'text-blue-600 font-semibold bg-blue-50/50' : 'text-gray-700'
+                  }`}
+                >
+                  <span>Day</span>
+                  {currentView === 'day' && <span className="material-symbols-outlined text-sm">check</span>}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleSelectView('week')}
+                  className={`w-full text-left px-4 py-2 text-sm flex items-center justify-between hover:bg-gray-50 transition-colors cursor-pointer ${
+                    currentView === 'week' ? 'text-blue-600 font-semibold bg-blue-50/50' : 'text-gray-700'
+                  }`}
+                >
+                  <span>Week</span>
+                  {currentView === 'week' && <span className="material-symbols-outlined text-sm">check</span>}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleSelectView('month-grid')}
+                  className={`w-full text-left px-4 py-2 text-sm flex items-center justify-between hover:bg-gray-50 transition-colors cursor-pointer ${
+                    currentView === 'month-grid' ? 'text-blue-600 font-semibold bg-blue-50/50' : 'text-gray-700'
+                  }`}
+                >
+                  <span>Month</span>
+                  {currentView === 'month-grid' && <span className="material-symbols-outlined text-sm">check</span>}
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      </header>
+
+      {/* Main Calendar Body: Collapsible Sidebar + Calendar Viewport */}
+      <div className="flex-1 flex overflow-hidden relative p-3 gap-3">
+        {/* Collapsible Left Sidebar */}
+        <CalendarSidebar
+          open={calendarSidebarOpen}
+          selectedDate={selectedDateStr}
+          onSelectDate={handleSelectDateFromMini}
+          onOpenCreate={handleOpenNewAppointment}
+          activeStatuses={activeStatuses}
+          onToggleStatus={handleToggleStatus}
+        />
+
+        {/* Main Calendar Viewport Wrapper */}
+        <div className="flex-1 min-w-0 bg-white rounded-xl border border-gray-200 shadow-2xs overflow-hidden flex flex-col relative">
+          {/* Floating "+ Create" FAB Button in Collapsed Mode */}
+          {!calendarSidebarOpen && (
+            <button
+              type="button"
+              onClick={handleOpenNewAppointment}
+              title="Create appointment"
+              className="absolute top-3 left-3 z-30 flex items-center gap-2 px-4 py-2.5 bg-white hover:bg-gray-50 text-gray-800 font-semibold rounded-full shadow-md hover:shadow-lg border border-gray-200 transition-all cursor-pointer active:scale-95 duration-150"
+            >
+              <svg className="w-5 h-5 shrink-0" viewBox="0 0 36 36">
+                <path fill="#4285F4" d="M16 16v14h4V20z"></path>
+                <path fill="#34A853" d="M30 16H20l-4 4h14z"></path>
+                <path fill="#FBBC05" d="M6 16h10l4-4H6z"></path>
+                <path fill="#EA4335" d="M20 16V6h-4v10z"></path>
+              </svg>
+              <span className="text-sm font-semibold tracking-wide hidden sm:inline">Create</span>
+            </button>
+          )}
+
+          {/* Schedule-X Calendar Canvas */}
+          <div className="flex-1 w-full h-full overflow-hidden">
+            <ScheduleXCalendar calendarApp={calendar} />
+          </div>
         </div>
       </div>
 

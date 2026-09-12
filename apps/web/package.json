@@ -11,8 +11,11 @@
   "dependencies": {
     "@hookform/resolvers": "^5.9.1",
     "@schedule-x/calendar": "^4.8.0",
+    "@schedule-x/calendar-controls": "^4.8.0",
+    "@schedule-x/current-time": "^4.8.0",
     "@schedule-x/drag-and-drop": "^3.7.3",
     "@schedule-x/react": "^4.1.0",
+    "@schedule-x/resize": "^3.7.3",
     "@schedule-x/theme-default": "^4.8.0",
     "@supabase/supabase-js": "^2.110.8",
     "@tanstack/react-query": "^5.101.4",
