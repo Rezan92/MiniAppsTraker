@@ -13,7 +13,12 @@ const CIRCLE_SIZE = 56;
  * Custom hook providing draggable, resizable, collapsible, and maximizable window state
  * with viewport boundary clamping, floating circle state, and localStorage persistence.
  */
-export function useDraggableResizableWindow() {
+export function useDraggableResizableWindow({ onExpand } = {}) {
+  const onExpandRef = useRef(onExpand);
+  useEffect(() => {
+    onExpandRef.current = onExpand;
+  }, [onExpand]);
+
   const [isMobile, setIsMobile] = useState(() => {
     return typeof window !== 'undefined' ? window.innerWidth < 768 : false;
   });
@@ -109,6 +114,7 @@ export function useDraggableResizableWindow() {
   const dragStateRef = useRef(null);
   const resizeStateRef = useRef(null);
   const circleDragRef = useRef(null);
+  const circleMovedRef = useRef(false);
 
   // Persist window state to localStorage
   const persistState = useCallback((pos, sz, collapsed) => {
@@ -172,21 +178,27 @@ export function useDraggableResizableWindow() {
         const maxX = Math.max(16, window.innerWidth - w - 16);
         const maxY = Math.max(16, window.innerHeight - h - 16);
 
-        let targetX;
-        let targetY;
+        let targetX = prev.x;
+        let targetY = prev.y;
 
-        // Quadrant-aware anchor: open window anchored near the circle
-        if (circlePosition.x > window.innerWidth / 2) {
-          targetX = Math.max(16, Math.min(maxX, circlePosition.x + CIRCLE_SIZE - w));
-        } else {
-          targetX = Math.max(16, Math.min(maxX, circlePosition.x));
+        // If circle was dragged to a new location, anchor window near circle
+        if (circleMovedRef.current) {
+          if (circlePosition.x > window.innerWidth / 2) {
+            targetX = circlePosition.x + CIRCLE_SIZE - w;
+          } else {
+            targetX = circlePosition.x;
+          }
+
+          if (circlePosition.y > window.innerHeight / 2) {
+            targetY = circlePosition.y + CIRCLE_SIZE - h;
+          } else {
+            targetY = circlePosition.y;
+          }
+          circleMovedRef.current = false;
         }
 
-        if (circlePosition.y > window.innerHeight / 2) {
-          targetY = Math.max(16, Math.min(maxY, circlePosition.y + CIRCLE_SIZE - h));
-        } else {
-          targetY = Math.max(16, Math.min(maxY, circlePosition.y));
-        }
+        targetX = Math.max(16, Math.min(maxX, targetX));
+        targetY = Math.max(16, Math.min(maxY, targetY));
 
         const newPos = { x: targetX, y: targetY };
         persistState(newPos, size, false);
@@ -199,8 +211,9 @@ export function useDraggableResizableWindow() {
     setIsCollapsed(false);
   }, [isMaximized, isMobile, size, circlePosition, position, persistState]);
 
-  const collapseToCircle = useCallback(() => {
+  const collapseToCircle = useCallback((clickPoint) => {
     if (isMaximized) setIsMaximized(false);
+    circleMovedRef.current = false;
 
     if (!isMobile) {
       setCirclePosition(prev => {
@@ -209,15 +222,13 @@ export function useDraggableResizableWindow() {
         const maxCX = Math.max(16, window.innerWidth - CIRCLE_SIZE - 16);
         const maxCY = Math.max(16, window.innerHeight - CIRCLE_SIZE - 16);
 
-        if (position.x > window.innerWidth / 2 - size.width / 2) {
+        if (clickPoint && typeof clickPoint.x === 'number' && typeof clickPoint.y === 'number') {
+          // Center circle directly where the user clicked to close
+          cx = Math.max(16, Math.min(maxCX, clickPoint.x - CIRCLE_SIZE / 2));
+          cy = Math.max(16, Math.min(maxCY, clickPoint.y - CIRCLE_SIZE / 2));
+        } else {
+          // Default: header top-right corner where close button resides
           cx = Math.max(16, Math.min(maxCX, position.x + size.width - CIRCLE_SIZE));
-        } else {
-          cx = Math.max(16, Math.min(maxCX, position.x));
-        }
-
-        if (position.y > window.innerHeight / 2 - size.height / 2) {
-          cy = Math.max(16, Math.min(maxCY, position.y + size.height - CIRCLE_SIZE));
-        } else {
           cy = Math.max(16, Math.min(maxCY, position.y));
         }
 
@@ -264,6 +275,7 @@ export function useDraggableResizableWindow() {
 
     if (!circleDragRef.current.hasMoved && (Math.abs(dx) > 3 || Math.abs(dy) > 3)) {
       circleDragRef.current.hasMoved = true;
+      circleMovedRef.current = true;
       setIsDraggingCircle(true);
     }
 
@@ -289,7 +301,11 @@ export function useDraggableResizableWindow() {
 
     if (!moved) {
       // Tap / Click -> Expand to full window
-      expandToWindow();
+      if (onExpandRef.current) {
+        onExpandRef.current();
+      } else {
+        expandToWindow();
+      }
     } else {
       // Drag release -> save circle position
       setCirclePosition(pos => {

@@ -5,6 +5,7 @@ import { createApiError } from '../middleware/errorHandler.js';
 import { supabase } from '../config/supabase.js';
 import { ai, DEFAULT_AI_MODEL, getAiClient, getAiConfig } from '../services/ai/geminiClient.js';
 import { getGroqConfig, transcribeAudio } from '../services/ai/groqClient.js';
+import { getNvidiaConfig, isNvidiaModel, executeNvidiaChatWithTools } from '../services/ai/nvidiaClient.js';
 import { AI_TOOLS } from '../services/ai/aiToolDefinitions.js';
 import { executeAiTool } from '../services/ai/aiToolExecutors.js';
 import { buildSystemInstruction } from '../services/ai/promptBuilder.js';
@@ -21,7 +22,8 @@ router.get('/config', (req, res) => {
     success: true,
     data: {
       ...getAiConfig(),
-      ...getGroqConfig()
+      ...getGroqConfig(),
+      ...getNvidiaConfig()
     }
   });
 });
@@ -86,6 +88,65 @@ router.post('/chat', async (req, res, next) => {
       return next(createApiError('Tenant context missing from authenticated session', 400, 'TENANT_REQUIRED'));
     }
 
+    const parseResult = chatRequestSchema.safeParse(req.body);
+    if (!parseResult.success) {
+      return next(parseResult.error);
+    }
+
+    const { messages, screenContext, activeFocus, model, tier } = parseResult.data;
+    const requestedModel = (model && !model.includes('2.5')) ? model : DEFAULT_AI_MODEL;
+    const isNvidia = isNvidiaModel(requestedModel);
+
+    // If an NVIDIA model is selected, route through the NVIDIA Build pipeline
+    if (isNvidia) {
+      const nvidiaConfig = getNvidiaConfig();
+      if (!nvidiaConfig.hasNvidiaKey) {
+        return res.status(503).json({
+          success: false,
+          error: {
+            message: 'NVIDIA API key is not configured. Please add NVIDIA_API_KEY to apps/api/.env to use NVIDIA models.',
+            code: 'NVIDIA_KEY_MISSING'
+          }
+        });
+      }
+
+      const lastUserMsg = messages[messages.length - 1]?.content || '(image attachment)';
+      console.log(`\n🤖 [AI Request] Provider: NVIDIA | Model: ${requestedModel} | User: ${req.user.email} | Screen: ${screenContext?.screen || 'Global'} | Prompt: "${lastUserMsg}"`);
+
+      const systemInstruction = buildSystemInstruction({ user: req.user, screenContext, activeFocus });
+      let result;
+      try {
+        result = await executeNvidiaChatWithTools({
+          messages,
+          systemInstruction,
+          activeModel: requestedModel,
+          tenantId,
+          userId: req.user.id,
+          currentActiveFocus: activeFocus
+        });
+      } catch (nvErr) {
+        if (requestedModel !== 'moonshotai/kimi-k3') {
+          console.warn(`⚠️ [NVIDIA AI] Model "${requestedModel}" failed (${nvErr.status || nvErr.message}). Gracefully falling back to default "moonshotai/kimi-k3".`);
+          result = await executeNvidiaChatWithTools({
+            messages,
+            systemInstruction,
+            activeModel: 'moonshotai/kimi-k3',
+            tenantId,
+            userId: req.user.id,
+            currentActiveFocus: activeFocus
+          });
+        } else {
+          throw nvErr;
+        }
+      }
+
+      return res.json({
+        success: true,
+        data: result
+      });
+    }
+
+    // Otherwise, check Gemini API key configuration
     const config = getAiConfig();
     if (!config.hasFreeKey && !config.hasPaidKey) {
       return res.status(503).json({
@@ -97,14 +158,8 @@ router.post('/chat', async (req, res, next) => {
       });
     }
 
-    const parseResult = chatRequestSchema.safeParse(req.body);
-    if (!parseResult.success) {
-      return next(parseResult.error);
-    }
-
-    const { messages, screenContext, activeFocus, model, tier } = parseResult.data;
     const { ai: aiClient, activeTier, isPaidKeyConfigured } = getAiClient(tier);
-    const targetModel = (model && !model.includes('2.5')) ? model : DEFAULT_AI_MODEL;
+    const targetModel = requestedModel;
     const lastUserMsg = messages[messages.length - 1]?.content || '(image attachment)';
     console.log(`\n🤖 [AI Request] Tier: ${activeTier.toUpperCase()} | Model: ${targetModel} | User: ${req.user.email} | Screen: ${screenContext?.screen || 'Global'} | Prompt: "${lastUserMsg}"`);
 

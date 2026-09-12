@@ -13,13 +13,31 @@ import {
 export const DEFAULT_AI_MODEL = 'gemini-3.1-flash-lite';
 
 export const AVAILABLE_MODELS = [
-  { id: 'gemini-3.1-flash-lite', label: 'Gemini 3.1 Flash Lite' },
-  { id: 'gemini-3-flash', label: 'Gemini 3 Flash' },
-  { id: 'gemini-3.5-flash', label: 'Gemini 3.5 Flash' },
-  { id: 'gemini-3.5-flash-lite', label: 'Gemini 3.5 Flash Lite' },
-  { id: 'gemini-3.6-flash', label: 'Gemini 3.6 Flash' },
-  { id: 'gemini-3.7-flash', label: 'Gemini 3.7 Flash' },
-  { id: 'gemini-3.8-flash', label: 'Gemini 3.8 Flash' }
+  // Google Gemini
+  { id: 'gemini-3.1-flash-lite', label: 'Gemini 3.1 Flash Lite', provider: 'gemini' },
+  { id: 'gemini-3-flash', label: 'Gemini 3 Flash', provider: 'gemini' },
+  { id: 'gemini-3.5-flash', label: 'Gemini 3.5 Flash', provider: 'gemini' },
+  { id: 'gemini-3.5-flash-lite', label: 'Gemini 3.5 Flash Lite', provider: 'gemini' },
+  { id: 'gemini-3.6-flash', label: 'Gemini 3.6 Flash', provider: 'gemini' },
+  { id: 'gemini-3.7-flash', label: 'Gemini 3.7 Flash', provider: 'gemini' },
+  { id: 'gemini-3.8-flash', label: 'Gemini 3.8 Flash', provider: 'gemini' },
+
+  // NVIDIA Build (Free)
+  { id: 'moonshotai/kimi-k3', label: 'Moonshot Kimi K3', provider: 'nvidia' },
+  { id: 'meta/muse-glimmer-30b', label: 'Meta Muse Glimmer 30B', provider: 'nvidia' },
+  { id: 'nvidia/nemotron-3-nano-omni-30b-a3b-reasoning', label: 'Nemotron 3 Nano Omni Reasoning', provider: 'nvidia' },
+  { id: 'deepseek-ai/deepseek-v4-flash-0731', label: 'DeepSeek V4 Flash', provider: 'nvidia' },
+  { id: 'nvidia/nemotron-3.5-lightning-30b-a3b', label: 'Nemotron 3.5 Lightning 30B', provider: 'nvidia' },
+  { id: 'poolside/laguna-xs-2.1', label: 'Poolside Laguna XS 2.1', provider: 'nvidia' },
+  { id: 'google/diffusiongemma-26b-a4b-it', label: 'DiffusionGemma 26B', provider: 'nvidia' },
+  { id: 'google/gemma-4-31b-it', label: 'Google Gemma 4 31B', provider: 'nvidia' },
+  { id: 'deepseek-ai/deepseek-r1-distill-qwen-14b', label: 'DeepSeek R1 Distill Qwen 14B', provider: 'nvidia' },
+  { id: 'qwen/qwen2.5-coder-32b-instruct', label: 'Qwen 2.5 Coder 32B', provider: 'nvidia' },
+  { id: 'microsoft/phi-4', label: 'Microsoft Phi-4', provider: 'nvidia' },
+  { id: 'google/gemma-2-9b-it', label: 'Google Gemma 2 9B', provider: 'nvidia' },
+  { id: 'meta/llama-3.1-8b-instruct', label: 'Meta Llama 3.1 8B', provider: 'nvidia' },
+  { id: 'nvidia/mistral-nemo-minitron-8b', label: 'Mistral NeMo Minitron 8B', provider: 'nvidia' },
+  { id: 'nvidia/llama-3.1-nemotron-nano-vl-8b-v1', label: 'Llama 3.1 Nemotron Nano VL 8B', provider: 'nvidia' }
 ];
 
 export const INITIAL_ASSISTANT_MESSAGE = {
