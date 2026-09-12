@@ -16,13 +16,36 @@ export const VALID_CONTACT_ROLES = [
 ];
 
 export const VALID_COLOR_TAGS = [
+  // Google Calendar 24-color palette
+  'berry',
+  'flamingo',
+  'tomato',
+  'red',
+  'tangerine',
+  'pumpkin',
+  'mango',
+  'banana',
+  'mustard',
+  'avocado',
+  'pistachio',
+  'basil',
+  'sage',
+  'peacock',
+  'sky',
   'blue',
+  'blueberry',
+  'indigo',
+  'lavender',
+  'wisteria',
+  'grape',
+  'cocoa',
+  'graphite',
+  'birch',
+  // Legacy aliases for backward compatibility
   'amber',
   'green',
   'purple',
-  'gray',
-  'red',
-  'indigo'
+  'gray'
 ];
 
 function assertTenant(tenantId) {

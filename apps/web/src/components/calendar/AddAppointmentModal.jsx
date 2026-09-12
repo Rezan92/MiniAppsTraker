@@ -7,16 +7,7 @@ import { appointmentSchema } from '../../schemas/appointmentSchema';
 import { useClients } from '../../hooks/api/useClients';
 import { useJobs } from '../../hooks/api/useJobs';
 import { useProperties } from '../../hooks/api/useProperties';
-
-const COLOR_OPTIONS = [
-  { id: 'blue', name: 'Blue (Standard)', bg: 'bg-blue-600', ring: 'ring-blue-500' },
-  { id: 'amber', name: 'Amber (Urgent/In Progress)', bg: 'bg-amber-500', ring: 'ring-amber-500' },
-  { id: 'green', name: 'Green (Completed)', bg: 'bg-emerald-600', ring: 'ring-emerald-500' },
-  { id: 'purple', name: 'Purple (Estimate/Walkthrough)', bg: 'bg-purple-600', ring: 'ring-purple-500' },
-  { id: 'red', name: 'Red (High Priority)', bg: 'bg-red-600', ring: 'ring-red-500' },
-  { id: 'indigo', name: 'Indigo (Contractor)', bg: 'bg-indigo-600', ring: 'ring-indigo-500' },
-  { id: 'gray', name: 'Gray (Cancelled/On Hold)', bg: 'bg-gray-500', ring: 'ring-gray-400' }
-];
+import { GOOGLE_CALENDAR_COLORS } from './calendarColors';
 
 const REMINDER_OPTIONS = [
   { value: 0, label: 'None' },
@@ -472,17 +463,29 @@ export const AddAppointmentModal = ({
 
           <div>
             <label className="block text-label-sm font-semibold text-gray-700 mb-1">Color Tag</label>
-            <div className="flex items-center gap-1.5 pt-1.5">
-              {COLOR_OPTIONS.map((c) => (
+            <div className="flex flex-wrap items-center gap-1.5 pt-1 max-w-[280px]">
+              {GOOGLE_CALENDAR_COLORS.map((c) => (
                 <button
                   key={c.id}
                   type="button"
                   title={c.name}
                   onClick={() => setValue('color_tag', c.id)}
-                  className={`w-6 h-6 rounded-full ${c.bg} transition-all cursor-pointer ${
-                    selectedColor === c.id ? `ring-2 ${c.ring} ring-offset-2 scale-110` : 'opacity-80 hover:opacity-100'
+                  style={{ backgroundColor: c.hex }}
+                  className={`w-5 h-5 rounded-full transition-transform cursor-pointer flex items-center justify-center ${
+                    selectedColor === c.id ? 'ring-2 ring-blue-500 ring-offset-2 scale-110' : 'hover:scale-115'
                   }`}
-                />
+                >
+                  {selectedColor === c.id && (
+                    <svg
+                      className="w-2.5 h-2.5"
+                      style={{ color: c.textColor }}
+                      fill="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" />
+                    </svg>
+                  )}
+                </button>
               ))}
             </div>
           </div>

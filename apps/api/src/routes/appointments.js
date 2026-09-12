@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { authenticate } from '../middleware/auth.js';
 import { createApiError } from '../middleware/errorHandler.js';
 import { appointmentService } from '../services/domain/index.js';
+import { VALID_COLOR_TAGS } from '../services/domain/appointmentService.js';
 
 const router = express.Router();
 router.use(authenticate);
@@ -14,7 +15,7 @@ export const createAppointmentSchema = z.object({
   end_time: z.string().min(1, 'End time is required'),
   all_day: z.boolean().optional().default(false),
   status: z.enum(['scheduled', 'in_progress', 'completed', 'cancelled', 'rescheduled']).optional().default('scheduled'),
-  color_tag: z.enum(['blue', 'amber', 'green', 'purple', 'gray', 'red', 'indigo']).optional().default('blue'),
+  color_tag: z.enum(VALID_COLOR_TAGS).optional().default('blue'),
   location_address: z.string().optional().nullable(),
   contact_name: z.string().max(255).optional().nullable(),
   contact_phone: z.string().max(50).optional().nullable(),
@@ -40,7 +41,7 @@ export const updateAppointmentSchema = z.object({
   end_time: z.string().min(1).optional(),
   all_day: z.boolean().optional(),
   status: z.enum(['scheduled', 'in_progress', 'completed', 'cancelled', 'rescheduled']).optional(),
-  color_tag: z.enum(['blue', 'amber', 'green', 'purple', 'gray', 'red', 'indigo']).optional(),
+  color_tag: z.enum(VALID_COLOR_TAGS).optional(),
   location_address: z.string().optional().nullable(),
   contact_name: z.string().max(255).optional().nullable(),
   contact_phone: z.string().max(50).optional().nullable(),

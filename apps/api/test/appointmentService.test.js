@@ -141,13 +141,34 @@ test('VALID_* constants cover expected domain values', () => {
     'custom'
   ]);
   assert.deepEqual(VALID_COLOR_TAGS, [
+    'berry',
+    'flamingo',
+    'tomato',
+    'red',
+    'tangerine',
+    'pumpkin',
+    'mango',
+    'banana',
+    'mustard',
+    'avocado',
+    'pistachio',
+    'basil',
+    'sage',
+    'peacock',
+    'sky',
     'blue',
+    'blueberry',
+    'indigo',
+    'lavender',
+    'wisteria',
+    'grape',
+    'cocoa',
+    'graphite',
+    'birch',
     'amber',
     'green',
     'purple',
-    'gray',
-    'red',
-    'indigo'
+    'gray'
   ]);
 });
 

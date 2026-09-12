@@ -21,6 +21,8 @@ import {
 import { AddAppointmentModal } from './AddAppointmentModal';
 import { AppointmentDetailsModal } from './AppointmentDetailsModal';
 import { CalendarSidebar } from './CalendarSidebar';
+import { EventContextMenu } from './EventContextMenu';
+import { buildScheduleXCalendars } from './calendarColors';
 
 // Converts an appointment DB record to Schedule-X v4 event with Temporal objects
 function toScheduleXEvent(apt, timezone) {
@@ -142,6 +144,12 @@ export const CalendarView = () => {
   const [selectedAppointment, setSelectedAppointment] = useState(null);
   const [clickedDate, setClickedDate] = useState(null);
   const [editingAppointment, setEditingAppointment] = useState(null);
+  const [contextMenu, setContextMenu] = useState({
+    open: false,
+    x: 0,
+    y: 0,
+    appointment: null
+  });
 
   const viewDropdownRef = useRef(null);
   const isCancelledByEscape = useRef(false);
@@ -216,44 +224,8 @@ export const CalendarView = () => {
     }
   };
 
-  // Color mappings for Schedule-X
-  const calendars = useMemo(() => ({
-    blue: {
-      colorName: 'blue',
-      lightColors: { main: '#1a73e8', container: '#e8f0fe', onContainer: '#1967d2' },
-      darkColors: { main: '#8ab4f8', container: '#174ea6', onContainer: '#e8f0fe' },
-    },
-    amber: {
-      colorName: 'amber',
-      lightColors: { main: '#f29900', container: '#fef7e0', onContainer: '#b06000' },
-      darkColors: { main: '#fdd663', container: '#7c4d00', onContainer: '#feefe3' },
-    },
-    green: {
-      colorName: 'green',
-      lightColors: { main: '#188038', container: '#e6f4ea', onContainer: '#137333' },
-      darkColors: { main: '#81c995', container: '#0d652d', onContainer: '#e6f4ea' },
-    },
-    purple: {
-      colorName: 'purple',
-      lightColors: { main: '#a142f4', container: '#f3e8fd', onContainer: '#8430ce' },
-      darkColors: { main: '#c58af9', container: '#681da8', onContainer: '#f3e8fd' },
-    },
-    red: {
-      colorName: 'red',
-      lightColors: { main: '#d93025', container: '#fce8e6', onContainer: '#c5221f' },
-      darkColors: { main: '#f28b82', container: '#a50e0e', onContainer: '#fce8e6' },
-    },
-    indigo: {
-      colorName: 'indigo',
-      lightColors: { main: '#3f51b5', container: '#e8eaf6', onContainer: '#283593' },
-      darkColors: { main: '#7986cb', container: '#1a237e', onContainer: '#e8eaf6' },
-    },
-    gray: {
-      colorName: 'gray',
-      lightColors: { main: '#5f6368', container: '#f1f3f4', onContainer: '#3c4043' },
-      darkColors: { main: '#9aa0a6', container: '#3c4043', onContainer: '#f1f3f4' },
-    }
-  }), []);
+  // Color mappings for Schedule-X (24 Google Calendar colors + legacy aliases)
+  const calendars = useMemo(() => buildScheduleXCalendars(), []);
 
   // Initialize plugins with Schedule-X v4 API compatibility bridge
   const dragAndDropPlugin = useMemo(() => {
@@ -533,6 +505,43 @@ export const CalendarView = () => {
     await deleteAppointmentMutation.mutateAsync(id);
     setDetailsModalOpen(false);
     setSelectedAppointment(null);
+    setContextMenu(prev => ({ ...prev, open: false, appointment: null }));
+  };
+
+  const handleContextMenu = (e) => {
+    const eventEl = e.target.closest('[data-event-id], .sx__time-grid-event, .sx__date-grid-event, .sx__month-grid-event');
+    if (!eventEl) return;
+
+    const eventId = eventEl.getAttribute('data-event-id');
+    if (!eventId) return;
+
+    const apt = appointments.find(a => String(a.id) === String(eventId));
+    if (!apt) return;
+
+    e.preventDefault();
+    e.stopPropagation();
+
+    setContextMenu({
+      open: true,
+      x: e.clientX,
+      y: e.clientY,
+      appointment: apt
+    });
+  };
+
+  const handleContextMenuClose = () => {
+    setContextMenu(prev => ({ ...prev, open: false, appointment: null }));
+  };
+
+  const handleContextMenuColorSelect = async (appointmentId, colorId) => {
+    try {
+      await updateAppointmentMutation.mutateAsync({
+        id: appointmentId,
+        color_tag: colorId
+      });
+    } catch (err) {
+      console.error('Failed to update appointment color:', err);
+    }
   };
 
   const handleUpdateStatus = async (id, status) => {
@@ -987,7 +996,10 @@ export const CalendarView = () => {
           )}
 
           {/* Schedule-X Calendar Canvas */}
-          <div className="flex-1 w-full h-full min-h-0 overflow-hidden flex flex-col">
+          <div
+            className="flex-1 w-full h-full min-h-0 overflow-hidden flex flex-col"
+            onContextMenu={handleContextMenu}
+          >
             <ScheduleXCalendar calendarApp={calendar} />
           </div>
         </div>
@@ -1016,6 +1028,18 @@ export const CalendarView = () => {
         onEdit={handleEditAppointment}
         onDelete={handleDeleteAppointment}
         onUpdateStatus={handleUpdateStatus}
+      />
+
+      {/* Google Calendar-Style Event Right-Click Context Menu */}
+      <EventContextMenu
+        open={contextMenu.open}
+        x={contextMenu.x}
+        y={contextMenu.y}
+        appointment={contextMenu.appointment}
+        onClose={handleContextMenuClose}
+        onEdit={handleEditAppointment}
+        onDelete={handleDeleteAppointment}
+        onColorSelect={handleContextMenuColorSelect}
       />
     </div>
   );
