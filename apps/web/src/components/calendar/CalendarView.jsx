@@ -182,38 +182,38 @@ export const CalendarView = () => {
   const calendars = useMemo(() => ({
     blue: {
       colorName: 'blue',
-      lightColors: { main: '#2563eb', container: '#eff6ff', onContainer: '#1e40af' },
-      darkColors: { main: '#60a5fa', container: '#1e3a8a', onContainer: '#dbeafe' },
+      lightColors: { main: '#1a73e8', container: '#e8f0fe', onContainer: '#1967d2' },
+      darkColors: { main: '#8ab4f8', container: '#174ea6', onContainer: '#e8f0fe' },
     },
     amber: {
       colorName: 'amber',
-      lightColors: { main: '#d97706', container: '#fffbeb', onContainer: '#92400e' },
-      darkColors: { main: '#fbbf24', container: '#78350f', onContainer: '#fef3c7' },
+      lightColors: { main: '#f29900', container: '#fef7e0', onContainer: '#b06000' },
+      darkColors: { main: '#fdd663', container: '#7c4d00', onContainer: '#feefe3' },
     },
     green: {
       colorName: 'green',
-      lightColors: { main: '#059669', container: '#ecfdf5', onContainer: '#065f46' },
-      darkColors: { main: '#34d399', container: '#064e3b', onContainer: '#d1fae5' },
+      lightColors: { main: '#188038', container: '#e6f4ea', onContainer: '#137333' },
+      darkColors: { main: '#81c995', container: '#0d652d', onContainer: '#e6f4ea' },
     },
     purple: {
       colorName: 'purple',
-      lightColors: { main: '#7c3aed', container: '#f5f3ff', onContainer: '#5b21b6' },
-      darkColors: { main: '#a78bfa', container: '#4c1d95', onContainer: '#ede9fe' },
+      lightColors: { main: '#a142f4', container: '#f3e8fd', onContainer: '#8430ce' },
+      darkColors: { main: '#c58af9', container: '#681da8', onContainer: '#f3e8fd' },
     },
     red: {
       colorName: 'red',
-      lightColors: { main: '#dc2626', container: '#fef2f2', onContainer: '#991b1b' },
-      darkColors: { main: '#f87171', container: '#7f1d1d', onContainer: '#fee2e2' },
+      lightColors: { main: '#d93025', container: '#fce8e6', onContainer: '#c5221f' },
+      darkColors: { main: '#f28b82', container: '#a50e0e', onContainer: '#fce8e6' },
     },
     indigo: {
       colorName: 'indigo',
-      lightColors: { main: '#4f46e5', container: '#eef2ff', onContainer: '#3730a3' },
-      darkColors: { main: '#818cf8', container: '#312e81', onContainer: '#e0e7ff' },
+      lightColors: { main: '#3f51b5', container: '#e8eaf6', onContainer: '#283593' },
+      darkColors: { main: '#7986cb', container: '#1a237e', onContainer: '#e8eaf6' },
     },
     gray: {
       colorName: 'gray',
-      lightColors: { main: '#4b5563', container: '#f9fafb', onContainer: '#1f2937' },
-      darkColors: { main: '#9ca3af', container: '#374151', onContainer: '#f3f4f6' },
+      lightColors: { main: '#5f6368', container: '#f1f3f4', onContainer: '#3c4043' },
+      darkColors: { main: '#9aa0a6', container: '#3c4043', onContainer: '#f1f3f4' },
     }
   }), []);
 
@@ -272,6 +272,23 @@ export const CalendarView = () => {
     document.addEventListener('mousedown', handleDocumentClick);
     return () => document.removeEventListener('mousedown', handleDocumentClick);
   }, []);
+
+  // Auto-scroll to near current time (or 8 AM) in Day and Week views
+  useEffect(() => {
+    if (currentView === 'day' || currentView === 'week') {
+      const timer = setTimeout(() => {
+        const viewContainer = document.querySelector('.sx__view-container');
+        if (viewContainer) {
+          const now = new Date();
+          const hour = now.getHours();
+          const targetHour = Math.max(0, hour > 8 ? hour - 1 : 7);
+          const targetScroll = (1600 / 24) * targetHour;
+          viewContainer.scrollTop = targetScroll;
+        }
+      }, 150);
+      return () => clearTimeout(timer);
+    }
+  }, [currentView]);
 
   // Programmatic Date Navigation
   const jumpToDate = (targetDate) => {
@@ -451,22 +468,181 @@ export const CalendarView = () => {
   const todayDayNum = todayPlainDate.day;
 
   return (
-    <div className="flex flex-col h-[calc(100vh-140px)] min-h-[720px] bg-white rounded-2xl border border-gray-200 shadow-xs overflow-hidden select-none">
-      {/* Schedule-X Style Overrides & Plugins Styles */}
+    <div
+      className="flex flex-col flex-1 w-full h-full min-h-0 bg-white rounded-2xl border border-gray-200 shadow-xs overflow-hidden select-none"
+      data-view={currentView}
+    >
+      {/* Schedule-X Style Overrides & Google Calendar Theme Styles */}
       <style>{`
         /* Hide default Schedule-X header */
         .sx__calendar-header {
           display: none !important;
         }
-        /* Full height and transparent wrapper borders */
+
+        /* Full height and flex chain to guarantee vertical scrolling */
+        .sx-react-calendar-wrapper {
+          width: 100% !important;
+          height: 100% !important;
+          display: flex !important;
+          flex-direction: column !important;
+          flex: 1 !important;
+          min-height: 0 !important;
+          overflow: hidden !important;
+        }
         .sx__calendar-wrapper {
           width: 100% !important;
           height: 100% !important;
+          display: flex !important;
+          flex-direction: column !important;
+          flex: 1 !important;
+          min-height: 0 !important;
+          overflow: hidden !important;
           border: none !important;
         }
-        .sx__week-wrapper, .sx__day-wrapper, .sx__month-grid-wrapper {
+        .sx__calendar {
+          width: 100% !important;
+          height: 100% !important;
+          display: flex !important;
+          flex-direction: column !important;
+          flex: 1 !important;
+          min-height: 0 !important;
+          overflow: hidden !important;
+          border: none !important;
+          background-color: #ffffff !important;
+        }
+        .sx__view-container {
+          flex: 1 !important;
+          height: 100% !important;
+          min-height: 0 !important;
+          overflow-y: auto !important;
+          overflow-x: hidden !important;
+          scroll-behavior: smooth !important;
+        }
+
+        /* Google Calendar Grid Borders & Typography */
+        .sx__week-grid {
+          width: 100% !important;
+        }
+        .sx__week-grid__hour {
+          border-top: 1px solid #dadce0 !important;
+        }
+        .sx__week-grid__hour-text {
+          font-size: 11px !important;
+          color: #70757a !important;
+          font-weight: 500 !important;
+        }
+        .sx__time-grid-day {
+          border-left: 1px solid #dadce0 !important;
+        }
+        .sx__week-header {
+          border-bottom: 1px solid #dadce0 !important;
+          background-color: #ffffff !important;
+        }
+        .sx__week-header-border {
+          display: none !important;
+        }
+        .sx__week-grid__day-name {
+          font-size: 11px !important;
+          font-weight: 600 !important;
+          text-transform: uppercase !important;
+          color: #70757a !important;
+          letter-spacing: 0.5px !important;
+        }
+        .sx__week-grid__date-number {
+          font-size: 22px !important;
+          font-weight: 500 !important;
+          color: #3c4043 !important;
+          width: 36px !important;
+          height: 36px !important;
+          border-radius: 50% !important;
+          display: flex !important;
+          align-items: center !important;
+          justify-content: center !important;
+        }
+        .sx__week-grid__date--is-today .sx__week-grid__day-name {
+          color: #1a73e8 !important;
+          font-weight: 700 !important;
+        }
+        .sx__week-grid__date--is-today .sx__week-grid__date-number {
+          background-color: #1a73e8 !important;
+          color: #ffffff !important;
+          font-weight: 700 !important;
+        }
+
+        /* Day View: align day header on the left side over the time column */
+        .is-day-view .sx__week-grid__date,
+        [data-view="day"] .sx__week-grid__date {
+          align-items: flex-start !important;
+          padding-left: 2rem !important;
+        }
+        .is-day-view .sx__week-grid__day-name,
+        [data-view="day"] .sx__week-grid__day-name {
+          padding-left: 4px !important;
+          font-size: 11px !important;
+          color: #70757a !important;
+          font-weight: 600 !important;
+          letter-spacing: 0.5px !important;
+        }
+        .is-day-view .sx__week-grid__date-number,
+        [data-view="day"] .sx__week-grid__date-number {
+          font-size: 24px !important;
+          font-weight: 600 !important;
+        }
+
+        /* Month View: Full-width crisp Google Calendar grid */
+        .sx__month-grid-wrapper {
+          width: 100% !important;
+          height: 100% !important;
+          background-color: #ffffff !important;
           border: none !important;
         }
+        .sx__month-grid-week {
+          border-top: 1px solid #dadce0 !important;
+          min-height: 0 !important;
+          flex: 1 !important;
+        }
+        .sx__month-grid-day {
+          border-inline-end: 1px solid #dadce0 !important;
+          padding: 6px 4px !important;
+          transition: background-color 0.15s ease !important;
+        }
+        .sx__month-grid-day:hover {
+          background-color: #f8fafd !important;
+        }
+        .sx__month-grid-day__header-day-name {
+          font-size: 11px !important;
+          font-weight: 600 !important;
+          text-transform: uppercase !important;
+          color: #70757a !important;
+          letter-spacing: 0.5px !important;
+          margin-bottom: 2px !important;
+        }
+        .sx__month-grid-day__header-date {
+          font-size: 12px !important;
+          font-weight: 500 !important;
+          color: #3c4043 !important;
+          width: 24px !important;
+          height: 24px !important;
+          border-radius: 50% !important;
+          display: flex !important;
+          align-items: center !important;
+          justify-content: center !important;
+          margin-bottom: 4px !important;
+        }
+        .sx__month-grid-day__header-date.sx__is-today {
+          background-color: #1a73e8 !important;
+          color: #ffffff !important;
+          font-weight: 700 !important;
+        }
+        .sx__month-grid-event {
+          border-radius: 4px !important;
+          font-size: 12px !important;
+          font-weight: 500 !important;
+          padding: 2px 6px !important;
+          margin-bottom: 2px !important;
+          box-shadow: 0 1px 2px rgba(60, 64, 67, 0.1) !important;
+        }
+
         /* Live Current Time Red Indicator Line */
         .sx__current-time-indicator {
           position: absolute;
@@ -488,6 +664,7 @@ export const CalendarView = () => {
           background-color: #ea4335;
           box-shadow: 0 0 3px rgba(234, 67, 53, 0.4);
         }
+
         /* Event Resize Drag Handles */
         .sx__time-grid-event-resize-handle {
           position: absolute;
@@ -510,7 +687,7 @@ export const CalendarView = () => {
       `}</style>
 
       {/* Google Calendar Top Navigation Header Bar */}
-      <header className="h-16 border-b border-gray-200 bg-white px-4 flex items-center justify-between shrink-0">
+      <header className="h-16 border-b border-gray-200 bg-white px-4 flex items-center justify-between shrink-0 relative z-50">
         {/* Left cluster: Hamburger, Badge, Today, < >, Dynamic Period */}
         <div className="flex items-center gap-2 sm:gap-4">
           <button
@@ -583,7 +760,7 @@ export const CalendarView = () => {
           )}
 
           {/* View Selector Dropdown */}
-          <div className="relative" ref={viewDropdownRef}>
+          <div className="relative z-50" ref={viewDropdownRef}>
             <button
               type="button"
               onClick={() => setViewDropdownOpen(prev => !prev)}
@@ -594,7 +771,7 @@ export const CalendarView = () => {
             </button>
 
             {viewDropdownOpen && (
-              <div className="absolute right-0 mt-1 w-32 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-50">
+              <div className="absolute right-0 mt-1 w-32 bg-white rounded-lg shadow-xl border border-gray-200 py-1 z-50">
                 <button
                   type="button"
                   onClick={() => handleSelectView('day')}
@@ -632,7 +809,7 @@ export const CalendarView = () => {
       </header>
 
       {/* Main Calendar Body: Collapsible Sidebar + Calendar Viewport */}
-      <div className="flex-1 flex overflow-hidden relative p-3 gap-3">
+      <div className="flex-1 flex overflow-hidden relative p-3 gap-3 min-h-0">
         {/* Collapsible Left Sidebar */}
         <CalendarSidebar
           open={calendarSidebarOpen}
@@ -644,7 +821,7 @@ export const CalendarView = () => {
         />
 
         {/* Main Calendar Viewport Wrapper */}
-        <div className="flex-1 min-w-0 bg-white rounded-xl border border-gray-200 shadow-2xs overflow-hidden flex flex-col relative">
+        <div className="flex-1 min-w-0 bg-white rounded-xl border border-gray-200 shadow-2xs overflow-hidden flex flex-col relative min-h-0">
           {/* Floating "+ Create" FAB Button in Collapsed Mode */}
           {!calendarSidebarOpen && (
             <button
@@ -664,7 +841,7 @@ export const CalendarView = () => {
           )}
 
           {/* Schedule-X Calendar Canvas */}
-          <div className="flex-1 w-full h-full overflow-hidden">
+          <div className="flex-1 w-full h-full min-h-0 overflow-hidden flex flex-col">
             <ScheduleXCalendar calendarApp={calendar} />
           </div>
         </div>

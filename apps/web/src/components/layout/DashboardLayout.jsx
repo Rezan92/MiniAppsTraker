@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { NavLink, Outlet, useNavigate } from 'react-router-dom';
+import { NavLink, Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { useToast } from '../../contexts/ToastContext';
 import { useWorkspace } from '../../contexts/WorkspaceContext';
@@ -11,7 +11,10 @@ export const DashboardLayout = ({ children }) => {
   const { user, userData } = useAuth();
   const { workspaces, currentWorkspace, activeTenantId, isSwitching, switchWorkspace } = useWorkspace();
   const navigate = useNavigate();
+  const location = useLocation();
   const { showSuccess } = useToast();
+  
+  const isCalendar = location.pathname.startsWith('/calendar');
   
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
@@ -339,8 +342,8 @@ export const DashboardLayout = ({ children }) => {
         </header>
 
         {/* Canvas */}
-        <div className="flex-1 overflow-auto p-4 md:p-8">
-          <div className="max-w-[1440px] mx-auto">
+        <div className={`flex-1 ${isCalendar ? 'overflow-hidden p-2 md:p-3 flex flex-col min-h-0' : 'overflow-auto p-4 md:p-8'}`}>
+          <div className={isCalendar ? 'w-full flex-1 flex flex-col min-h-0' : 'max-w-[1440px] mx-auto'}>
             {children || <Outlet />}
           </div>
         </div>
