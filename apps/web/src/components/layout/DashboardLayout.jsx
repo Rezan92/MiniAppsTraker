@@ -78,46 +78,51 @@ export const DashboardLayout = ({ children }) => {
     <div className="antialiased min-h-screen flex font-body-md text-body-md text-on-surface bg-background">
       {/* SideNavBar */}
       <nav className={`hidden md:flex bg-inverse-surface text-white font-body-md text-body-md docked left-0 h-full ${
-        isCollapsed ? 'w-[80px] p-3' : 'w-[280px] p-4'
-      } border-r border-on-surface-variant flat no shadows fixed top-0 flex-col z-40 transition-all duration-300 ease-in-out`}>
-        <div className={`mb-8 ${isCollapsed ? 'px-0 mt-3 flex flex-col items-center gap-3' : 'px-2 mt-4 flex items-center justify-between'}`}>
-          <div className={`flex items-center ${isCollapsed ? 'justify-center' : 'gap-3 min-w-0'}`}>
-            <div 
-              className="w-10 h-10 bg-primary rounded flex items-center justify-center font-headline-md font-bold text-black shrink-0"
-              title={isCollapsed ? tenantName : undefined}
-            >
-              {tenantName.charAt(0).toUpperCase() || 'P'}
-            </div>
-            {!isCollapsed && (
-              <div className="overflow-hidden min-w-0">
-                <h1 className="font-headline-md text-headline-md font-bold tracking-tight text-white leading-tight truncate">{tenantName}</h1>
-                <span className="font-label-caps text-label-caps text-gray-400 block truncate">{tenantSubtitle}</span>
-              </div>
-            )}
-          </div>
+        isCollapsed ? 'w-[80px]' : 'w-[280px]'
+      } p-4 border-r border-on-surface-variant flat no shadows fixed top-0 flex-col z-40 transition-all duration-300 ease-in-out group/sidebar`}>
+        {/* Floating Collapse / Expand Toggle Button on Outer Border */}
+        <button
+          type="button"
+          onClick={toggleSidebar}
+          title={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+          aria-label={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+          className="absolute top-7 -right-3.5 z-50 w-7 h-7 rounded-full bg-gray-900 border border-gray-700 shadow-md text-gray-300 hover:text-white hover:bg-gray-800 flex items-center justify-center transition-all duration-200 cursor-pointer opacity-0 pointer-events-none group-hover/sidebar:opacity-100 group-hover/sidebar:pointer-events-auto hover:scale-110 active:scale-95"
+        >
+          <span className="material-symbols-outlined text-base">
+            {isCollapsed ? 'chevron_right' : 'chevron_left'}
+          </span>
+        </button>
 
-          <button
-            type="button"
-            onClick={toggleSidebar}
-            title={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
-            aria-label={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
-            className="text-gray-400 hover:text-white hover:bg-white/10 rounded-lg p-1.5 transition-colors cursor-pointer shrink-0"
+        {/* Tenant Branding Header */}
+        <div className="mb-8 mt-2 flex items-center h-10 px-1">
+          <div 
+            className="w-10 h-10 bg-primary rounded flex items-center justify-center font-headline-md font-bold text-black shrink-0"
+            title={isCollapsed ? tenantName : undefined}
           >
-            <span className="material-symbols-outlined text-xl">
-              {isCollapsed ? 'chevron_right' : 'chevron_left'}
-            </span>
-          </button>
+            {tenantName.charAt(0).toUpperCase() || 'P'}
+          </div>
+          <div className={`ml-3 overflow-hidden whitespace-nowrap transition-all duration-300 ease-in-out ${
+            isCollapsed ? 'opacity-0 max-w-0 pointer-events-none' : 'opacity-100 max-w-[180px]'
+          }`}>
+            <h1 className="font-headline-md text-headline-md font-bold tracking-tight text-white leading-tight truncate">{tenantName}</h1>
+            <span className="font-label-caps text-label-caps text-gray-400 block truncate">{tenantSubtitle}</span>
+          </div>
         </div>
         
+        {/* Main Navigation Links */}
         <ul className="flex-1 space-y-[8px]">
           <li>
             <Tooltip text={isCollapsed ? "Dashboard" : null} position="right" className="w-full">
-              <NavLink to="/" className={({ isActive }) => `relative group flex items-center ${isCollapsed ? 'justify-center px-2' : 'gap-3 px-3'} py-2.5 rounded-lg transition-colors duration-200 ${isActive ? 'bg-gray-800 text-white' : 'text-gray-300 hover:bg-gray-800 hover:text-white'}`}>
+              <NavLink to="/" className={({ isActive }) => `relative group flex items-center h-11 px-3 rounded-lg transition-colors duration-200 ${isActive ? 'bg-gray-800 text-white' : 'text-gray-300 hover:bg-gray-800 hover:text-white'}`}>
                 {({ isActive }) => (
                   <>
                     {isActive && <div className="absolute left-0 top-0 bottom-0 w-1 bg-primary rounded-r-full"></div>}
-                    <span className={`material-symbols-outlined transition-colors ${isActive ? 'text-primary' : 'text-gray-400 group-hover:text-white'}`}>dashboard</span>
-                    <span className={`font-body-md ${isActive ? 'font-bold' : 'font-medium'} ${isCollapsed ? 'sr-only' : ''}`}>Dashboard</span>
+                    <div className="w-6 h-6 flex items-center justify-center shrink-0">
+                      <span className={`material-symbols-outlined transition-colors ${isActive ? 'text-primary' : 'text-gray-400 group-hover:text-white'}`}>dashboard</span>
+                    </div>
+                    <span className={`ml-3 font-body-md whitespace-nowrap overflow-hidden transition-all duration-300 ease-in-out ${isActive ? 'font-bold' : 'font-medium'} ${isCollapsed ? 'opacity-0 max-w-0 pointer-events-none' : 'opacity-100 max-w-[180px]'}`}>
+                      Dashboard
+                    </span>
                   </>
                 )}
               </NavLink>
@@ -125,12 +130,16 @@ export const DashboardLayout = ({ children }) => {
           </li>
           <li>
             <Tooltip text={isCollapsed ? "Clients" : null} position="right" className="w-full">
-              <NavLink to="/clients" className={({ isActive }) => `relative group flex items-center ${isCollapsed ? 'justify-center px-2' : 'gap-3 px-3'} py-2.5 rounded-lg transition-colors duration-200 ${isActive ? 'bg-gray-800 text-white' : 'text-gray-300 hover:bg-gray-800 hover:text-white'}`}>
+              <NavLink to="/clients" className={({ isActive }) => `relative group flex items-center h-11 px-3 rounded-lg transition-colors duration-200 ${isActive ? 'bg-gray-800 text-white' : 'text-gray-300 hover:bg-gray-800 hover:text-white'}`}>
                 {({ isActive }) => (
                   <>
                     {isActive && <div className="absolute left-0 top-0 bottom-0 w-1 bg-primary rounded-r-full"></div>}
-                    <span className={`material-symbols-outlined transition-colors ${isActive ? 'text-primary' : 'text-gray-400 group-hover:text-white'}`} style={{ fontVariationSettings: isActive ? "'FILL' 1" : "'FILL' 0" }}>group</span>
-                    <span className={`font-body-md ${isActive ? 'font-bold' : 'font-medium'} ${isCollapsed ? 'sr-only' : ''}`}>Clients</span>
+                    <div className="w-6 h-6 flex items-center justify-center shrink-0">
+                      <span className={`material-symbols-outlined transition-colors ${isActive ? 'text-primary' : 'text-gray-400 group-hover:text-white'}`} style={{ fontVariationSettings: isActive ? "'FILL' 1" : "'FILL' 0" }}>group</span>
+                    </div>
+                    <span className={`ml-3 font-body-md whitespace-nowrap overflow-hidden transition-all duration-300 ease-in-out ${isActive ? 'font-bold' : 'font-medium'} ${isCollapsed ? 'opacity-0 max-w-0 pointer-events-none' : 'opacity-100 max-w-[180px]'}`}>
+                      Clients
+                    </span>
                   </>
                 )}
               </NavLink>
@@ -138,12 +147,16 @@ export const DashboardLayout = ({ children }) => {
           </li>
           <li>
             <Tooltip text={isCollapsed ? "Jobs" : null} position="right" className="w-full">
-              <NavLink to="/jobs" className={({ isActive }) => `relative group flex items-center ${isCollapsed ? 'justify-center px-2' : 'gap-3 px-3'} py-2.5 rounded-lg transition-colors duration-200 ${isActive ? 'bg-gray-800 text-white' : 'text-gray-300 hover:bg-gray-800 hover:text-white'}`}>
+              <NavLink to="/jobs" className={({ isActive }) => `relative group flex items-center h-11 px-3 rounded-lg transition-colors duration-200 ${isActive ? 'bg-gray-800 text-white' : 'text-gray-300 hover:bg-gray-800 hover:text-white'}`}>
                 {({ isActive }) => (
                   <>
                     {isActive && <div className="absolute left-0 top-0 bottom-0 w-1 bg-primary rounded-r-full"></div>}
-                    <span className={`material-symbols-outlined transition-colors ${isActive ? 'text-primary' : 'text-gray-400 group-hover:text-white'}`}>work</span>
-                    <span className={`font-body-md ${isActive ? 'font-bold' : 'font-medium'} ${isCollapsed ? 'sr-only' : ''}`}>Jobs</span>
+                    <div className="w-6 h-6 flex items-center justify-center shrink-0">
+                      <span className={`material-symbols-outlined transition-colors ${isActive ? 'text-primary' : 'text-gray-400 group-hover:text-white'}`}>work</span>
+                    </div>
+                    <span className={`ml-3 font-body-md whitespace-nowrap overflow-hidden transition-all duration-300 ease-in-out ${isActive ? 'font-bold' : 'font-medium'} ${isCollapsed ? 'opacity-0 max-w-0 pointer-events-none' : 'opacity-100 max-w-[180px]'}`}>
+                      Jobs
+                    </span>
                   </>
                 )}
               </NavLink>
@@ -151,12 +164,16 @@ export const DashboardLayout = ({ children }) => {
           </li>
           <li>
             <Tooltip text={isCollapsed ? "Calendar" : null} position="right" className="w-full">
-              <NavLink to="/calendar" className={({ isActive }) => `relative group flex items-center ${isCollapsed ? 'justify-center px-2' : 'gap-3 px-3'} py-2.5 rounded-lg transition-colors duration-200 ${isActive ? 'bg-gray-800 text-white' : 'text-gray-300 hover:bg-gray-800 hover:text-white'}`}>
+              <NavLink to="/calendar" className={({ isActive }) => `relative group flex items-center h-11 px-3 rounded-lg transition-colors duration-200 ${isActive ? 'bg-gray-800 text-white' : 'text-gray-300 hover:bg-gray-800 hover:text-white'}`}>
                 {({ isActive }) => (
                   <>
                     {isActive && <div className="absolute left-0 top-0 bottom-0 w-1 bg-primary rounded-r-full"></div>}
-                    <span className={`material-symbols-outlined transition-colors ${isActive ? 'text-primary' : 'text-gray-400 group-hover:text-white'}`}>calendar_month</span>
-                    <span className={`font-body-md ${isActive ? 'font-bold' : 'font-medium'} ${isCollapsed ? 'sr-only' : ''}`}>Calendar</span>
+                    <div className="w-6 h-6 flex items-center justify-center shrink-0">
+                      <span className={`material-symbols-outlined transition-colors ${isActive ? 'text-primary' : 'text-gray-400 group-hover:text-white'}`}>calendar_month</span>
+                    </div>
+                    <span className={`ml-3 font-body-md whitespace-nowrap overflow-hidden transition-all duration-300 ease-in-out ${isActive ? 'font-bold' : 'font-medium'} ${isCollapsed ? 'opacity-0 max-w-0 pointer-events-none' : 'opacity-100 max-w-[180px]'}`}>
+                      Calendar
+                    </span>
                   </>
                 )}
               </NavLink>
@@ -164,12 +181,16 @@ export const DashboardLayout = ({ children }) => {
           </li>
           <li>
             <Tooltip text={isCollapsed ? "Invoices" : null} position="right" className="w-full">
-              <NavLink to="/invoices" className={({ isActive }) => `relative group flex items-center ${isCollapsed ? 'justify-center px-2' : 'gap-3 px-3'} py-2.5 rounded-lg transition-colors duration-200 ${isActive ? 'bg-gray-800 text-white' : 'text-gray-300 hover:bg-gray-800 hover:text-white'}`}>
+              <NavLink to="/invoices" className={({ isActive }) => `relative group flex items-center h-11 px-3 rounded-lg transition-colors duration-200 ${isActive ? 'bg-gray-800 text-white' : 'text-gray-300 hover:bg-gray-800 hover:text-white'}`}>
                 {({ isActive }) => (
                   <>
                     {isActive && <div className="absolute left-0 top-0 bottom-0 w-1 bg-primary rounded-r-full"></div>}
-                    <span className={`material-symbols-outlined transition-colors ${isActive ? 'text-primary' : 'text-gray-400 group-hover:text-white'}`}>receipt_long</span>
-                    <span className={`font-body-md ${isActive ? 'font-bold' : 'font-medium'} ${isCollapsed ? 'sr-only' : ''}`}>Invoices</span>
+                    <div className="w-6 h-6 flex items-center justify-center shrink-0">
+                      <span className={`material-symbols-outlined transition-colors ${isActive ? 'text-primary' : 'text-gray-400 group-hover:text-white'}`}>receipt_long</span>
+                    </div>
+                    <span className={`ml-3 font-body-md whitespace-nowrap overflow-hidden transition-all duration-300 ease-in-out ${isActive ? 'font-bold' : 'font-medium'} ${isCollapsed ? 'opacity-0 max-w-0 pointer-events-none' : 'opacity-100 max-w-[180px]'}`}>
+                      Invoices
+                    </span>
                   </>
                 )}
               </NavLink>
@@ -177,15 +198,20 @@ export const DashboardLayout = ({ children }) => {
           </li>
         </ul>
         
+        {/* Bottom Utility Links */}
         <ul className="mt-auto pt-4 border-t border-gray-700 space-y-2 mb-4">
           <li>
             <Tooltip text={isCollapsed ? "Settings" : null} position="right" className="w-full">
-              <NavLink to="/settings" className={({ isActive }) => `relative group flex items-center ${isCollapsed ? 'justify-center px-2' : 'gap-3 px-3'} py-2.5 transition-colors duration-200 rounded-lg ${isActive ? 'bg-gray-800 text-white' : 'text-gray-300 hover:bg-gray-800 hover:text-white'}`}>
+              <NavLink to="/settings" className={({ isActive }) => `relative group flex items-center h-11 px-3 transition-colors duration-200 rounded-lg ${isActive ? 'bg-gray-800 text-white' : 'text-gray-300 hover:bg-gray-800 hover:text-white'}`}>
                 {({ isActive }) => (
                   <>
                     {isActive && <div className="absolute left-0 top-0 bottom-0 w-1 bg-primary rounded-r-full"></div>}
-                    <span className={`material-symbols-outlined transition-colors ${isActive ? 'text-primary' : 'text-gray-400 group-hover:text-white'}`}>settings</span>
-                    <span className={`font-body-md ${isActive ? 'font-bold' : 'font-medium'} ${isCollapsed ? 'sr-only' : ''}`}>Settings</span>
+                    <div className="w-6 h-6 flex items-center justify-center shrink-0">
+                      <span className={`material-symbols-outlined transition-colors ${isActive ? 'text-primary' : 'text-gray-400 group-hover:text-white'}`}>settings</span>
+                    </div>
+                    <span className={`ml-3 font-body-md whitespace-nowrap overflow-hidden transition-all duration-300 ease-in-out ${isActive ? 'font-bold' : 'font-medium'} ${isCollapsed ? 'opacity-0 max-w-0 pointer-events-none' : 'opacity-100 max-w-[180px]'}`}>
+                      Settings
+                    </span>
                   </>
                 )}
               </NavLink>
@@ -193,33 +219,35 @@ export const DashboardLayout = ({ children }) => {
           </li>
           <li>
             <Tooltip text={isCollapsed ? "Support" : null} position="right" className="w-full">
-              <a href="#" className={`flex items-center ${isCollapsed ? 'justify-center px-2' : 'gap-3 px-3'} py-2.5 text-gray-300 hover:bg-gray-800 hover:text-white transition-colors duration-200 rounded-lg group`}>
-                <span className="material-symbols-outlined text-gray-400 group-hover:text-white transition-colors">help</span>
-                <span className={`font-body-md font-medium ${isCollapsed ? 'sr-only' : ''}`}>Support</span>
+              <a href="#" className="flex items-center h-11 px-3 text-gray-300 hover:bg-gray-800 hover:text-white transition-colors duration-200 rounded-lg group">
+                <div className="w-6 h-6 flex items-center justify-center shrink-0">
+                  <span className="material-symbols-outlined text-gray-400 group-hover:text-white transition-colors">help</span>
+                </div>
+                <span className={`ml-3 font-body-md font-medium whitespace-nowrap overflow-hidden transition-all duration-300 ease-in-out ${isCollapsed ? 'opacity-0 max-w-0 pointer-events-none' : 'opacity-100 max-w-[180px]'}`}>
+                  Support
+                </span>
               </a>
             </Tooltip>
           </li>
         </ul>
         
-        {isCollapsed ? (
-          <Tooltip text="Add Job" position="right" className="w-full flex justify-center">
-            <button 
-              onClick={() => navigate('/jobs')}
-              aria-label="Add Job"
-              className="w-10 h-10 flex items-center justify-center bg-primary hover:bg-opacity-90 text-black rounded-lg transition-all shadow-[0_0_15px_rgba(245,158,11,0.2)] active:scale-95 duration-150 cursor-pointer"
-            >
-              <span className="material-symbols-outlined text-black" style={{ fontSize: '20px' }}>add</span>
-            </button>
-          </Tooltip>
-        ) : (
+        {/* Add Job Action Button */}
+        <Tooltip text={isCollapsed ? "Add Job" : null} position="right" className="w-full">
           <button 
             onClick={() => navigate('/jobs')}
-            className="w-full flex items-center justify-center gap-2 bg-primary hover:bg-opacity-90 text-black py-2.5 rounded font-body-md font-bold transition-all shadow-[0_0_15px_rgba(245,158,11,0.2)] active:scale-95 duration-150 cursor-pointer"
+            aria-label="Add Job"
+            className="w-full h-11 flex items-center justify-center px-3 bg-primary hover:bg-opacity-90 text-black rounded-lg font-body-md font-bold transition-all shadow-[0_0_15px_rgba(245,158,11,0.2)] active:scale-95 duration-150 cursor-pointer overflow-hidden"
           >
-            <span className="material-symbols-outlined text-black" style={{ fontSize: '18px' }}>add</span>
-            Add Job
+            <div className="w-6 h-6 flex items-center justify-center shrink-0">
+              <span className="material-symbols-outlined text-black text-xl">add</span>
+            </div>
+            <span className={`overflow-hidden whitespace-nowrap transition-all duration-300 ease-in-out font-bold ${
+              isCollapsed ? 'opacity-0 max-w-0 pointer-events-none ml-0' : 'opacity-100 max-w-[120px] ml-2'
+            }`}>
+              Add Job
+            </span>
           </button>
-        )}
+        </Tooltip>
       </nav>
 
       {/* Main Content Area */}
