@@ -360,5 +360,75 @@ export const entityResolver = {
     }
 
     return { status: 'not_found' };
+  },
+
+  /**
+   * Resolves a calendar appointment by UUID, title, contact name, or location.
+   * @param {string} identifier - UUID, title (e.g. "HVAC Inspection"), contact name, or location
+   * @param {string} tenantId - Tenant boundary
+   * @param {Object} [options]
+   * @param {string} [options.date] - Optional date string (YYYY-MM-DD) to disambiguate
+   * @returns {Promise<{ status: 'resolved'|'ambiguous'|'not_found', entity?: any, candidates?: any[] }>}
+   */
+  async resolveAppointment(identifier, tenantId, { date } = {}) {
+    if (!identifier || !tenantId) return { status: 'not_found' };
+    const raw = String(identifier).trim();
+
+    // 1. Direct UUID Match
+    if (UUID_REGEX.test(raw)) {
+      const { data, error } = await supabase
+        .from('appointments')
+        .select('*, client:clients(id, name), job:jobs(id, title), property:rental_properties(id, name, address)')
+        .eq('id', raw)
+        .eq('tenant_id', tenantId)
+        .single();
+
+      if (!error && data) {
+        return { status: 'resolved', entity: data };
+      }
+    }
+
+    // 2. Exact Title Match (Case-Insensitive)
+    let exactQuery = supabase
+      .from('appointments')
+      .select('*, client:clients(id, name), job:jobs(id, title), property:rental_properties(id, name, address)')
+      .eq('tenant_id', tenantId)
+      .ilike('title', raw)
+      .order('start_time', { ascending: false });
+
+    if (date) {
+      exactQuery = exactQuery.gte('start_time', `${date}T00:00:00Z`).lte('start_time', `${date}T23:59:59Z`);
+    }
+
+    const { data: exactMatches } = await exactQuery;
+    if (exactMatches && exactMatches.length === 1) {
+      return { status: 'resolved', entity: exactMatches[0] };
+    }
+    if (exactMatches && exactMatches.length > 1) {
+      return { status: 'ambiguous', candidates: exactMatches };
+    }
+
+    // 3. Substring Fuzzy Match across title, contact_name, and location_address
+    let fuzzyQuery = supabase
+      .from('appointments')
+      .select('*, client:clients(id, name), job:jobs(id, title), property:rental_properties(id, name, address)')
+      .eq('tenant_id', tenantId)
+      .or(`title.ilike."%${raw}%",contact_name.ilike."%${raw}%",location_address.ilike."%${raw}%"`)
+      .order('start_time', { ascending: false })
+      .limit(10);
+
+    if (date) {
+      fuzzyQuery = fuzzyQuery.gte('start_time', `${date}T00:00:00Z`).lte('start_time', `${date}T23:59:59Z`);
+    }
+
+    const { data: fuzzyMatches } = await fuzzyQuery;
+    if (!fuzzyMatches || fuzzyMatches.length === 0) {
+      return { status: 'not_found' };
+    }
+    if (fuzzyMatches.length === 1) {
+      return { status: 'resolved', entity: fuzzyMatches[0] };
+    }
+
+    return { status: 'ambiguous', candidates: fuzzyMatches };
   }
 };

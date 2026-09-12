@@ -71,3 +71,26 @@ A dedicated, real-time Calendar and Scheduling Hub providing Day, Week, and Mont
 - [ ] Supabase Realtime channel subscription for `appointments` in `useSupabaseRealtimeSync.js`
 - [ ] In-app imminent reminder badge on Calendar icon
 - [ ] Cross-entity deep linking from Job Details and Client Details tabs
+
+---
+
+### Milestone 6: AI Copilot Scheduling & Calendar Integration (Epic 18 Parity)
+- [x] **OpenAPI / Gemini AI Tool Specifications (`aiToolDefinitions.js`)**:
+  - `list_appointments`: Query appointments with date range filters (`start_date`, `end_date`), `client_name_or_id`, `job_id`, and `status`.
+  - `get_appointment_details`: Retrieve full appointment metadata and relations by identifier.
+  - `create_appointment`: Schedule appointments with title, start/end times, linked client/job/property, notes, contact name/phone, color tag, and all-day flags.
+  - `reschedule_appointment`: Relocate/shift an appointment to a new date/time with duration preservation.
+  - `update_appointment`: Edit title, times, status, color tag, notes, or contact info.
+  - `delete_appointment`: Permanently delete or cancel scheduled appointments.
+- [x] **Smart Entity Resolution (`entityResolver.js`)**:
+  - Implemented `resolveAppointment`: Resolves events by UUID, exact title, case-insensitive substring, linked client name, contact name, or location within tenant boundary.
+- [x] **AI Domain Tool Executors (`aiToolExecutors.js`)**:
+  - Wired all 6 scheduling tools directly into `appointmentService` domain layer (Rule 14).
+  - Emits `{ mutation: 'appointments' }` to automatically trigger frontend cache invalidation.
+- [x] **Temporal Prompt Engineering (`promptBuilder.js`)**:
+  - Dynamic user timezone injection, current ISO date, and human-friendly weekday string (e.g., "Saturday, September 12, 2026").
+  - Relative temporal arithmetic instructions ("tomorrow", "day after tomorrow", "this week", "next week", "next Monday").
+  - Calendar domain rules (1-hour default duration, Google Calendar color palette fallback).
+- [x] **Real-Time Client Invalidation & Screen Context (`AiContext.jsx` & `CalendarView.jsx`)**:
+  - `AiContext.jsx` handles `'appointments'` mutation by invalidating `QUERY_KEYS.appointments.all` (`['appointments']`).
+  - `CalendarView.jsx` publishes active view, selected date, user timezone, visible range, and status filters via `useScreenContext`.

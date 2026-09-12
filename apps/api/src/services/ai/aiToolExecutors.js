@@ -1,6 +1,6 @@
 import { supabase } from '../../config/supabase.js';
 import { resolveEffectiveHourlyRate } from '../masterRates.js';
-import { invoiceService, jobService, clientService } from '../domain/index.js';
+import { invoiceService, jobService, clientService, appointmentService } from '../domain/index.js';
 import { pendingActionManager } from './pendingActionManager.js';
 import { entityResolver } from './entityResolver.js';
 
@@ -33,6 +33,16 @@ async function resolveInvoiceOrError(identifier, tenantId) {
     return { error: `Multiple invoices match "${identifier}": ${list}. Please specify.` };
   }
   return { invoice: res.entity };
+}
+
+async function resolveAppointmentOrError(identifier, tenantId, options = {}) {
+  const res = await entityResolver.resolveAppointment(identifier, tenantId, options);
+  if (res.status === 'not_found') return { error: `Appointment "${identifier}" not found.` };
+  if (res.status === 'ambiguous') {
+    const list = res.candidates.map(a => `"${a.title}" (${new Date(a.start_time).toLocaleDateString()})`).join(', ');
+    return { error: `Multiple appointments match "${identifier}": ${list}. Please specify which one.` };
+  }
+  return { appointment: res.entity };
 }
 
 function normalizeTimeTo24Hour(timeStr) {
@@ -934,6 +944,238 @@ export async function executeAiTool(toolName, args = {}, { tenantId, userId }) {
           },
           mutation: null
         };
+      }
+
+      // --- Calendar & Scheduling Hub (Epic 18) ---
+      case 'list_appointments': {
+        const { start_date, end_date, status, client_id, job_id, limit = 50 } = args;
+        const filters = { limit: Number(limit) || 50 };
+        if (start_date) filters.startDate = start_date;
+        if (end_date) filters.endDate = end_date;
+        if (status) filters.status = status;
+
+        if (client_id) {
+          const cRes = await entityResolver.resolveClient(client_id, tenantId);
+          if (cRes.status === 'resolved') filters.clientId = cRes.entity.id;
+        }
+
+        if (job_id) {
+          const jRes = await entityResolver.resolveJob(job_id, tenantId);
+          if (jRes.status === 'resolved') filters.jobId = jRes.entity.id;
+        }
+
+        try {
+          const data = await appointmentService.getAppointments({ tenantId, filters });
+          return { result: data || [], mutation: null };
+        } catch (err) {
+          return { error: err.message };
+        }
+      }
+
+      case 'get_appointment_details': {
+        const { appointment_id } = args;
+        const resolution = await resolveAppointmentOrError(appointment_id, tenantId);
+        if (resolution.error) return { error: resolution.error };
+
+        try {
+          const apt = await appointmentService.getAppointmentById({
+            tenantId,
+            appointmentId: resolution.appointment.id
+          });
+          return { result: apt, mutation: null };
+        } catch (err) {
+          return { error: err.message };
+        }
+      }
+
+      case 'create_appointment': {
+        const {
+          title,
+          start_time,
+          end_time,
+          all_day = false,
+          color_tag = 'blue',
+          client_id,
+          job_id,
+          property_id,
+          location_address,
+          contact_name,
+          contact_phone,
+          contact_role = 'billing_client',
+          description,
+          reminder_minutes = 60
+        } = args;
+
+        let resolvedClientId = null;
+        if (client_id) {
+          const cRes = await entityResolver.resolveClient(client_id, tenantId);
+          if (cRes.status === 'resolved') resolvedClientId = cRes.entity.id;
+        }
+
+        let resolvedJobId = null;
+        if (job_id) {
+          const jRes = await entityResolver.resolveJob(job_id, tenantId);
+          if (jRes.status === 'resolved') {
+            resolvedJobId = jRes.entity.id;
+            if (!resolvedClientId && jRes.entity.client_id) {
+              resolvedClientId = jRes.entity.client_id;
+            }
+          }
+        }
+
+        // Calculate end_time defaulting to 1 hour after start_time if not provided
+        let finalEndTime = end_time;
+        if (!finalEndTime && start_time) {
+          const startMs = new Date(start_time).getTime();
+          if (!isNaN(startMs)) {
+            finalEndTime = new Date(startMs + 60 * 60 * 1000).toISOString();
+          }
+        }
+
+        try {
+          const appointmentData = {
+            title,
+            start_time,
+            end_time: finalEndTime,
+            all_day: !!all_day,
+            color_tag: color_tag || 'blue',
+            client_id: resolvedClientId,
+            job_id: resolvedJobId,
+            property_id: property_id || null,
+            location_address: location_address || null,
+            contact_name: contact_name || null,
+            contact_phone: contact_phone || null,
+            contact_role: contact_role || 'billing_client',
+            description: description || null,
+            reminder_minutes: reminder_minutes !== undefined ? Number(reminder_minutes) : 60
+          };
+
+          const data = await appointmentService.createAppointment({
+            tenantId,
+            userId,
+            appointmentData
+          });
+
+          return {
+            result: data,
+            mutation: 'appointments',
+            entityId: data.id
+          };
+        } catch (err) {
+          return { error: err.message };
+        }
+      }
+
+      case 'reschedule_appointment': {
+        const { appointment_id, start_time, end_time, all_day, reason } = args;
+        const resolution = await resolveAppointmentOrError(appointment_id, tenantId);
+        if (resolution.error) return { error: resolution.error };
+        const apt = resolution.appointment;
+
+        let newEnd = end_time;
+        if (!newEnd && start_time && apt.start_time && apt.end_time) {
+          const origDuration = new Date(apt.end_time).getTime() - new Date(apt.start_time).getTime();
+          const newStartMs = new Date(start_time).getTime();
+          if (!isNaN(newStartMs)) {
+            newEnd = new Date(newStartMs + (origDuration > 0 ? origDuration : 3600000)).toISOString();
+          }
+        }
+
+        try {
+          const patchData = {
+            start_time,
+            status: 'rescheduled'
+          };
+          if (newEnd) patchData.end_time = newEnd;
+          if (all_day !== undefined) patchData.all_day = !!all_day;
+
+          const data = await appointmentService.updateAppointment({
+            tenantId,
+            appointmentId: apt.id,
+            patchData
+          });
+
+          return {
+            result: {
+              ...data,
+              rescheduled_from: apt.start_time,
+              rescheduled_to: start_time,
+              reason: reason || null
+            },
+            mutation: 'appointments',
+            entityId: apt.id
+          };
+        } catch (err) {
+          return { error: err.message };
+        }
+      }
+
+      case 'update_appointment': {
+        const { appointment_id, ...updates } = args;
+        const resolution = await resolveAppointmentOrError(appointment_id, tenantId);
+        if (resolution.error) return { error: resolution.error };
+        const apt = resolution.appointment;
+
+        const patchData = {};
+        if (updates.title !== undefined) patchData.title = updates.title;
+        if (updates.description !== undefined) patchData.description = updates.description;
+        if (updates.status !== undefined) patchData.status = updates.status;
+        if (updates.color_tag !== undefined) patchData.color_tag = updates.color_tag;
+        if (updates.location_address !== undefined) patchData.location_address = updates.location_address;
+        if (updates.contact_name !== undefined) patchData.contact_name = updates.contact_name;
+        if (updates.contact_phone !== undefined) patchData.contact_phone = updates.contact_phone;
+
+        if (updates.client_id) {
+          const cRes = await entityResolver.resolveClient(updates.client_id, tenantId);
+          if (cRes.status === 'resolved') patchData.client_id = cRes.entity.id;
+        }
+        if (updates.job_id) {
+          const jRes = await entityResolver.resolveJob(updates.job_id, tenantId);
+          if (jRes.status === 'resolved') patchData.job_id = jRes.entity.id;
+        }
+
+        try {
+          const data = await appointmentService.updateAppointment({
+            tenantId,
+            appointmentId: apt.id,
+            patchData
+          });
+
+          return {
+            result: data,
+            mutation: 'appointments',
+            entityId: apt.id
+          };
+        } catch (err) {
+          return { error: err.message };
+        }
+      }
+
+      case 'delete_appointment': {
+        const { appointment_id, reason } = args;
+        const resolution = await resolveAppointmentOrError(appointment_id, tenantId);
+        if (resolution.error) return { error: resolution.error };
+        const apt = resolution.appointment;
+
+        try {
+          await appointmentService.deleteAppointment({
+            tenantId,
+            appointmentId: apt.id
+          });
+
+          return {
+            result: {
+              success: true,
+              deletedAppointment: apt,
+              message: `Successfully deleted appointment "${apt.title}" scheduled for ${new Date(apt.start_time).toLocaleString()}.`,
+              reason: reason || null
+            },
+            mutation: 'appointments',
+            entityId: apt.id
+          };
+        } catch (err) {
+          return { error: err.message };
+        }
       }
 
       default:

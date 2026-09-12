@@ -32,4 +32,10 @@ test('entityResolver guards require tenantId and identifier', async () => {
 
   const hourNoTenant = await entityResolver.resolveJobHour('drywall', 'job-1', null);
   assert.equal(hourNoTenant.status, 'not_found');
+
+  const aptRes = await entityResolver.resolveAppointment(null, 'tenant-1');
+  assert.equal(aptRes.status, 'not_found');
+
+  const aptNoTenant = await entityResolver.resolveAppointment('Inspection', null);
+  assert.equal(aptNoTenant.status, 'not_found');
 });

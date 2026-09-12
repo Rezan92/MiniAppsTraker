@@ -61,6 +61,13 @@
   - Draggable floating circular assistant orb (`w-14 h-14 rounded-full`): Copilot smoothly collapses into a sleek, glowing circular orb that can be placed anywhere on screen via pointer drag-and-drop with viewport boundary clamping and localStorage position persistence.
   - Click-outside collapse & bi-directional fluid animations: Clicking anywhere on the screen outside of the Copilot window (or clicking close/minimize, or double-clicking the header) triggers a smooth 240ms cubic-bezier transition collapsing the window into the circle; clicking the circle expands it smoothly outward. The circle stays directly in the exact spot where the user clicked to close it (centered under cursor) with zero position drift on reopen.
   - Multi-Provider LLM Architecture (NVIDIA Build): Added Moonshot Kimi K3 (`moonshotai/kimi-k3`) via NVIDIA Build API (`https://integrate.api.nvidia.com/v1/chat/completions`) using native Node 22 fetch with zero external dependencies. Exposes complete domain tool-calling parity (all 26 CRM functions), multimodal vision support (base64 image uploads), and clean frontend optgroup categorization in the model selector.
+- [x] **Calendar & Scheduling Hub Integration (Phase 8.4):**
+  - Copilot equipped with 6 comprehensive scheduling tools: `list_appointments`, `get_appointment_details`, `create_appointment`, `reschedule_appointment`, `update_appointment`, and `delete_appointment`.
+  - Temporal prompt enrichment: dynamic user timezone awareness, formatted current day and ISO date injection, and relative date arithmetic ("today", "tomorrow", "day after tomorrow", "this week", "next week", "next Monday", etc.).
+  - Smart appointment entity resolution (`resolveAppointment`) across UUIDs, exact titles, fuzzy title substrings, client names, and contact persons.
+  - Duration-preserving rescheduling engine automatically maintains event length when rescheduling to a new start time without an explicit end time.
+  - Automatic TanStack Query cache invalidation (`QUERY_KEYS.appointments.all`) upon any AI scheduling mutation, instantly updating the calendar without page refresh.
+  - Live screen context synchronization via `useScreenContext` in `CalendarView.jsx`, giving Copilot real-time visibility into the user's active view, selected date, and visible date range.
 - [ ] **Live Voice Chat & Confirmation (Phase 8.3):**
   - Allow users to talk directly to the AI via voice to perform tasks hands-free.
   - When the AI receives a voice command, it must repeat the request back (improving and articulating the wording professionally) and ask for explicit confirmation before executing any actions.

@@ -637,5 +637,221 @@ export const AI_TOOLS = [
       },
       required: ['invoice_id']
     }
+  },
+
+  // --- Calendar & Scheduling Hub Tools (Epic 18) ---
+  {
+    name: 'list_appointments',
+    description: 'Retrieve scheduled calendar events and appointments within a date range (e.g. today, a specific week, month, or custom start/end dates), with optional status, client, or job filters.',
+    parameters: {
+      type: 'OBJECT',
+      properties: {
+        start_date: {
+          type: 'STRING',
+          description: 'Start date or ISO timestamp (e.g. "2026-09-15" or "2026-09-15T00:00:00Z")'
+        },
+        end_date: {
+          type: 'STRING',
+          description: 'End date or ISO timestamp (e.g. "2026-09-22" or "2026-09-22T23:59:59Z")'
+        },
+        status: {
+          type: 'STRING',
+          enum: ['scheduled', 'in_progress', 'completed', 'cancelled', 'rescheduled'],
+          description: 'Filter by appointment status'
+        },
+        client_id: {
+          type: 'STRING',
+          description: 'Filter by client name, company, or UUID'
+        },
+        job_id: {
+          type: 'STRING',
+          description: 'Filter by job title or UUID'
+        },
+        limit: {
+          type: 'INTEGER',
+          description: 'Maximum number of appointments to return (default 50)'
+        }
+      }
+    }
+  },
+  {
+    name: 'get_appointment_details',
+    description: 'Get detailed information for a specific calendar appointment, including linked client, job, property, contact details, notes, and color tag.',
+    parameters: {
+      type: 'OBJECT',
+      properties: {
+        appointment_id: {
+          type: 'STRING',
+          description: 'UUID, title, or contact name of the appointment to look up'
+        }
+      },
+      required: ['appointment_id']
+    }
+  },
+  {
+    name: 'create_appointment',
+    description: 'Schedule a new calendar appointment or event. Sets start and end times, title, color tag, linked customer, job, location, and contact information.',
+    parameters: {
+      type: 'OBJECT',
+      properties: {
+        title: {
+          type: 'STRING',
+          description: 'Title or purpose of the appointment (e.g. "HVAC Inspection", "Dave Walkthrough")'
+        },
+        start_time: {
+          type: 'STRING',
+          description: 'Start date-time in ISO 8601 format (e.g. "2026-09-15T09:00:00Z" or "2026-09-15 09:00")'
+        },
+        end_time: {
+          type: 'STRING',
+          description: 'End date-time in ISO 8601 format (e.g. "2026-09-15T10:00:00Z"). If omitted, default to 1 hour after start_time.'
+        },
+        all_day: {
+          type: 'BOOLEAN',
+          description: 'True if this is an all-day event (default false)'
+        },
+        color_tag: {
+          type: 'STRING',
+          description: 'Color tag for the event (e.g. "blue", "flamingo", "tomato", "basil", "grape", "banana", "amber", "green", etc. Default "blue")'
+        },
+        client_id: {
+          type: 'STRING',
+          description: 'Optional client name, company, or UUID to link'
+        },
+        job_id: {
+          type: 'STRING',
+          description: 'Optional job title or UUID to link'
+        },
+        property_id: {
+          type: 'STRING',
+          description: 'Optional rental property UUID to link'
+        },
+        location_address: {
+          type: 'STRING',
+          description: 'Physical address for the appointment'
+        },
+        contact_name: {
+          type: 'STRING',
+          description: 'Name of the on-site contact person or resident'
+        },
+        contact_phone: {
+          type: 'STRING',
+          description: 'Phone number for the appointment contact'
+        },
+        contact_role: {
+          type: 'STRING',
+          enum: ['billing_client', 'site_resident', 'property_manager', 'custom'],
+          description: 'Role of the contact person (default: billing_client)'
+        },
+        description: {
+          type: 'STRING',
+          description: 'Special notes, gate codes, tools, or instructions'
+        },
+        reminder_minutes: {
+          type: 'INTEGER',
+          description: 'Minutes before event to remind (e.g. 15, 30, 60, 1440. Default 60)'
+        }
+      },
+      required: ['title', 'start_time']
+    }
+  },
+  {
+    name: 'reschedule_appointment',
+    description: 'Move, reschedule, or change the date and time of an existing calendar event. If new end_time is not provided, automatically preserves the original event duration.',
+    parameters: {
+      type: 'OBJECT',
+      properties: {
+        appointment_id: {
+          type: 'STRING',
+          description: 'UUID, title, or contact name of the appointment to move'
+        },
+        start_time: {
+          type: 'STRING',
+          description: 'New start date-time in ISO format (e.g. "2026-09-16T14:00:00Z")'
+        },
+        end_time: {
+          type: 'STRING',
+          description: 'Optional new end date-time in ISO format. If omitted, preserves original duration.'
+        },
+        all_day: {
+          type: 'BOOLEAN',
+          description: 'Whether the event is now an all-day event'
+        },
+        reason: {
+          type: 'STRING',
+          description: 'Optional explanation for rescheduling'
+        }
+      },
+      required: ['appointment_id', 'start_time']
+    }
+  },
+  {
+    name: 'update_appointment',
+    description: 'Update non-time details of an existing calendar appointment, such as title, notes, color tag, status, address, contact, or linked client/job.',
+    parameters: {
+      type: 'OBJECT',
+      properties: {
+        appointment_id: {
+          type: 'STRING',
+          description: 'UUID, title, or contact name of the appointment to update'
+        },
+        title: {
+          type: 'STRING',
+          description: 'New title for the appointment'
+        },
+        description: {
+          type: 'STRING',
+          description: 'Updated notes, gate codes, or instructions'
+        },
+        status: {
+          type: 'STRING',
+          enum: ['scheduled', 'in_progress', 'completed', 'cancelled', 'rescheduled'],
+          description: 'Updated appointment status'
+        },
+        color_tag: {
+          type: 'STRING',
+          description: 'Updated color tag (e.g. "blue", "flamingo", "tomato", "basil", "grape", etc.)'
+        },
+        location_address: {
+          type: 'STRING',
+          description: 'Updated location address'
+        },
+        contact_name: {
+          type: 'STRING',
+          description: 'Updated contact person name'
+        },
+        contact_phone: {
+          type: 'STRING',
+          description: 'Updated contact phone number'
+        },
+        client_id: {
+          type: 'STRING',
+          description: 'Updated linked client UUID or name'
+        },
+        job_id: {
+          type: 'STRING',
+          description: 'Updated linked job UUID or title'
+        }
+      },
+      required: ['appointment_id']
+    }
+  },
+  {
+    name: 'delete_appointment',
+    description: 'Delete or remove a scheduled appointment/event from the calendar.',
+    parameters: {
+      type: 'OBJECT',
+      properties: {
+        appointment_id: {
+          type: 'STRING',
+          description: 'UUID, title, or contact name of the appointment to delete'
+        },
+        reason: {
+          type: 'STRING',
+          description: 'Optional reason for cancellation/deletion'
+        }
+      },
+      required: ['appointment_id']
+    }
   }
 ];

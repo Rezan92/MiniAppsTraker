@@ -159,6 +159,10 @@ export const AiContextProvider = ({ children }) => {
           invalidateInvoiceCascade(queryClient, { invoiceId: entityId });
           break;
 
+        case 'appointments':
+          queryClient.invalidateQueries({ queryKey: QUERY_KEYS.appointments.all });
+          break;
+
         default:
           queryClient.invalidateQueries({ queryKey: QUERY_KEYS.dashboard.all });
           break;

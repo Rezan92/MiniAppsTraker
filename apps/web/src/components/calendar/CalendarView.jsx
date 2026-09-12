@@ -18,6 +18,7 @@ import {
   useUpdateAppointment,
   useDeleteAppointment
 } from '../../hooks/api/useAppointments';
+import { useScreenContext } from '../../contexts/AiContext';
 import { AddAppointmentModal } from './AddAppointmentModal';
 import { AppointmentDetailsModal } from './AppointmentDetailsModal';
 import { CalendarSidebar } from './CalendarSidebar';
@@ -159,6 +160,23 @@ export const CalendarView = () => {
   const createAppointmentMutation = useCreateAppointment();
   const updateAppointmentMutation = useUpdateAppointment();
   const deleteAppointmentMutation = useDeleteAppointment();
+
+  // Register screen context for AI Copilot
+  useScreenContext({
+    screen: 'Calendar',
+    entityId: null,
+    summary: {
+      currentView,
+      selectedDate: selectedDateStr,
+      timezone: userTimezone,
+      visibleRange: currentRange ? {
+        start: typeof currentRange.start?.toString === 'function' ? currentRange.start.toString() : String(currentRange.start),
+        end: typeof currentRange.end?.toString === 'function' ? currentRange.end.toString() : String(currentRange.end)
+      } : null,
+      totalAppointments: Array.isArray(appointments) ? appointments.length : 0,
+      activeStatuses
+    }
+  }, [currentView, selectedDateStr, userTimezone, currentRange, appointments, activeStatuses]);
 
   // Dynamic callbacks ref to prevent stale closures
   const callbacksRef = useRef({});
