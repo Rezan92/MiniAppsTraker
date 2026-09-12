@@ -252,31 +252,28 @@ export const CalendarView = () => {
   };
 
   return (
-    <div className="flex flex-col h-full space-y-4 p-4 md:p-6 max-w-[1600px] mx-auto">
+    <div className="flex flex-col">
       {/* Top Header Bar */}
-      <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
         <div>
-          <div className="flex items-center gap-2">
-            <span className="material-symbols-outlined text-primary text-2xl">calendar_month</span>
-            <h1 className="text-2xl font-bold text-gray-900 tracking-tight">Calendar & Scheduling</h1>
-          </div>
-          <p className="text-sm text-gray-500 mt-0.5">
-            Manage field appointments, walkthroughs, and scheduled job timelines
+          <h1 className="font-headline-lg text-headline-lg font-bold text-on-surface">Calendar & Scheduling</h1>
+          <p className="font-body-md text-gray-500 mt-1">
+            Manage field appointments, walkthroughs, and scheduled job timelines.
           </p>
         </div>
 
         <div className="flex items-center gap-3 w-full md:w-auto justify-between md:justify-end">
           {/* Status Filter Pills */}
-          <div className="flex items-center bg-gray-100 p-1 rounded-lg">
+          <div className="flex space-x-1 p-1 bg-gray-100 rounded-xl border border-gray-200 inline-flex overflow-x-auto">
             {STATUS_FILTERS.map(f => (
               <button
                 key={f.id}
                 type="button"
                 onClick={() => setStatusFilter(f.id)}
-                className={`px-3 py-1 text-xs font-semibold rounded-md transition-colors cursor-pointer ${
+                className={`px-4 py-1.5 text-sm font-medium rounded-md whitespace-nowrap transition-colors cursor-pointer ${
                   statusFilter === f.id
-                    ? 'bg-white text-gray-900 shadow-2xs'
-                    : 'text-gray-600 hover:text-gray-900'
+                    ? 'bg-white text-gray-900 shadow-sm border border-gray-200'
+                    : 'text-gray-600 hover:text-gray-900 hover:bg-white/50 border border-transparent'
                 }`}
               >
                 {f.label}
@@ -288,9 +285,9 @@ export const CalendarView = () => {
           <button
             type="button"
             onClick={handleOpenNewAppointment}
-            className="flex items-center gap-1.5 px-4 py-2 bg-primary hover:bg-opacity-90 text-black font-body-md font-bold rounded-lg transition-all shadow-sm active:scale-95 duration-150 cursor-pointer shrink-0"
+            className="flex items-center justify-center gap-2 bg-primary text-black px-4 py-2 rounded font-body-md font-bold cursor-pointer hover:bg-opacity-90 transition-colors shadow-[0_0_10px_rgba(245,158,11,0.15)] h-11 whitespace-nowrap shrink-0"
           >
-            <span className="material-symbols-outlined text-black" style={{ fontSize: '18px' }}>add</span>
+            <span className="material-symbols-outlined text-[18px]">add</span>
             New Appointment
           </button>
         </div>

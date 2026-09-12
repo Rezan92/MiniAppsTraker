@@ -179,24 +179,24 @@ export const Dashboard = () => {
 
   return (
     <div className="space-y-6 pb-12">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
         <div>
-          <h1 className="font-headline-md text-headline-md font-bold tracking-tight text-gray-900">Dashboard</h1>
-          <p className="font-body-md text-gray-500">Welcome back, {userData?.full_name?.split(' ')[0] || 'User'}</p>
+          <h1 className="font-headline-lg text-headline-lg font-bold text-on-surface">Dashboard</h1>
+          <p className="font-body-md text-gray-500 mt-1">Welcome back, {userData?.full_name?.split(' ')[0] || 'User'}</p>
         </div>
         <div className="flex items-center gap-3 w-full md:w-auto">
           <button 
             onClick={() => setClientModalOpen(true)}
-            className="flex-1 md:flex-none flex items-center justify-center gap-2 px-4 py-2 border border-gray-300 text-gray-700 bg-white font-title-sm rounded-DEFAULT hover:bg-gray-50 transition-colors cursor-pointer shadow-sm"
+            className="flex-1 md:flex-none flex items-center justify-center gap-2 border border-gray-300 text-gray-700 bg-white px-4 py-2 rounded font-body-md font-bold cursor-pointer hover:bg-gray-50 transition-colors shadow-sm h-11"
           >
-            <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>person_add</span>
+            <span className="material-symbols-outlined text-[18px]">person_add</span>
             New Client
           </button>
           <button 
             onClick={() => setJobModalOpen(true)}
-            className="flex-1 md:flex-none flex items-center justify-center gap-2 px-4 py-2 bg-primary text-black font-title-sm rounded-DEFAULT hover:opacity-90 transition-opacity cursor-pointer shadow-sm"
+            className="flex-1 md:flex-none flex items-center justify-center gap-2 bg-primary text-black px-4 py-2 rounded font-body-md font-bold cursor-pointer hover:bg-opacity-90 transition-colors shadow-[0_0_10px_rgba(245,158,11,0.15)] h-11"
           >
-            <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>add</span>
+            <span className="material-symbols-outlined text-[18px]">add</span>
             New Job
           </button>
         </div>

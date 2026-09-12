@@ -5,6 +5,7 @@ import { useToast } from '../../contexts/ToastContext';
 import { useWorkspace } from '../../contexts/WorkspaceContext';
 import { CreateWorkspaceModal } from './CreateWorkspaceModal';
 import { AiCopilotWidget } from '../ai/AiCopilotWidget';
+import { Tooltip } from '../common/Tooltip';
 
 export const DashboardLayout = ({ children }) => {
   const { user, userData } = useAuth();
@@ -15,8 +16,27 @@ export const DashboardLayout = ({ children }) => {
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const [createModalOpen, setCreateModalOpen] = useState(false);
+  const [isCollapsed, setIsCollapsed] = useState(() => {
+    try {
+      return localStorage.getItem('sidebar_collapsed') === 'true';
+    } catch {
+      return false;
+    }
+  });
   const dropdownRef = useRef(null);
   const profileRef = useRef(null);
+
+  const toggleSidebar = () => {
+    setIsCollapsed(prev => {
+      const next = !prev;
+      try {
+        localStorage.setItem('sidebar_collapsed', String(next));
+      } catch (err) {
+        console.warn('Failed to save sidebar state to localStorage:', err);
+      }
+      return next;
+    });
+  };
 
   // Handle URL toast params if any (e.g. from invite join)
   useEffect(() => {
@@ -57,101 +77,153 @@ export const DashboardLayout = ({ children }) => {
   return (
     <div className="antialiased min-h-screen flex font-body-md text-body-md text-on-surface bg-background">
       {/* SideNavBar */}
-      <nav className="hidden md:flex bg-inverse-surface text-white font-body-md text-body-md docked left-0 h-full w-[280px] border-r border-on-surface-variant flat no shadows fixed top-0 flex-col p-4 z-40">
-        <div className="mb-8 px-2 mt-4">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-primary rounded flex items-center justify-center font-headline-md font-bold text-black shrink-0">P</div>
-            <div>
-              <h1 className="font-headline-md text-headline-md font-bold tracking-tight text-white leading-tight">{tenantName}</h1>
-              <span className="font-label-caps text-label-caps text-gray-400">{tenantSubtitle}</span>
+      <nav className={`hidden md:flex bg-inverse-surface text-white font-body-md text-body-md docked left-0 h-full ${
+        isCollapsed ? 'w-[80px] p-3' : 'w-[280px] p-4'
+      } border-r border-on-surface-variant flat no shadows fixed top-0 flex-col z-40 transition-all duration-300 ease-in-out`}>
+        <div className={`mb-8 ${isCollapsed ? 'px-0 mt-3 flex flex-col items-center gap-3' : 'px-2 mt-4 flex items-center justify-between'}`}>
+          <div className={`flex items-center ${isCollapsed ? 'justify-center' : 'gap-3 min-w-0'}`}>
+            <div 
+              className="w-10 h-10 bg-primary rounded flex items-center justify-center font-headline-md font-bold text-black shrink-0"
+              title={isCollapsed ? tenantName : undefined}
+            >
+              {tenantName.charAt(0).toUpperCase() || 'P'}
             </div>
+            {!isCollapsed && (
+              <div className="overflow-hidden min-w-0">
+                <h1 className="font-headline-md text-headline-md font-bold tracking-tight text-white leading-tight truncate">{tenantName}</h1>
+                <span className="font-label-caps text-label-caps text-gray-400 block truncate">{tenantSubtitle}</span>
+              </div>
+            )}
           </div>
+
+          <button
+            type="button"
+            onClick={toggleSidebar}
+            title={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+            aria-label={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+            className="text-gray-400 hover:text-white hover:bg-white/10 rounded-lg p-1.5 transition-colors cursor-pointer shrink-0"
+          >
+            <span className="material-symbols-outlined text-xl">
+              {isCollapsed ? 'chevron_right' : 'chevron_left'}
+            </span>
+          </button>
         </div>
         
         <ul className="flex-1 space-y-[8px]">
           <li>
-            <NavLink to="/" className={({ isActive }) => `relative group flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors duration-200 ${isActive ? 'bg-gray-800 text-white' : 'text-gray-300 hover:bg-gray-800 hover:text-white'}`}>
-              {({ isActive }) => (
-                <>
-                  {isActive && <div className="absolute left-0 top-0 bottom-0 w-1 bg-primary rounded-r-full"></div>}
-                  <span className={`material-symbols-outlined transition-colors ${isActive ? 'text-primary' : 'text-gray-400 group-hover:text-white'}`}>dashboard</span>
-                  <span className={`font-body-md ${isActive ? 'font-bold' : 'font-medium'}`}>Dashboard</span>
-                </>
-              )}
-            </NavLink>
+            <Tooltip text={isCollapsed ? "Dashboard" : null} position="right" className="w-full">
+              <NavLink to="/" className={({ isActive }) => `relative group flex items-center ${isCollapsed ? 'justify-center px-2' : 'gap-3 px-3'} py-2.5 rounded-lg transition-colors duration-200 ${isActive ? 'bg-gray-800 text-white' : 'text-gray-300 hover:bg-gray-800 hover:text-white'}`}>
+                {({ isActive }) => (
+                  <>
+                    {isActive && <div className="absolute left-0 top-0 bottom-0 w-1 bg-primary rounded-r-full"></div>}
+                    <span className={`material-symbols-outlined transition-colors ${isActive ? 'text-primary' : 'text-gray-400 group-hover:text-white'}`}>dashboard</span>
+                    <span className={`font-body-md ${isActive ? 'font-bold' : 'font-medium'} ${isCollapsed ? 'sr-only' : ''}`}>Dashboard</span>
+                  </>
+                )}
+              </NavLink>
+            </Tooltip>
           </li>
           <li>
-            <NavLink to="/clients" className={({ isActive }) => `relative group flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors duration-200 ${isActive ? 'bg-gray-800 text-white' : 'text-gray-300 hover:bg-gray-800 hover:text-white'}`}>
-              {({ isActive }) => (
-                <>
-                  {isActive && <div className="absolute left-0 top-0 bottom-0 w-1 bg-primary rounded-r-full"></div>}
-                  <span className={`material-symbols-outlined transition-colors ${isActive ? 'text-primary' : 'text-gray-400 group-hover:text-white'}`} style={{ fontVariationSettings: isActive ? "'FILL' 1" : "'FILL' 0" }}>group</span>
-                  <span className={`font-body-md ${isActive ? 'font-bold' : 'font-medium'}`}>Clients</span>
-                </>
-              )}
-            </NavLink>
+            <Tooltip text={isCollapsed ? "Clients" : null} position="right" className="w-full">
+              <NavLink to="/clients" className={({ isActive }) => `relative group flex items-center ${isCollapsed ? 'justify-center px-2' : 'gap-3 px-3'} py-2.5 rounded-lg transition-colors duration-200 ${isActive ? 'bg-gray-800 text-white' : 'text-gray-300 hover:bg-gray-800 hover:text-white'}`}>
+                {({ isActive }) => (
+                  <>
+                    {isActive && <div className="absolute left-0 top-0 bottom-0 w-1 bg-primary rounded-r-full"></div>}
+                    <span className={`material-symbols-outlined transition-colors ${isActive ? 'text-primary' : 'text-gray-400 group-hover:text-white'}`} style={{ fontVariationSettings: isActive ? "'FILL' 1" : "'FILL' 0" }}>group</span>
+                    <span className={`font-body-md ${isActive ? 'font-bold' : 'font-medium'} ${isCollapsed ? 'sr-only' : ''}`}>Clients</span>
+                  </>
+                )}
+              </NavLink>
+            </Tooltip>
           </li>
           <li>
-            <NavLink to="/jobs" className={({ isActive }) => `relative group flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors duration-200 ${isActive ? 'bg-gray-800 text-white' : 'text-gray-300 hover:bg-gray-800 hover:text-white'}`}>
-              {({ isActive }) => (
-                <>
-                  {isActive && <div className="absolute left-0 top-0 bottom-0 w-1 bg-primary rounded-r-full"></div>}
-                  <span className={`material-symbols-outlined transition-colors ${isActive ? 'text-primary' : 'text-gray-400 group-hover:text-white'}`}>work</span>
-                  <span className={`font-body-md ${isActive ? 'font-bold' : 'font-medium'}`}>Jobs</span>
-                </>
-              )}
-            </NavLink>
+            <Tooltip text={isCollapsed ? "Jobs" : null} position="right" className="w-full">
+              <NavLink to="/jobs" className={({ isActive }) => `relative group flex items-center ${isCollapsed ? 'justify-center px-2' : 'gap-3 px-3'} py-2.5 rounded-lg transition-colors duration-200 ${isActive ? 'bg-gray-800 text-white' : 'text-gray-300 hover:bg-gray-800 hover:text-white'}`}>
+                {({ isActive }) => (
+                  <>
+                    {isActive && <div className="absolute left-0 top-0 bottom-0 w-1 bg-primary rounded-r-full"></div>}
+                    <span className={`material-symbols-outlined transition-colors ${isActive ? 'text-primary' : 'text-gray-400 group-hover:text-white'}`}>work</span>
+                    <span className={`font-body-md ${isActive ? 'font-bold' : 'font-medium'} ${isCollapsed ? 'sr-only' : ''}`}>Jobs</span>
+                  </>
+                )}
+              </NavLink>
+            </Tooltip>
           </li>
           <li>
-            <NavLink to="/calendar" className={({ isActive }) => `relative group flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors duration-200 ${isActive ? 'bg-gray-800 text-white' : 'text-gray-300 hover:bg-gray-800 hover:text-white'}`}>
-              {({ isActive }) => (
-                <>
-                  {isActive && <div className="absolute left-0 top-0 bottom-0 w-1 bg-primary rounded-r-full"></div>}
-                  <span className={`material-symbols-outlined transition-colors ${isActive ? 'text-primary' : 'text-gray-400 group-hover:text-white'}`}>calendar_month</span>
-                  <span className={`font-body-md ${isActive ? 'font-bold' : 'font-medium'}`}>Calendar</span>
-                </>
-              )}
-            </NavLink>
+            <Tooltip text={isCollapsed ? "Calendar" : null} position="right" className="w-full">
+              <NavLink to="/calendar" className={({ isActive }) => `relative group flex items-center ${isCollapsed ? 'justify-center px-2' : 'gap-3 px-3'} py-2.5 rounded-lg transition-colors duration-200 ${isActive ? 'bg-gray-800 text-white' : 'text-gray-300 hover:bg-gray-800 hover:text-white'}`}>
+                {({ isActive }) => (
+                  <>
+                    {isActive && <div className="absolute left-0 top-0 bottom-0 w-1 bg-primary rounded-r-full"></div>}
+                    <span className={`material-symbols-outlined transition-colors ${isActive ? 'text-primary' : 'text-gray-400 group-hover:text-white'}`}>calendar_month</span>
+                    <span className={`font-body-md ${isActive ? 'font-bold' : 'font-medium'} ${isCollapsed ? 'sr-only' : ''}`}>Calendar</span>
+                  </>
+                )}
+              </NavLink>
+            </Tooltip>
           </li>
           <li>
-            <NavLink to="/invoices" className={({ isActive }) => `relative group flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors duration-200 ${isActive ? 'bg-gray-800 text-white' : 'text-gray-300 hover:bg-gray-800 hover:text-white'}`}>
-              {({ isActive }) => (
-                <>
-                  {isActive && <div className="absolute left-0 top-0 bottom-0 w-1 bg-primary rounded-r-full"></div>}
-                  <span className={`material-symbols-outlined transition-colors ${isActive ? 'text-primary' : 'text-gray-400 group-hover:text-white'}`}>receipt_long</span>
-                  <span className={`font-body-md ${isActive ? 'font-bold' : 'font-medium'}`}>Invoices</span>
-                </>
-              )}
-            </NavLink>
+            <Tooltip text={isCollapsed ? "Invoices" : null} position="right" className="w-full">
+              <NavLink to="/invoices" className={({ isActive }) => `relative group flex items-center ${isCollapsed ? 'justify-center px-2' : 'gap-3 px-3'} py-2.5 rounded-lg transition-colors duration-200 ${isActive ? 'bg-gray-800 text-white' : 'text-gray-300 hover:bg-gray-800 hover:text-white'}`}>
+                {({ isActive }) => (
+                  <>
+                    {isActive && <div className="absolute left-0 top-0 bottom-0 w-1 bg-primary rounded-r-full"></div>}
+                    <span className={`material-symbols-outlined transition-colors ${isActive ? 'text-primary' : 'text-gray-400 group-hover:text-white'}`}>receipt_long</span>
+                    <span className={`font-body-md ${isActive ? 'font-bold' : 'font-medium'} ${isCollapsed ? 'sr-only' : ''}`}>Invoices</span>
+                  </>
+                )}
+              </NavLink>
+            </Tooltip>
           </li>
         </ul>
         
         <ul className="mt-auto pt-4 border-t border-gray-700 space-y-2 mb-4">
           <li>
-            <NavLink to="/settings" className={({ isActive }) => `flex items-center gap-3 px-3 py-2.5 transition-colors duration-200 rounded-lg group ${isActive ? 'bg-gray-800 text-white' : 'text-gray-300 hover:bg-gray-800 hover:text-white'}`}>
-              <span className="material-symbols-outlined text-gray-400 group-hover:text-white transition-colors">settings</span>
-              <span className="font-body-md font-medium">Settings</span>
-            </NavLink>
+            <Tooltip text={isCollapsed ? "Settings" : null} position="right" className="w-full">
+              <NavLink to="/settings" className={({ isActive }) => `relative group flex items-center ${isCollapsed ? 'justify-center px-2' : 'gap-3 px-3'} py-2.5 transition-colors duration-200 rounded-lg ${isActive ? 'bg-gray-800 text-white' : 'text-gray-300 hover:bg-gray-800 hover:text-white'}`}>
+                {({ isActive }) => (
+                  <>
+                    {isActive && <div className="absolute left-0 top-0 bottom-0 w-1 bg-primary rounded-r-full"></div>}
+                    <span className={`material-symbols-outlined transition-colors ${isActive ? 'text-primary' : 'text-gray-400 group-hover:text-white'}`}>settings</span>
+                    <span className={`font-body-md ${isActive ? 'font-bold' : 'font-medium'} ${isCollapsed ? 'sr-only' : ''}`}>Settings</span>
+                  </>
+                )}
+              </NavLink>
+            </Tooltip>
           </li>
           <li>
-            <a href="#" className="flex items-center gap-3 px-3 py-2.5 text-gray-300 hover:bg-gray-800 hover:text-white transition-colors duration-200 rounded-lg group">
-              <span className="material-symbols-outlined text-gray-400 group-hover:text-white transition-colors">help</span>
-              <span className="font-body-md font-medium">Support</span>
-            </a>
+            <Tooltip text={isCollapsed ? "Support" : null} position="right" className="w-full">
+              <a href="#" className={`flex items-center ${isCollapsed ? 'justify-center px-2' : 'gap-3 px-3'} py-2.5 text-gray-300 hover:bg-gray-800 hover:text-white transition-colors duration-200 rounded-lg group`}>
+                <span className="material-symbols-outlined text-gray-400 group-hover:text-white transition-colors">help</span>
+                <span className={`font-body-md font-medium ${isCollapsed ? 'sr-only' : ''}`}>Support</span>
+              </a>
+            </Tooltip>
           </li>
         </ul>
         
-        <button 
-          onClick={() => navigate('/jobs')}
-          className="w-full flex items-center justify-center gap-2 bg-primary hover:bg-opacity-90 text-black py-2.5 rounded font-body-md font-bold transition-all shadow-[0_0_15px_rgba(245,158,11,0.2)] active:scale-95 duration-150 cursor-pointer"
-        >
-          <span className="material-symbols-outlined text-black" style={{ fontSize: '18px' }}>add</span>
-          Add Job
-        </button>
+        {isCollapsed ? (
+          <Tooltip text="Add Job" position="right" className="w-full flex justify-center">
+            <button 
+              onClick={() => navigate('/jobs')}
+              aria-label="Add Job"
+              className="w-10 h-10 flex items-center justify-center bg-primary hover:bg-opacity-90 text-black rounded-lg transition-all shadow-[0_0_15px_rgba(245,158,11,0.2)] active:scale-95 duration-150 cursor-pointer"
+            >
+              <span className="material-symbols-outlined text-black" style={{ fontSize: '20px' }}>add</span>
+            </button>
+          </Tooltip>
+        ) : (
+          <button 
+            onClick={() => navigate('/jobs')}
+            className="w-full flex items-center justify-center gap-2 bg-primary hover:bg-opacity-90 text-black py-2.5 rounded font-body-md font-bold transition-all shadow-[0_0_15px_rgba(245,158,11,0.2)] active:scale-95 duration-150 cursor-pointer"
+          >
+            <span className="material-symbols-outlined text-black" style={{ fontSize: '18px' }}>add</span>
+            Add Job
+          </button>
+        )}
       </nav>
 
       {/* Main Content Area */}
-      <main className="flex-1 md:ml-[280px] flex flex-col h-screen bg-surface-bright relative overflow-hidden">
+      <main className={`flex-1 ${isCollapsed ? 'md:ml-[80px]' : 'md:ml-[280px]'} flex flex-col h-screen bg-surface-bright relative overflow-hidden transition-all duration-300 ease-in-out`}>
         
         {/* TopAppBar */}
         <header className="bg-white border-b border-gray-200 flex justify-between items-center px-6 py-4 sticky top-0 z-30">
