@@ -21,6 +21,7 @@ const ClientDetails = React.lazy(() => import('./components/clients/ClientDetail
 const PropertyDetails = React.lazy(() => import('./components/properties/PropertyDetails').then(m => ({ default: m.PropertyDetails })));
 const JobList = React.lazy(() => import('./components/jobs/JobList').then(m => ({ default: m.JobList })));
 const JobDetails = React.lazy(() => import('./components/jobs/JobDetails').then(m => ({ default: m.JobDetails })));
+const CalendarView = React.lazy(() => import('./components/calendar/CalendarView').then(m => ({ default: m.CalendarView })));
 const InvoiceList = React.lazy(() => import('./components/invoices/InvoiceList').then(m => ({ default: m.InvoiceList })));
 const InvoiceBuilder = React.lazy(() => import('./components/invoices/InvoiceBuilder').then(m => ({ default: m.InvoiceBuilder })));
 const InvoiceDetails = React.lazy(() => import('./components/invoices/InvoiceDetails').then(m => ({ default: m.InvoiceDetails })));
@@ -55,6 +56,7 @@ const MainApp = () => {
           <Route path="properties/:id" element={<PropertyDetails />} />
           <Route path="jobs" element={<JobList />} />
           <Route path="jobs/:id" element={<JobDetails />} />
+          <Route path="calendar" element={<CalendarView />} />
           <Route path="invoices" element={<InvoiceList />} />
           <Route path="invoices/new" element={<InvoiceBuilder />} />
           <Route path="invoices/:id" element={<InvoiceDetails />} />

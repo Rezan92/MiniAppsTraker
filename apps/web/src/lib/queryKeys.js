@@ -52,5 +52,13 @@ export const QUERY_KEYS = {
     all: ['team'],
     members: (tenantId) => ['team', 'members', tenantId],
     invitations: () => ['team', 'invitations'],
+  },
+  appointments: {
+    all: ['appointments'],
+    lists: () => ['appointments', 'list'],
+    list: (filters = {}) => ['appointments', 'list', filters],
+    range: (start, end) => ['appointments', 'range', { start, end }],
+    details: () => ['appointments', 'detail'],
+    detail: (id) => ['appointments', 'detail', String(id)],
   }
 };

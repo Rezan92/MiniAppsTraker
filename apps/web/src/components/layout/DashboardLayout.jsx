@@ -103,6 +103,17 @@ export const DashboardLayout = ({ children }) => {
             </NavLink>
           </li>
           <li>
+            <NavLink to="/calendar" className={({ isActive }) => `relative group flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors duration-200 ${isActive ? 'bg-gray-800 text-white' : 'text-gray-300 hover:bg-gray-800 hover:text-white'}`}>
+              {({ isActive }) => (
+                <>
+                  {isActive && <div className="absolute left-0 top-0 bottom-0 w-1 bg-primary rounded-r-full"></div>}
+                  <span className={`material-symbols-outlined transition-colors ${isActive ? 'text-primary' : 'text-gray-400 group-hover:text-white'}`}>calendar_month</span>
+                  <span className={`font-body-md ${isActive ? 'font-bold' : 'font-medium'}`}>Calendar</span>
+                </>
+              )}
+            </NavLink>
+          </li>
+          <li>
             <NavLink to="/invoices" className={({ isActive }) => `relative group flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors duration-200 ${isActive ? 'bg-gray-800 text-white' : 'text-gray-300 hover:bg-gray-800 hover:text-white'}`}>
               {({ isActive }) => (
                 <>

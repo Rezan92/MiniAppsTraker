@@ -10,6 +10,7 @@ import dashboardRoutes from './routes/dashboard.js';
 import invoiceRoutes from './routes/invoices.js';
 import propertyRoutes from './routes/properties.js';
 import aiRoutes from './routes/ai.js';
+import appointmentRoutes from './routes/appointments.js';
 import { errorHandler } from './middleware/errorHandler.js';
 
 const app = express();
@@ -29,6 +30,7 @@ app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/invoices', invoiceRoutes);
 app.use('/api/properties', propertyRoutes);
 app.use('/api/ai', aiRoutes);
+app.use('/api/appointments', appointmentRoutes);
 
 // Health Check Endpoint
 app.get('/api/health', (req, res) => {
