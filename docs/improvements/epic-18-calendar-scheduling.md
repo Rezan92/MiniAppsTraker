@@ -47,11 +47,16 @@ A dedicated, real-time Calendar and Scheduling Hub providing Day, Week, and Mont
 
 ### Milestone 3 & 4: Schedule-X Viewport Shell & Interactive Modals
 - [x] **Schedule-X Integration (`apps/web/src/components/calendar/CalendarView.jsx`)**:
-  - Integrated `@schedule-x/react`, `@schedule-x/calendar`, `@schedule-x/drag-and-drop`, `@schedule-x/theme-default`
-  - Week View, Month Grid View, and Day View
-  - Dynamic color calendars matching palette (`blue`, `amber`, `green`, `purple`, `red`, `indigo`, `gray`)
-  - Status filter chips (`All Events`, `Scheduled`, `In Progress`, `Completed`)
-  - Drag-and-drop and resize rescheduling wired to `useUpdateAppointment`
+  - Integrated `@schedule-x/react`, `@schedule-x/calendar`, `@schedule-x/drag-and-drop`, `@schedule-x/current-time`, `@schedule-x/resize`, `@schedule-x/calendar-controls`, `@schedule-x/theme-default`
+  - Week View, Month Grid View, and Day View with Google Calendar ergonomics
+  - Custom Google-style Top Navigation Header Bar: dynamic period title, "<" and ">" Chevrons, "Today" quick jump, Hamburger toggle, and Day/Week/Month dropdown
+  - Collapsible internal calendar sidebar with Google "+ Create" button, interactive Mini Month Picker (`MiniCalendar.jsx`), and status toggles
+  - Stacking context resolution: elevated header and dropdown to `z-50` preventing clipping behind calendar cells
+  - Day view alignment: left-aligned day label ("SAT 12") directly above the time grid column
+  - Vertical scrollability: bounded flex container sizing unlocking smooth scrolling across all 24 hours (12 AM - 11 PM) with auto-scroll to morning hours
+  - Month view layout: edge-to-edge full width with crisp Google-style borders and date chips
+  - Live red current-time indicator line showing active minute in Day & Week views
+  - Drag-and-drop and resize duration rescheduling wired to `useUpdateAppointment`
   - Click-to-create (`onClickDate`, `onClickDateTime`) wired to `AddAppointmentModal`
 - [x] **Routing & Navigation**:
   - Route `/calendar` registered in `App.jsx` with code splitting
