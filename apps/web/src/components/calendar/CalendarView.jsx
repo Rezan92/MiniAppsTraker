@@ -534,7 +534,13 @@ export const CalendarView = () => {
         .sx__time-grid-day {
           border-left: 1px solid #dadce0 !important;
         }
+        :root,
+        .sx__calendar-wrapper,
+        .sx__calendar {
+          --sx-z-index-week-header: 1 !important;
+        }
         .sx__week-header {
+          z-index: 1 !important;
           border-bottom: 1px solid #dadce0 !important;
           background-color: #ffffff !important;
         }
@@ -665,6 +671,25 @@ export const CalendarView = () => {
           box-shadow: 0 0 3px rgba(234, 67, 53, 0.4);
         }
 
+        /* Event Hover & Pointer Cursor */
+        .sx__time-grid-event,
+        .sx__date-grid-event,
+        .sx__month-grid-event,
+        .sx__list-event,
+        .sx__event,
+        .sx__month-grid-day__events-more {
+          cursor: pointer !important;
+          transition: filter 0.15s ease, box-shadow 0.15s ease !important;
+        }
+        .sx__time-grid-event:hover,
+        .sx__date-grid-event:hover,
+        .sx__month-grid-event:hover,
+        .sx__list-event:hover,
+        .sx__month-grid-day__events-more:hover {
+          filter: brightness(0.95) !important;
+          box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15) !important;
+        }
+
         /* Event Resize Drag Handles */
         .sx__time-grid-event-resize-handle {
           position: absolute;
@@ -672,7 +697,7 @@ export const CalendarView = () => {
           left: 0;
           right: 0;
           height: 8px;
-          cursor: ns-resize;
+          cursor: ns-resize !important;
           z-index: 15;
         }
         .sx__date-grid-event-resize-handle {
@@ -681,13 +706,13 @@ export const CalendarView = () => {
           bottom: 0;
           right: 0;
           width: 8px;
-          cursor: ew-resize;
+          cursor: ew-resize !important;
           z-index: 15;
         }
       `}</style>
 
       {/* Google Calendar Top Navigation Header Bar */}
-      <header className="h-16 border-b border-gray-200 bg-white px-4 flex items-center justify-between shrink-0 relative z-50">
+      <header className="h-16 border-b border-gray-200 bg-white px-4 flex items-center justify-between shrink-0 relative z-20">
         {/* Left cluster: Hamburger, Badge, Today, < >, Dynamic Period */}
         <div className="flex items-center gap-2 sm:gap-4">
           <button
@@ -760,7 +785,7 @@ export const CalendarView = () => {
           )}
 
           {/* View Selector Dropdown */}
-          <div className="relative z-50" ref={viewDropdownRef}>
+          <div className="relative z-30" ref={viewDropdownRef}>
             <button
               type="button"
               onClick={() => setViewDropdownOpen(prev => !prev)}
@@ -771,7 +796,7 @@ export const CalendarView = () => {
             </button>
 
             {viewDropdownOpen && (
-              <div className="absolute right-0 mt-1 w-32 bg-white rounded-lg shadow-xl border border-gray-200 py-1 z-50">
+              <div className="absolute right-0 mt-1 w-32 bg-white rounded-lg shadow-xl border border-gray-200 py-1 z-30">
                 <button
                   type="button"
                   onClick={() => handleSelectView('day')}
@@ -809,7 +834,7 @@ export const CalendarView = () => {
       </header>
 
       {/* Main Calendar Body: Collapsible Sidebar + Calendar Viewport */}
-      <div className="flex-1 flex overflow-hidden relative p-3 gap-3 min-h-0">
+      <div className="flex-1 flex overflow-hidden relative p-3 gap-3 min-h-0 z-0">
         {/* Collapsible Left Sidebar */}
         <CalendarSidebar
           open={calendarSidebarOpen}

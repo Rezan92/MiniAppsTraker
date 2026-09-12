@@ -257,7 +257,7 @@ export const DashboardLayout = ({ children }) => {
       <main className={`flex-1 ${isCollapsed ? 'md:ml-[80px]' : 'md:ml-[280px]'} flex flex-col h-screen bg-surface-bright relative overflow-hidden transition-all duration-300 ease-in-out`}>
         
         {/* TopAppBar */}
-        <header className="bg-white border-b border-gray-200 flex justify-between items-center px-6 py-4 sticky top-0 z-30">
+        <header className="bg-white border-b border-gray-200 flex justify-between items-center px-6 py-4 sticky top-0 z-40">
           <div className="flex items-center gap-4 relative" ref={dropdownRef}>
             {/* Workspace Switcher */}
             <div 
@@ -342,7 +342,7 @@ export const DashboardLayout = ({ children }) => {
         </header>
 
         {/* Canvas */}
-        <div className={`flex-1 ${isCalendar ? 'overflow-hidden p-2 md:p-3 flex flex-col min-h-0' : 'overflow-auto p-4 md:p-8'}`}>
+        <div className={`flex-1 ${isCalendar ? 'overflow-hidden p-2 md:p-3 flex flex-col min-h-0 relative z-0' : 'overflow-auto p-4 md:p-8'}`}>
           <div className={isCalendar ? 'w-full flex-1 flex flex-col min-h-0' : 'max-w-[1440px] mx-auto'}>
             {children || <Outlet />}
           </div>
