@@ -50,7 +50,7 @@ export const BaseModal = ({
 
   const modalContent = (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/60 backdrop-blur-sm p-4 animate-[modalFadeIn_0.15s_ease-out]"
+      className="fixed inset-0 z-[1000] flex items-center justify-center bg-gray-900/60 backdrop-blur-sm p-4 animate-[modalFadeIn_0.15s_ease-out]"
       onMouseDown={closeOnBackdrop ? onClose : undefined}
       role="dialog"
       aria-modal="true"
