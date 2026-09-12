@@ -64,14 +64,43 @@ export const useUpdateAppointment = () => {
 
   return useMutation({
     mutationFn: ({ id, ...patchData }) => apiClient.patch(`/api/appointments/${id}`, patchData),
-    onSuccess: (_data, variables) => {
+    onMutate: async (updatedAppointment) => {
+      // Cancel any outgoing refetches so they don't overwrite optimistic update
+      await queryClient.cancelQueries({ queryKey: APPOINTMENT_QUERY_KEYS.all });
+
+      // Snapshot previous cache state across all appointment queries
+      const previousData = queryClient.getQueriesData({ queryKey: APPOINTMENT_QUERY_KEYS.all });
+
+      // Optimistically update all appointment collections in cache
+      queryClient.setQueriesData({ queryKey: APPOINTMENT_QUERY_KEYS.all }, (old) => {
+        if (!old || !Array.isArray(old)) return old;
+        return old.map((apt) =>
+          String(apt.id) === String(updatedAppointment.id)
+            ? { ...apt, ...updatedAppointment }
+            : apt
+        );
+      });
+
+      return { previousData };
+    },
+    onError: (err, _variables, context) => {
+      // Rollback cache if mutation failed
+      if (context?.previousData) {
+        context.previousData.forEach(([queryKey, data]) => {
+          queryClient.setQueryData(queryKey, data);
+        });
+      }
+      showError(translateApiError(err));
+    },
+    onSuccess: () => {
+      showSuccess('Appointment updated successfully!');
+    },
+    onSettled: (_data, _error, variables) => {
       queryClient.invalidateQueries({ queryKey: APPOINTMENT_QUERY_KEYS.all });
       if (variables?.id) {
         queryClient.invalidateQueries({ queryKey: APPOINTMENT_QUERY_KEYS.detail(variables.id) });
       }
-      showSuccess('Appointment updated successfully!');
-    },
-    onError: (err) => showError(translateApiError(err))
+    }
   });
 };
 

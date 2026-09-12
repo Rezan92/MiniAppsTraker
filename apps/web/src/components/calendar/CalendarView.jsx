@@ -66,23 +66,38 @@ function toScheduleXEvent(apt, timezone) {
   }
 }
 
-// Converts a Schedule-X date/time (Temporal object or string) to an ISO 8601 string
-function fromScheduleXFormat(val) {
+// Converts a Schedule-X date/time (Temporal object or string) to an ISO 8601 string, preserving original hours in date-only contexts
+function parseScheduleXToIso(val, originalIso = null) {
   if (!val) return '';
   try {
     if (typeof val === 'object' && val !== null) {
       if (typeof val.toInstant === 'function') {
         return val.toInstant().toString();
       }
-      if (typeof val.toString === 'function') {
-        const str = val.toString();
-        if (/^\d{4}-\d{2}-\d{2}$/.test(str)) {
-          return new Date(`${str}T00:00:00`).toISOString();
+      const str = typeof val.toString === 'function' ? val.toString() : String(val);
+      if (/^\d{4}-\d{2}-\d{2}$/.test(str)) {
+        if (originalIso) {
+          const origDate = new Date(originalIso);
+          const [y, m, d] = str.split('-').map(Number);
+          const combined = new Date(origDate);
+          combined.setFullYear(y, m - 1, d);
+          return combined.toISOString();
         }
-        return new Date(str).toISOString();
+        return new Date(`${str}T00:00:00`).toISOString();
       }
+      return new Date(str).toISOString();
     }
     if (typeof val === 'string') {
+      if (/^\d{4}-\d{2}-\d{2}$/.test(val)) {
+        if (originalIso) {
+          const origDate = new Date(originalIso);
+          const [y, m, d] = val.split('-').map(Number);
+          const combined = new Date(origDate);
+          combined.setFullYear(y, m - 1, d);
+          return combined.toISOString();
+        }
+        return new Date(`${val}T00:00:00`).toISOString();
+      }
       if (val.includes(' ')) {
         const [date, time] = val.split(' ');
         return new Date(`${date}T${time}:00`).toISOString();
@@ -129,6 +144,7 @@ export const CalendarView = () => {
   const [editingAppointment, setEditingAppointment] = useState(null);
 
   const viewDropdownRef = useRef(null);
+  const isCancelledByEscape = useRef(false);
 
   // TanStack Queries & Mutations (fetch all workspace appointments, filter locally)
   const { data: appointments = [], isLoading } = useAppointments();
@@ -139,9 +155,31 @@ export const CalendarView = () => {
   // Dynamic callbacks ref to prevent stale closures
   const callbacksRef = useRef({});
   callbacksRef.current = {
+    onBeforeEventUpdate: (oldEvent, newEvent) => {
+      if (isCancelledByEscape.current) {
+        isCancelledByEscape.current = false;
+        return false; // Abort drag/resize and restore original event position
+      }
+      return true;
+    },
     onEventUpdate: (updatedEvent) => {
-      const newStartIso = fromScheduleXFormat(updatedEvent.start);
-      const newEndIso = fromScheduleXFormat(updatedEvent.end);
+      const originalApt = appointments.find(a => String(a.id) === String(updatedEvent.id));
+      const origStartIso = originalApt?.start_time || null;
+      const origEndIso = originalApt?.end_time || null;
+
+      const newStartIso = parseScheduleXToIso(updatedEvent.start, origStartIso);
+      let newEndIso = parseScheduleXToIso(updatedEvent.end, origEndIso);
+
+      // Defensively ensure end_time > start_time preserving original duration
+      if (newStartIso && (!newEndIso || newEndIso <= newStartIso)) {
+        if (origStartIso && origEndIso) {
+          const originalDurationMs = new Date(origEndIso).getTime() - new Date(origStartIso).getTime();
+          newEndIso = new Date(new Date(newStartIso).getTime() + (originalDurationMs > 0 ? originalDurationMs : 3600000)).toISOString();
+        } else {
+          newEndIso = new Date(new Date(newStartIso).getTime() + 3600000).toISOString();
+        }
+      }
+
       updateAppointmentMutation.mutate({
         id: updatedEvent.id,
         start_time: newStartIso,
@@ -235,6 +273,7 @@ export const CalendarView = () => {
     timezone: userTimezone,
     calendars,
     callbacks: {
+      onBeforeEventUpdate: (oldEvent, newEvent, $app) => callbacksRef.current.onBeforeEventUpdate?.(oldEvent, newEvent, $app),
       onEventUpdate: (event) => callbacksRef.current.onEventUpdate?.(event),
       onEventClick: (event) => callbacksRef.current.onEventClick?.(event),
       onClickDate: (date) => callbacksRef.current.onClickDate?.(date),
@@ -271,6 +310,29 @@ export const CalendarView = () => {
     };
     document.addEventListener('mousedown', handleDocumentClick);
     return () => document.removeEventListener('mousedown', handleDocumentClick);
+  }, []);
+
+  // Escape key abort handler for active drag-and-drop or resize operations
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        const hasActiveDrag = !!document.querySelector(
+          '.is-event-copy, [id^="time-grid-event-copy-"], .sx__date-grid-event--copy, .sx__month-grid-day--dragover'
+        );
+        const hasActiveResize = document.body.style.cursor === 'ns-resize' || document.body.style.cursor === 'ew-resize';
+
+        if (hasActiveDrag || hasActiveResize) {
+          e.preventDefault();
+          e.stopPropagation();
+          isCancelledByEscape.current = true;
+          document.dispatchEvent(new MouseEvent('mouseup', { bubbles: true, cancelable: true }));
+          document.dispatchEvent(new PointerEvent('pointerup', { bubbles: true, cancelable: true }));
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown, true);
+    return () => window.removeEventListener('keydown', handleKeyDown, true);
   }, []);
 
   // Auto-scroll to near current time (or 8 AM) in Day and Week views
@@ -690,7 +752,34 @@ export const CalendarView = () => {
           box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15) !important;
         }
 
-        /* Event Resize Drag Handles */
+        /* Dragging & Resizing Visual Polish */
+        /* 1. Dragged copy event card styling */
+        .sx__time-grid-event.is-event-copy,
+        .sx__date-grid-event.sx__date-grid-event--copy,
+        [id^="time-grid-event-copy-"] {
+          opacity: 0.95 !important;
+          box-shadow: 0 14px 28px rgba(0, 0, 0, 0.25), 0 10px 10px rgba(0, 0, 0, 0.12) !important;
+          cursor: grabbing !important;
+          z-index: 50 !important;
+          transition: none !important;
+        }
+
+        /* 2. Ghost placeholder in the original slot */
+        body:has(.is-event-copy) .sx__time-grid-event:not(.is-event-copy),
+        body:has([id^="time-grid-event-copy-"]) .sx__time-grid-event:not([id^="time-grid-event-copy-"]) {
+          opacity: 0.35 !important;
+          filter: grayscale(0.5) !important;
+          border: 2px dashed #94a3b8 !important;
+        }
+
+        /* 3. Month grid day dragover highlight */
+        .sx__month-grid-day--dragover {
+          background-color: #e8f0fe !important;
+          outline: 2px dashed #1a73e8 !important;
+          outline-offset: -2px !important;
+        }
+
+        /* 4. Event Resize Drag Handles with Grip Indicator */
         .sx__time-grid-event-resize-handle {
           position: absolute;
           bottom: 0;
@@ -699,6 +788,25 @@ export const CalendarView = () => {
           height: 8px;
           cursor: ns-resize !important;
           z-index: 15;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          transition: background-color 0.15s ease;
+        }
+        .sx__time-grid-event:hover .sx__time-grid-event-resize-handle {
+          background: linear-gradient(to bottom, transparent, rgba(0, 0, 0, 0.1));
+        }
+        .sx__time-grid-event-resize-handle::after {
+          content: '';
+          width: 24px;
+          height: 2px;
+          border-radius: 1px;
+          background-color: rgba(0, 0, 0, 0.35);
+          opacity: 0;
+          transition: opacity 0.15s ease;
+        }
+        .sx__time-grid-event:hover .sx__time-grid-event-resize-handle::after {
+          opacity: 1;
         }
         .sx__date-grid-event-resize-handle {
           position: absolute;
