@@ -255,8 +255,21 @@ export const CalendarView = () => {
     }
   }), []);
 
-  // Initialize plugins
-  const dragAndDropPlugin = useMemo(() => createDragAndDropPlugin(15), []);
+  // Initialize plugins with Schedule-X v4 API compatibility bridge
+  const dragAndDropPlugin = useMemo(() => {
+    const plugin = createDragAndDropPlugin(15);
+    // Bridge Schedule-X v4 calendar core method names to drag-and-drop plugin
+    if (plugin && typeof plugin.createTimeGridDragHandler === 'function') {
+      plugin.startTimeGridDrag = plugin.createTimeGridDragHandler.bind(plugin);
+    }
+    if (plugin && typeof plugin.createDateGridDragHandler === 'function') {
+      plugin.startDateGridDrag = plugin.createDateGridDragHandler.bind(plugin);
+    }
+    if (plugin && typeof plugin.createMonthGridDragHandler === 'function') {
+      plugin.startMonthGridDrag = plugin.createMonthGridDragHandler.bind(plugin);
+    }
+    return plugin;
+  }, []);
   const resizePlugin = useMemo(() => createResizePlugin(15), []);
   const currentTimePlugin = useMemo(() => createCurrentTimePlugin(), []);
   const calendarControlsPlugin = useMemo(() => createCalendarControlsPlugin(), []);
