@@ -87,6 +87,8 @@ A dedicated, real-time Calendar and Scheduling Hub providing Day, Week, and Mont
 - [x] **AI Domain Tool Executors (`aiToolExecutors.js`)**:
   - Wired all 6 scheduling tools directly into `appointmentService` domain layer (Rule 14).
   - Emits `{ mutation: 'appointments' }` to automatically trigger frontend cache invalidation.
+  - Implemented timezone-aware normalizer (`parseAppointmentTimeToUtc`) and localized human schedule outputs (`formatAppointmentForAi`) resolving UTC offset discrepancies.
+  - Rescheduling preserves active `scheduled` status matching manual drag-and-drop parity and ensuring full visibility in `CalendarView.jsx`.
 - [x] **Temporal Prompt Engineering (`promptBuilder.js`)**:
   - Dynamic user timezone injection, current ISO date, and human-friendly weekday string (e.g., "Saturday, September 12, 2026").
   - Relative temporal arithmetic instructions ("tomorrow", "day after tomorrow", "this week", "next week", "next Monday").
@@ -94,3 +96,4 @@ A dedicated, real-time Calendar and Scheduling Hub providing Day, Week, and Mont
 - [x] **Real-Time Client Invalidation & Screen Context (`AiContext.jsx` & `CalendarView.jsx`)**:
   - `AiContext.jsx` handles `'appointments'` mutation by invalidating `QUERY_KEYS.appointments.all` (`['appointments']`).
   - `CalendarView.jsx` publishes active view, selected date, user timezone, visible range, and status filters via `useScreenContext`.
+  - Updated `CalendarView.jsx` and `CalendarSidebar.jsx` to synchronize `scheduled` and `rescheduled` statuses in grid visibility filters.

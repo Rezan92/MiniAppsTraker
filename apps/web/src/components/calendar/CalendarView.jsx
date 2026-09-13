@@ -122,7 +122,7 @@ const VIEW_LABELS = {
 
 export const CalendarView = () => {
   const [calendarSidebarOpen, setCalendarSidebarOpen] = useState(true);
-  const [activeStatuses, setActiveStatuses] = useState(['scheduled', 'in_progress', 'completed']);
+  const [activeStatuses, setActiveStatuses] = useState(['scheduled', 'in_progress', 'completed', 'rescheduled']);
   const [currentView, setCurrentView] = useState('week');
   const [viewDropdownOpen, setViewDropdownOpen] = useState(false);
   const [currentRange, setCurrentRange] = useState(null);
@@ -291,6 +291,9 @@ export const CalendarView = () => {
     if (!appointments || !Array.isArray(appointments)) return [];
     return appointments.filter(apt => {
       const status = (apt.status || 'scheduled').toLowerCase();
+      if (status === 'rescheduled') {
+        return activeStatuses.includes('scheduled') || activeStatuses.includes('rescheduled');
+      }
       return activeStatuses.includes(status);
     });
   }, [appointments, activeStatuses]);
@@ -439,6 +442,14 @@ export const CalendarView = () => {
 
   const handleToggleStatus = (statusId) => {
     setActiveStatuses(prev => {
+      if (statusId === 'scheduled') {
+        const hasScheduled = prev.includes('scheduled');
+        if (hasScheduled) {
+          return prev.filter(s => s !== 'scheduled' && s !== 'rescheduled');
+        } else {
+          return [...prev, 'scheduled', 'rescheduled'];
+        }
+      }
       if (prev.includes(statusId)) {
         return prev.filter(s => s !== statusId);
       }

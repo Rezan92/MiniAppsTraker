@@ -139,7 +139,11 @@ export async function getAppointments({
   }
   if (status) {
     if (VALID_APPOINTMENT_STATUSES.includes(status)) {
-      query = query.eq('status', status);
+      if (status === 'scheduled') {
+        query = query.in('status', ['scheduled', 'rescheduled']);
+      } else {
+        query = query.eq('status', status);
+      }
     }
   }
 

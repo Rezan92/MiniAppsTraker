@@ -13,7 +13,7 @@ export const CalendarSidebar = ({
   selectedDate,
   onSelectDate,
   onOpenCreate,
-  activeStatuses = ['scheduled', 'in_progress', 'completed'],
+  activeStatuses = ['scheduled', 'in_progress', 'completed', 'rescheduled'],
   onToggleStatus
 }) => {
   const [calendarsSectionOpen, setCalendarsSectionOpen] = useState(true);

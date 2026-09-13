@@ -1268,11 +1268,16 @@ export async function executeAiTool(toolName, args = {}, { tenantId, userId, tim
 
         try {
           const patchData = {
-            start_time: startUtc,
-            status: 'rescheduled'
+            start_time: startUtc
           };
           if (endUtc) patchData.end_time = endUtc;
           if (all_day !== undefined) patchData.all_day = !!all_day;
+          // Maintain active status; if previously cancelled, restore to scheduled upon new date assignment
+          if (apt.status === 'cancelled') {
+            patchData.status = 'scheduled';
+          } else if (apt.status === 'rescheduled') {
+            patchData.status = 'scheduled';
+          }
 
           const data = await appointmentService.updateAppointment({
             tenantId,
