@@ -51,11 +51,13 @@ A dedicated, real-time Calendar and Scheduling Hub providing Day, Week, and Mont
   - Week View, Month Grid View, and Day View with Google Calendar ergonomics
   - Custom Google-style Top Navigation Header Bar: dynamic period title, "<" and ">" Chevrons, "Today" quick jump, Hamburger toggle, and Day/Week/Month dropdown
   - Collapsible internal calendar sidebar with Google "+ Create" button, interactive Mini Month Picker (`MiniCalendar.jsx`), and status toggles
-  - Stacking context resolution: elevated header and dropdown to `z-50` preventing clipping behind calendar cells
+  - Stacking context resolution: isolated main calendar body (`isolate`), elevated sticky week header (`z-20`) so multi-layer concurrent overlapping events scroll underneath without clipping top navigation dropdowns (`z-50`)
+  - Persistent view selection: disabled Schedule-X automatic small-screen view switching via `isCalendarSmall: () => false` so chosen views (Week, Month) remain persistent regardless of viewport width
+  - Event card typography & compactness: removed clock icon and refined font sizing (title 11px, time 10px) ensuring full start and end times display cleanly
   - Day view alignment: left-aligned day label ("SAT 12") directly above the time grid column
   - Vertical scrollability: bounded flex container sizing unlocking smooth scrolling across all 24 hours (12 AM - 11 PM) with auto-scroll to morning hours
   - Month view layout: edge-to-edge full width with crisp Google-style borders and date chips
-  - Live red current-time indicator line showing active minute in Day & Week views
+  - Live red current-time indicator line showing active minute in Day & Week views (z-index 10 scrolling cleanly under week header)
   - Drag-and-drop and resize duration rescheduling wired to `useUpdateAppointment`
   - Click-to-create (`onClickDate`, `onClickDateTime`) wired to `AddAppointmentModal`
 - [x] **Routing & Navigation**:

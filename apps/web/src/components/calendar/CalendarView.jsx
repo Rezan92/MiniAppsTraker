@@ -276,6 +276,7 @@ export const CalendarView = () => {
     timezone: userTimezone,
     calendars,
     callbacks: {
+      isCalendarSmall: () => false,
       onBeforeEventUpdate: (oldEvent, newEvent, $app) => callbacksRef.current.onBeforeEventUpdate?.(oldEvent, newEvent, $app),
       onEventUpdate: (event) => callbacksRef.current.onEventUpdate?.(event),
       onEventClick: (event) => callbacksRef.current.onEventClick?.(event),
@@ -650,10 +651,10 @@ export const CalendarView = () => {
         :root,
         .sx__calendar-wrapper,
         .sx__calendar {
-          --sx-z-index-week-header: 1 !important;
+          --sx-z-index-week-header: 20 !important;
         }
         .sx__week-header {
-          z-index: 1 !important;
+          z-index: 20 !important;
           border-bottom: 1px solid #dadce0 !important;
           background-color: #ffffff !important;
         }
@@ -753,23 +754,35 @@ export const CalendarView = () => {
           color: #ffffff !important;
           font-weight: 700 !important;
         }
+        /* Month Grid Events */
         .sx__month-grid-event {
           border-radius: 4px !important;
-          font-size: 12px !important;
+          font-size: 11px !important;
           font-weight: 500 !important;
-          padding: 2px 6px !important;
+          padding: 1px 5px !important;
           margin-bottom: 2px !important;
+          line-height: 1.3 !important;
           box-shadow: 0 1px 2px rgba(60, 64, 67, 0.1) !important;
         }
+        .sx__month-grid-event-time {
+          font-size: 10px !important;
+          font-weight: 500 !important;
+          margin-right: 3px !important;
+          letter-spacing: -0.1px !important;
+        }
+        .sx__month-grid-event-title {
+          font-size: 11px !important;
+          font-weight: 500 !important;
+        }
 
-        /* Live Current Time Red Indicator Line */
+        /* Live Current Time Red Indicator Line (z-index 10 to scroll under week-header 20) */
         .sx__current-time-indicator {
           position: absolute;
           left: 0;
           right: 0;
           height: 2px;
           background-color: #ea4335;
-          z-index: 25;
+          z-index: 10 !important;
           pointer-events: none;
         }
         .sx__current-time-indicator::before {
@@ -782,6 +795,61 @@ export const CalendarView = () => {
           border-radius: 50%;
           background-color: #ea4335;
           box-shadow: 0 0 3px rgba(234, 67, 53, 0.4);
+        }
+
+        /* Event Typography, Compact Layout & Clock Icon Suppression */
+        .sx__event-icon,
+        .sx__time-grid-event .sx__event-icon,
+        .sx__date-grid-event .sx__event-icon,
+        .sx__month-grid-event .sx__event-icon {
+          display: none !important;
+        }
+        .sx__time-grid-event {
+          padding: 2px 5px !important;
+          font-size: 11px !important;
+        }
+        .sx__time-grid-event-title {
+          font-size: 11px !important;
+          font-weight: 600 !important;
+          line-height: 1.25 !important;
+          overflow: hidden !important;
+          text-overflow: ellipsis !important;
+          white-space: nowrap !important;
+        }
+        .sx__time-grid-event-time {
+          font-size: 10px !important;
+          font-weight: 500 !important;
+          line-height: 1.2 !important;
+          opacity: 0.9 !important;
+          letter-spacing: -0.1px !important;
+          white-space: nowrap !important;
+          overflow: hidden !important;
+          text-overflow: ellipsis !important;
+        }
+        .sx__title-and-time-compact {
+          gap: 4px !important;
+        }
+        .sx__title-and-time-compact .sx__time-grid-event-title {
+          font-size: 11px !important;
+          font-weight: 600 !important;
+        }
+        .sx__title-and-time-compact .sx__time-grid-event-time {
+          font-size: 10px !important;
+          font-weight: 500 !important;
+          letter-spacing: -0.1px !important;
+        }
+        .sx__date-grid-event {
+          padding: 1px 4px !important;
+          font-size: 11px !important;
+        }
+        .sx__date-grid-event-title {
+          font-size: 11px !important;
+          font-weight: 600 !important;
+        }
+        .sx__date-grid-event-time {
+          font-size: 10px !important;
+          font-weight: 500 !important;
+          letter-spacing: -0.1px !important;
         }
 
         /* Event Hover & Pointer Cursor */
@@ -871,7 +939,7 @@ export const CalendarView = () => {
       `}</style>
 
       {/* Google Calendar Top Navigation Header Bar */}
-      <header className="h-16 border-b border-gray-200 bg-white px-4 flex items-center justify-between shrink-0 relative z-20">
+      <header className="h-16 border-b border-gray-200 bg-white px-4 flex items-center justify-between shrink-0 relative z-30">
         {/* Left cluster: Hamburger, Badge, Today, < >, Dynamic Period */}
         <div className="flex items-center gap-2 sm:gap-4">
           <button
@@ -944,7 +1012,7 @@ export const CalendarView = () => {
           )}
 
           {/* View Selector Dropdown */}
-          <div className="relative z-30" ref={viewDropdownRef}>
+          <div className="relative z-40" ref={viewDropdownRef}>
             <button
               type="button"
               onClick={() => setViewDropdownOpen(prev => !prev)}
@@ -955,7 +1023,7 @@ export const CalendarView = () => {
             </button>
 
             {viewDropdownOpen && (
-              <div className="absolute right-0 mt-1 w-32 bg-white rounded-lg shadow-xl border border-gray-200 py-1 z-30">
+              <div className="absolute right-0 mt-1 w-32 bg-white rounded-lg shadow-xl border border-gray-200 py-1 z-50">
                 <button
                   type="button"
                   onClick={() => handleSelectView('day')}
@@ -993,7 +1061,7 @@ export const CalendarView = () => {
       </header>
 
       {/* Main Calendar Body: Collapsible Sidebar + Calendar Viewport */}
-      <div className="flex-1 flex overflow-hidden relative p-3 gap-3 min-h-0 z-0">
+      <div className="flex-1 flex overflow-hidden relative p-3 gap-3 min-h-0 z-0 isolate">
         {/* Collapsible Left Sidebar */}
         <CalendarSidebar
           open={calendarSidebarOpen}
