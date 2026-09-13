@@ -211,11 +211,13 @@ export const AiContextProvider = ({ children }) => {
 
       const currentScreen = screenContextRef.current;
       const currentFocus = activeFocusRef.current;
+      const browserTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
 
       const response = await apiClient.post('/api/ai/chat', {
         messages: apiMessages,
         screenContext: currentScreen || null,
         activeFocus: currentFocus || null,
+        timezone: browserTimezone,
         model: selectedModel,
         tier: selectedTier
       });

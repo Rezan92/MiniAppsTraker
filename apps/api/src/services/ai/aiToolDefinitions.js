@@ -648,11 +648,11 @@ export const AI_TOOLS = [
       properties: {
         start_date: {
           type: 'STRING',
-          description: 'Start date or ISO timestamp (e.g. "2026-09-15" or "2026-09-15T00:00:00Z")'
+          description: 'Start date in local YYYY-MM-DD format (or local ISO timestamp, e.g. "2026-09-15")'
         },
         end_date: {
           type: 'STRING',
-          description: 'End date or ISO timestamp (e.g. "2026-09-22" or "2026-09-22T23:59:59Z")'
+          description: 'End date in local YYYY-MM-DD format (or local ISO timestamp, e.g. "2026-09-22")'
         },
         status: {
           type: 'STRING',
@@ -700,11 +700,11 @@ export const AI_TOOLS = [
         },
         start_time: {
           type: 'STRING',
-          description: 'Start date-time in ISO 8601 format (e.g. "2026-09-15T09:00:00Z" or "2026-09-15 09:00")'
+          description: 'Start date-time in the contractor\'s local timezone (e.g. "2026-09-15 14:00" or "2026-09-15T14:00:00"). Do NOT append "Z" because user times are local.'
         },
         end_time: {
           type: 'STRING',
-          description: 'End date-time in ISO 8601 format (e.g. "2026-09-15T10:00:00Z"). If omitted, default to 1 hour after start_time.'
+          description: 'End date-time in the contractor\'s local timezone (e.g. "2026-09-15 15:00" or "2026-09-15T15:00:00"). Do NOT append "Z". If omitted, defaults to 1 hour after start_time.'
         },
         all_day: {
           type: 'BOOLEAN',
@@ -767,11 +767,11 @@ export const AI_TOOLS = [
         },
         start_time: {
           type: 'STRING',
-          description: 'New start date-time in ISO format (e.g. "2026-09-16T14:00:00Z")'
+          description: 'New start date-time in the contractor\'s local timezone (e.g. "2026-09-16 14:00" or "2026-09-16T14:00:00"). Do NOT append "Z".'
         },
         end_time: {
           type: 'STRING',
-          description: 'Optional new end date-time in ISO format. If omitted, preserves original duration.'
+          description: 'Optional new end date-time in the contractor\'s local timezone (e.g. "2026-09-16 15:00"). Do NOT append "Z". If omitted, preserves original duration.'
         },
         all_day: {
           type: 'BOOLEAN',

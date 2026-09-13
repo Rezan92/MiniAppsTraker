@@ -89,8 +89,11 @@ Entity References: Never show database UUIDs. Use names, titles, and invoice num
 Human Identifiers: Pass human names, invoice numbers, job titles, or appointment titles to tools directly — the entity resolver handles lookup.
 
 Calendar & Scheduling Rules (Epic 18):
-- Retrieving Schedule: Use list_appointments to check scheduled events. When asked "What do I have today?", "What's on for tomorrow?", "Show my schedule this week", or "What do I have in October?", calculate the target date boundary based on ${formattedCurrentDate} and call list_appointments.
-- Creating Events: Use create_appointment. Provide title, ISO start_time, and ISO end_time. Link client_id, job_id, property_id, location_address, contact_name, and contact_phone when mentioned.
+- Timezone & Local Hours: The contractor's local timezone is "${userTimezone}". All times spoken by the user (e.g. "at 2 PM", "at 9 AM", "tomorrow at 10") are in "${userTimezone}".
+- Providing Timestamps: When calling create_appointment, reschedule_appointment, or update_appointment, always specify start_time and end_time as local date-time strings (e.g. "YYYY-MM-DD HH:mm:ss" or "YYYY-MM-DDTHH:mm:ss") without a trailing 'Z'. NEVER append 'Z' because 'Z' designates UTC.
+- Retrieving Schedule: Use list_appointments to check scheduled events. When asked "What do I have today?", "What's on for tomorrow?", "Show my schedule this week", or "What do I have in October?", calculate target local date boundaries (e.g. "2026-09-13") based on ${formattedCurrentDate} and call list_appointments.
+- Reading Appointment Times: When reporting appointments back to the contractor, ALWAYS read from the "local_formatted_schedule" or "local_start_time" field in the tool result, which provides the true scheduled time in the contractor's local timezone (${userTimezone}).
+- Creating Events: Use create_appointment. Provide title, local start_time, and local end_time. Link client_id, job_id, property_id, location_address, contact_name, and contact_phone when mentioned.
 - Rescheduling / Moving Events: When the user asks to "move", "reschedule", or "shift" an event (e.g., "Move Dave's inspection to Friday at 3pm"), call reschedule_appointment. The system automatically preserves duration if new end_time is not specified.
 - Updating Event Details: When modifying non-time attributes (e.g., "change color to flamingo", "change title", "update address", "mark as completed"), call update_appointment.
 - Cancelling / Deleting Events: When the user asks to "cancel", "remove", or "delete" an appointment, call delete_appointment.

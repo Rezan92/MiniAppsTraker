@@ -77,6 +77,7 @@ const chatRequestSchema = z.object({
     title: z.string().optional().nullable(),
     timestamp: z.number().optional().nullable()
   }).optional().nullable(),
+  timezone: z.string().optional(),
   model: z.string().optional(),
   tier: z.enum(['free', 'paid']).optional().default('free')
 });
@@ -93,9 +94,10 @@ router.post('/chat', async (req, res, next) => {
       return next(parseResult.error);
     }
 
-    const { messages, screenContext, activeFocus, model, tier } = parseResult.data;
+    const { messages, screenContext, activeFocus, model, tier, timezone } = parseResult.data;
     const requestedModel = (model && !model.includes('2.5')) ? model : DEFAULT_AI_MODEL;
     const isNvidia = isNvidiaModel(requestedModel);
+    const userTimezone = timezone || screenContext?.summary?.timezone || req.user?.timezone || 'UTC';
 
     // If an NVIDIA model is selected, route through the NVIDIA Build pipeline
     if (isNvidia) {
@@ -111,9 +113,9 @@ router.post('/chat', async (req, res, next) => {
       }
 
       const lastUserMsg = messages[messages.length - 1]?.content || '(image attachment)';
-      console.log(`\n🤖 [AI Request] Provider: NVIDIA | Model: ${requestedModel} | User: ${req.user.email} | Screen: ${screenContext?.screen || 'Global'} | Prompt: "${lastUserMsg}"`);
+      console.log(`\n🤖 [AI Request] Provider: NVIDIA | Model: ${requestedModel} | User: ${req.user.email} | Screen: ${screenContext?.screen || 'Global'} | Timezone: ${userTimezone} | Prompt: "${lastUserMsg}"`);
 
-      const systemInstruction = buildSystemInstruction({ user: req.user, screenContext, activeFocus });
+      const systemInstruction = buildSystemInstruction({ user: { ...req.user, timezone: userTimezone }, screenContext, activeFocus });
       let result;
       try {
         result = await executeNvidiaChatWithTools({
@@ -122,7 +124,8 @@ router.post('/chat', async (req, res, next) => {
           activeModel: requestedModel,
           tenantId,
           userId: req.user.id,
-          currentActiveFocus: activeFocus
+          currentActiveFocus: activeFocus,
+          timezone: userTimezone
         });
       } catch (nvErr) {
         if (requestedModel !== 'moonshotai/kimi-k3') {
@@ -133,7 +136,8 @@ router.post('/chat', async (req, res, next) => {
             activeModel: 'moonshotai/kimi-k3',
             tenantId,
             userId: req.user.id,
-            currentActiveFocus: activeFocus
+            currentActiveFocus: activeFocus,
+            timezone: userTimezone
           });
         } else {
           throw nvErr;
@@ -161,10 +165,10 @@ router.post('/chat', async (req, res, next) => {
     const { ai: aiClient, activeTier, isPaidKeyConfigured } = getAiClient(tier);
     const targetModel = requestedModel;
     const lastUserMsg = messages[messages.length - 1]?.content || '(image attachment)';
-    console.log(`\n🤖 [AI Request] Tier: ${activeTier.toUpperCase()} | Model: ${targetModel} | User: ${req.user.email} | Screen: ${screenContext?.screen || 'Global'} | Prompt: "${lastUserMsg}"`);
+    console.log(`\n🤖 [AI Request] Tier: ${activeTier.toUpperCase()} | Model: ${targetModel} | User: ${req.user.email} | Screen: ${screenContext?.screen || 'Global'} | Timezone: ${userTimezone} | Prompt: "${lastUserMsg}"`);
 
     let currentActiveFocus = activeFocus || null;
-    const systemInstruction = buildSystemInstruction({ user: req.user, screenContext, activeFocus: currentActiveFocus });
+    const systemInstruction = buildSystemInstruction({ user: { ...req.user, timezone: userTimezone }, screenContext, activeFocus: currentActiveFocus });
     const triggeredMutations = [];
     let pendingConfirmation = null;
     let invoiceCardData = null;
@@ -277,7 +281,8 @@ router.post('/chat', async (req, res, next) => {
         console.log(`⚙️ [AI Tool Call] Function: "${call.name}" | Args:`, JSON.stringify(call.args));
         const toolResult = await executeAiTool(call.name, call.args, {
           tenantId,
-          userId: req.user.id
+          userId: req.user.id,
+          timezone: userTimezone
         });
 
         if (toolResult.error) {

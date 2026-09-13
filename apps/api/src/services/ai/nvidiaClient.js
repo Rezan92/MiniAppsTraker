@@ -171,6 +171,7 @@ export async function executeNvidiaChatWithTools({
   tenantId,
   userId,
   currentActiveFocus = null,
+  timezone = 'UTC',
   maxTurns = 8
 }) {
   // Build OpenAI-compatible message history
@@ -269,7 +270,8 @@ export async function executeNvidiaChatWithTools({
       console.log(`⚙️ [NVIDIA Tool Call] Function: "${fnName}" | Args:`, JSON.stringify(fnArgs));
       const toolResult = await executeAiTool(fnName, fnArgs, {
         tenantId,
-        userId
+        userId,
+        timezone
       });
 
       if (toolResult.error) {

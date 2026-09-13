@@ -79,15 +79,190 @@ function addHoursToTime(startTimeStr, hoursNum) {
 }
 
 /**
+ * Converts a contractor's local appointment timestamp string into a standardized UTC ISO string.
+ * Handles formats:
+ * - "YYYY-MM-DD HH:mm" / "YYYY-MM-DD HH:mm:ss"
+ * - "YYYY-MM-DDTHH:mm" / "YYYY-MM-DDTHH:mm:ss"
+ * - Strings where the LLM appended "Z" to a local time (e.g. "2026-09-13T14:00:00Z")
+ * - Strings with explicit non-Z timezone offsets (e.g. "-05:00", "+01:00")
+ * - Date-only strings ("YYYY-MM-DD")
+ *
+ * @param {string} timeInput - The timestamp or date string from the AI tool call
+ * @param {string} [timezone='UTC'] - IANA timezone identifier (e.g. 'America/Chicago')
+ * @param {boolean} [isEndOfDay=false] - For date-only strings, whether to set to 23:59:59.999
+ * @returns {string|null} - UTC ISO timestamp (e.g. "2026-09-13T19:00:00.000Z")
+ */
+export function parseAppointmentTimeToUtc(timeInput, timezone = 'UTC', isEndOfDay = false) {
+  if (!timeInput) return null;
+  const str = String(timeInput).trim();
+  if (!str) return null;
+
+  // Check if string has an explicit numeric timezone offset (e.g. "-05:00", "+02:00", "-0500")
+  const hasNumericOffset = /[+-]\d{2}:?\d{2}$/.test(str);
+  if (hasNumericOffset) {
+    const d = new Date(str);
+    return isNaN(d.getTime()) ? null : d.toISOString();
+  }
+
+  // Strip naive trailing 'Z' / 'z' if the LLM blindly appended it to local time
+  const clean = str.replace(/[zZ]$/, '').replace('T', ' ');
+  const [datePart, timePart] = clean.split(' ');
+  const dateSegments = (datePart || '').split('-');
+  if (dateSegments.length < 3) return null;
+
+  const y = Number(dateSegments[0]);
+  const m = Number(dateSegments[1]);
+  const d = Number(dateSegments[2]);
+  if (!y || !m || !d || isNaN(y) || isNaN(m) || isNaN(d)) return null;
+
+  let hr = 0;
+  let min = 0;
+  let sec = 0;
+  let ms = 0;
+
+  if (timePart) {
+    const timeSegments = timePart.split(':');
+    hr = Number(timeSegments[0] || 0);
+    min = Number(timeSegments[1] || 0);
+    const secAndMs = (timeSegments[2] || '0').split('.');
+    sec = Number(secAndMs[0] || 0);
+    ms = Number(secAndMs[1] ? secAndMs[1].padEnd(3, '0').slice(0, 3) : 0);
+  } else if (isEndOfDay) {
+    hr = 23;
+    min = 59;
+    sec = 59;
+    ms = 999;
+  }
+
+  const naiveUtc = new Date(Date.UTC(y, m - 1, d, hr, min, sec, ms));
+  if (isNaN(naiveUtc.getTime())) return null;
+
+  try {
+    const formatter = new Intl.DateTimeFormat('en-US', {
+      timeZone: timezone,
+      year: 'numeric',
+      month: 'numeric',
+      day: 'numeric',
+      hour: 'numeric',
+      minute: 'numeric',
+      second: 'numeric',
+      hour12: false
+    });
+
+    const parts = Object.fromEntries(formatter.formatToParts(naiveUtc).map(p => [p.type, p.value]));
+    let fHour = Number(parts.hour);
+    if (fHour === 24) fHour = 0;
+    const fUtc = new Date(Date.UTC(
+      Number(parts.year),
+      Number(parts.month) - 1,
+      Number(parts.day),
+      fHour,
+      Number(parts.minute),
+      Number(parts.second),
+      ms
+    ));
+
+    const offsetMs = fUtc.getTime() - naiveUtc.getTime();
+    const actualUtc = new Date(naiveUtc.getTime() - offsetMs);
+    return actualUtc.toISOString();
+  } catch {
+    return naiveUtc.toISOString();
+  }
+}
+
+/**
+ * Formats an appointment record for AI consumption with localized times and schedule strings.
+ * @param {Object} apt - Appointment database record
+ * @param {string} [timezone='UTC'] - Contractor's IANA timezone
+ * @returns {Object|null}
+ */
+export function formatAppointmentForAi(apt, timezone = 'UTC') {
+  if (!apt) return null;
+  const isAllDay = !!apt.all_day;
+  let formattedTimes = '';
+  let localStartTime = apt.start_time;
+  let localEndTime = apt.end_time;
+
+  if (isAllDay) {
+    const dStr = String(apt.start_time).split('T')[0];
+    formattedTimes = `All Day (${dStr})`;
+    localStartTime = dStr;
+    localEndTime = apt.end_time ? String(apt.end_time).split('T')[0] : dStr;
+  } else if (apt.start_time) {
+    try {
+      const startDate = new Date(apt.start_time);
+      const endDate = apt.end_time ? new Date(apt.end_time) : new Date(startDate.getTime() + 3600000);
+
+      const dateFormatter = new Intl.DateTimeFormat('en-US', {
+        timeZone: timezone,
+        weekday: 'short',
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric'
+      });
+
+      const timeFormatter = new Intl.DateTimeFormat('en-US', {
+        timeZone: timezone,
+        hour: 'numeric',
+        minute: '2-digit',
+        hour12: true
+      });
+
+      const startLocalIso = new Intl.DateTimeFormat('en-CA', {
+        timeZone: timezone,
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: false
+      }).format(startDate).replace(', ', ' ');
+
+      const endLocalIso = new Intl.DateTimeFormat('en-CA', {
+        timeZone: timezone,
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: false
+      }).format(endDate).replace(', ', ' ');
+
+      localStartTime = startLocalIso;
+      localEndTime = endLocalIso;
+
+      const dateStr = dateFormatter.format(startDate);
+      const startTimeStr = timeFormatter.format(startDate);
+      const endTimeStr = timeFormatter.format(endDate);
+
+      formattedTimes = `${dateStr}, ${startTimeStr} – ${endTimeStr}`;
+    } catch {
+      formattedTimes = `${apt.start_time} – ${apt.end_time || ''}`;
+    }
+  }
+
+  return {
+    ...apt,
+    local_start_time: localStartTime,
+    local_end_time: localEndTime,
+    local_formatted_schedule: formattedTimes,
+    user_timezone: timezone
+  };
+}
+
+/**
  * Executes an AI tool call securely within tenant boundaries.
  * @param {string} toolName
  * @param {Object} args
  * @param {Object} context
  * @param {string} context.tenantId - Verified from request session
  * @param {string} context.userId - Verified from request session
+ * @param {string} [context.timezone='UTC'] - Verified user IANA timezone
  * @returns {Promise<{ result?: any, error?: string, mutation?: string|null, entityId?: string }>}
  */
-export async function executeAiTool(toolName, args = {}, { tenantId, userId }) {
+export async function executeAiTool(toolName, args = {}, { tenantId, userId, timezone = 'UTC' }) {
   if (!tenantId) {
     return { error: 'Tenant context is missing from authenticated session.' };
   }
@@ -950,8 +1125,12 @@ export async function executeAiTool(toolName, args = {}, { tenantId, userId }) {
       case 'list_appointments': {
         const { start_date, end_date, status, client_id, job_id, limit = 50 } = args;
         const filters = { limit: Number(limit) || 50 };
-        if (start_date) filters.startDate = start_date;
-        if (end_date) filters.endDate = end_date;
+        if (start_date) {
+          filters.startDate = parseAppointmentTimeToUtc(start_date, timezone, false) || start_date;
+        }
+        if (end_date) {
+          filters.endDate = parseAppointmentTimeToUtc(end_date, timezone, true) || end_date;
+        }
         if (status) filters.status = status;
 
         if (client_id) {
@@ -966,7 +1145,8 @@ export async function executeAiTool(toolName, args = {}, { tenantId, userId }) {
 
         try {
           const data = await appointmentService.getAppointments({ tenantId, filters });
-          return { result: data || [], mutation: null };
+          const formatted = (data || []).map(apt => formatAppointmentForAi(apt, timezone));
+          return { result: formatted, mutation: null };
         } catch (err) {
           return { error: err.message };
         }
@@ -982,7 +1162,7 @@ export async function executeAiTool(toolName, args = {}, { tenantId, userId }) {
             tenantId,
             appointmentId: resolution.appointment.id
           });
-          return { result: apt, mutation: null };
+          return { result: formatAppointmentForAi(apt, timezone), mutation: null };
         } catch (err) {
           return { error: err.message };
         }
@@ -1023,20 +1203,23 @@ export async function executeAiTool(toolName, args = {}, { tenantId, userId }) {
           }
         }
 
+        // Convert local start_time to UTC
+        const startUtc = parseAppointmentTimeToUtc(start_time, timezone, false) || start_time;
+
         // Calculate end_time defaulting to 1 hour after start_time if not provided
-        let finalEndTime = end_time;
-        if (!finalEndTime && start_time) {
-          const startMs = new Date(start_time).getTime();
+        let endUtc = end_time ? (parseAppointmentTimeToUtc(end_time, timezone, false) || end_time) : null;
+        if (!endUtc && startUtc) {
+          const startMs = new Date(startUtc).getTime();
           if (!isNaN(startMs)) {
-            finalEndTime = new Date(startMs + 60 * 60 * 1000).toISOString();
+            endUtc = new Date(startMs + 60 * 60 * 1000).toISOString();
           }
         }
 
         try {
           const appointmentData = {
             title,
-            start_time,
-            end_time: finalEndTime,
+            start_time: startUtc,
+            end_time: endUtc,
             all_day: !!all_day,
             color_tag: color_tag || 'blue',
             client_id: resolvedClientId,
@@ -1057,7 +1240,7 @@ export async function executeAiTool(toolName, args = {}, { tenantId, userId }) {
           });
 
           return {
-            result: data,
+            result: formatAppointmentForAi(data, timezone),
             mutation: 'appointments',
             entityId: data.id
           };
@@ -1072,21 +1255,23 @@ export async function executeAiTool(toolName, args = {}, { tenantId, userId }) {
         if (resolution.error) return { error: resolution.error };
         const apt = resolution.appointment;
 
-        let newEnd = end_time;
-        if (!newEnd && start_time && apt.start_time && apt.end_time) {
+        const startUtc = parseAppointmentTimeToUtc(start_time, timezone, false) || start_time;
+        let endUtc = end_time ? (parseAppointmentTimeToUtc(end_time, timezone, false) || end_time) : null;
+
+        if (!endUtc && startUtc && apt.start_time && apt.end_time) {
           const origDuration = new Date(apt.end_time).getTime() - new Date(apt.start_time).getTime();
-          const newStartMs = new Date(start_time).getTime();
+          const newStartMs = new Date(startUtc).getTime();
           if (!isNaN(newStartMs)) {
-            newEnd = new Date(newStartMs + (origDuration > 0 ? origDuration : 3600000)).toISOString();
+            endUtc = new Date(newStartMs + (origDuration > 0 ? origDuration : 3600000)).toISOString();
           }
         }
 
         try {
           const patchData = {
-            start_time,
+            start_time: startUtc,
             status: 'rescheduled'
           };
-          if (newEnd) patchData.end_time = newEnd;
+          if (endUtc) patchData.end_time = endUtc;
           if (all_day !== undefined) patchData.all_day = !!all_day;
 
           const data = await appointmentService.updateAppointment({
@@ -1095,11 +1280,12 @@ export async function executeAiTool(toolName, args = {}, { tenantId, userId }) {
             patchData
           });
 
+          const formatted = formatAppointmentForAi(data, timezone);
           return {
             result: {
-              ...data,
+              ...formatted,
               rescheduled_from: apt.start_time,
-              rescheduled_to: start_time,
+              rescheduled_to: startUtc,
               reason: reason || null
             },
             mutation: 'appointments',
@@ -1124,6 +1310,12 @@ export async function executeAiTool(toolName, args = {}, { tenantId, userId }) {
         if (updates.location_address !== undefined) patchData.location_address = updates.location_address;
         if (updates.contact_name !== undefined) patchData.contact_name = updates.contact_name;
         if (updates.contact_phone !== undefined) patchData.contact_phone = updates.contact_phone;
+        if (updates.start_time) {
+          patchData.start_time = parseAppointmentTimeToUtc(updates.start_time, timezone, false) || updates.start_time;
+        }
+        if (updates.end_time) {
+          patchData.end_time = parseAppointmentTimeToUtc(updates.end_time, timezone, false) || updates.end_time;
+        }
 
         if (updates.client_id) {
           const cRes = await entityResolver.resolveClient(updates.client_id, tenantId);
@@ -1142,7 +1334,7 @@ export async function executeAiTool(toolName, args = {}, { tenantId, userId }) {
           });
 
           return {
-            result: data,
+            result: formatAppointmentForAi(data, timezone),
             mutation: 'appointments',
             entityId: apt.id
           };
