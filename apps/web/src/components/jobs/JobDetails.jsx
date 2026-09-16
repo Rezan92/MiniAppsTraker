@@ -136,11 +136,12 @@ export const JobDetails = () => {
   const handleEditJob = async (submittedData) => {
     try {
       const dataToUse = submittedData || editFormData;
+      const { id: _ignoredId, ...cleanData } = dataToUse;
       const payload = {
-        ...dataToUse,
-        property_id: dataToUse.property_id || null,
-        hourly_rate: dataToUse.rate_type === 'hourly' ? parseFloat(dataToUse.hourly_rate) : undefined,
-        flat_rate: dataToUse.rate_type === 'flat' ? parseFloat(dataToUse.flat_rate) : undefined
+        ...cleanData,
+        property_id: cleanData.property_id || null,
+        hourly_rate: cleanData.rate_type === 'hourly' ? parseFloat(cleanData.hourly_rate) : undefined,
+        flat_rate: cleanData.rate_type === 'flat' ? parseFloat(cleanData.flat_rate) : undefined
       };
       
       await apiClient.put(`/api/jobs/${id}`, payload);

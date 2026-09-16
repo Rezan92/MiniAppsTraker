@@ -57,7 +57,7 @@ export const useCreateJob = () => {
   const { showSuccess, showError } = useToast();
 
   return useMutation({
-    mutationFn: (formData) => apiClient.post('/api/jobs', formData),
+    mutationFn: ({ id, ...formData } = {}) => apiClient.post('/api/jobs', formData),
     onSuccess: (data, variables) => {
       invalidateJobCascade(queryClient, { 
         jobId: data?.id, 

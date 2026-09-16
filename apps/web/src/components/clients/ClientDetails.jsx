@@ -57,13 +57,15 @@ export const ClientDetails = () => {
     }
   }, [client]);
 
-  const handleCreateJob = async () => {
+  const handleCreateJob = async (submittedData) => {
     try {
+      const dataToUse = submittedData || jobFormData;
+      const { id: _ignoredId, ...cleanData } = dataToUse;
       const payload = {
-        ...jobFormData,
-        property_id: jobFormData.property_id || null,
-        hourly_rate: jobFormData.rate_type === 'hourly' ? parseFloat(jobFormData.hourly_rate) : undefined,
-        flat_rate: jobFormData.rate_type === 'flat' ? parseFloat(jobFormData.flat_rate) : undefined
+        ...cleanData,
+        property_id: cleanData.property_id || null,
+        hourly_rate: cleanData.rate_type === 'hourly' ? parseFloat(cleanData.hourly_rate) : undefined,
+        flat_rate: cleanData.rate_type === 'flat' ? parseFloat(cleanData.flat_rate) : undefined
       };
       const createdJob = await apiClient.post('/api/jobs', payload);
       invalidateJobCascade(queryClient, { 

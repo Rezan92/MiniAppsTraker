@@ -55,10 +55,11 @@ export const AddJobModal = ({ open, onClose, onSubmit, formData, clients = [] })
   }, [open, formData, reset]);
 
   const onValidSubmit = (data) => {
-    onSubmit({
-      ...data,
-      id: formData?.id
-    });
+    const payload = { ...data };
+    if (formData?.id) {
+      payload.id = formData.id;
+    }
+    onSubmit(payload);
   };
 
   const footer = (

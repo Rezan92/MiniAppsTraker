@@ -62,15 +62,16 @@ export const JobList = () => {
 
   const handleSaveJob = (submittedData) => {
     const dataToUse = submittedData || formData;
+    const { id, ...cleanData } = dataToUse;
     const payload = {
-      ...dataToUse,
-      property_id: dataToUse.property_id || null,
-      hourly_rate: dataToUse.rate_type === 'hourly' ? parseFloat(dataToUse.hourly_rate) : undefined,
-      flat_rate: dataToUse.rate_type === 'flat' ? parseFloat(dataToUse.flat_rate) : undefined
+      ...cleanData,
+      property_id: cleanData.property_id || null,
+      hourly_rate: cleanData.rate_type === 'hourly' ? parseFloat(cleanData.hourly_rate) : undefined,
+      flat_rate: cleanData.rate_type === 'flat' ? parseFloat(cleanData.flat_rate) : undefined
     };
 
-    if (dataToUse.id) {
-      updateJobMutation.mutate(payload, {
+    if (id) {
+      updateJobMutation.mutate({ id, ...payload }, {
         onSuccess: () => {
           setOpen(false);
           setFormData({ client_id: '', property_id: '', title: '', rate_type: 'flat', hourly_rate: '65.00', flat_rate: '', start_date: '', end_date: '', notes: '' });
@@ -245,7 +246,10 @@ export const JobList = () => {
         subtitle="Manage, filter, and track all active and historical jobs."
         actionButtonText="Add Job"
         actionButtonIcon="add"
-        onActionClick={() => setOpen(true)}
+        onActionClick={() => {
+          setFormData({ client_id: '', property_id: '', title: '', rate_type: 'flat', hourly_rate: '65.00', flat_rate: '', start_date: '', end_date: '', notes: '' });
+          setOpen(true);
+        }}
         tabs={JOB_FILTER_TABS}
         activeTab={statusFilter}
         onTabChange={setStatusFilter}
@@ -263,7 +267,10 @@ export const JobList = () => {
         emptyTitle="No jobs found"
         emptyDescription="There are no jobs matching your selected filter."
         emptyActionText="Add Job"
-        onEmptyAction={() => setOpen(true)}
+        onEmptyAction={() => {
+          setFormData({ client_id: '', property_id: '', title: '', rate_type: 'flat', hourly_rate: '65.00', flat_rate: '', start_date: '', end_date: '', notes: '' });
+          setOpen(true);
+        }}
         footer={tableFooter}
       />
 

@@ -44,7 +44,8 @@ export const Dashboard = () => {
   };
 
   const handleCreateJob = (data) => {
-    createJobMutation.mutate(data, {
+    const { id: _ignoredId, ...cleanData } = data;
+    createJobMutation.mutate(cleanData, {
       onSuccess: () => {
         setJobModalOpen(false);
         refetch();

@@ -9,6 +9,7 @@ const router = express.Router();
 router.use(authenticate);
 
 const jobSchema = z.object({
+  id: z.string().optional().nullable().or(z.literal('')).transform(() => undefined),
   client_id: z.string().uuid('Invalid client ID'),
   property_id: z.string().uuid('Invalid property ID').optional().nullable().or(z.literal('')).transform(val => val || null),
   title: z.string().min(1, "Title is required"),
