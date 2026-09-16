@@ -397,8 +397,13 @@ export const AiCopilotWidget = () => {
         onPointerMove={handleCirclePointerMove}
         onPointerUp={handleCirclePointerUp}
         onPointerCancel={handleCirclePointerUp}
+        onClick={() => {
+          if (!isDraggingCircle) {
+            triggerExpand();
+          }
+        }}
         title="MiniApps Copilot • Click to expand • Drag to place anywhere"
-        className={`fixed z-50 w-14 h-14 rounded-full bg-gray-950 text-white border-2 border-primary/60 shadow-[0_10px_30px_-5px_rgba(0,0,0,0.5)] flex items-center justify-center select-none group ${
+        className={`fixed z-50 w-14 h-14 rounded-full bg-gray-950 text-white border-2 border-primary/60 shadow-[0_10px_30px_-5px_rgba(0,0,0,0.5)] flex items-center justify-center select-none group touch-none ${
           isDraggingCircle ? 'scale-105 shadow-3xl ring-2 ring-primary/60 cursor-grabbing' : ''
         } ${
           isCircleVisible

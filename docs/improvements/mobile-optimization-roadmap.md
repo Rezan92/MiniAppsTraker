@@ -31,12 +31,15 @@ This document serves as the single source of truth for the mobile optimization i
 
 ---
 
-### Phase 2: Design System & Common UI Primitives (`apps/web/src/components/common/`)
-- [x] **Adaptive Tables (`DataTable.jsx`)**: Render standard `<table>` on desktop (`hidden md:table`); render stacked readable cards on mobile (`md:hidden`).
-- [x] **Bottom Sheet Pattern (`BaseModal.jsx`)**: Transform centered dialogs into native-feeling mobile bottom sheets (`rounded-t-2xl max-h-[90dvh]`) on screens `< 768px`.
-- [x] **Popovers & Date Pickers (`DatePicker.jsx`, `DateRangeFilter.jsx`)**: Responsive popovers preventing horizontal screen clipping; mobile single-column sheets.
-- [x] **Tooltips & Hover Suppression (`Tooltip.jsx`)**: Suppress hover tooltips on touch devices (`@media (hover: hover)`).
-- [x] **Horizontal Pill Scrollers**: Touch-scrollable filter bars and chips with `-mx-4 px-4 overflow-x-auto`.
+### Phase 2: Design System, Tables & Mobile Navigation Refinements
+- [x] **Adaptive Tables (`DataTable.jsx`)**: Responsive HTML `<table>` that fits mobile screens without horizontal scroll. Keeps primary columns visible (`Invoice #`, `Total`, `Status`) and expands remaining columns into interactive inline detail sub-rows with smooth animated chevrons. Desktop remains 100% full-width table.
+- [x] **Dashboard Responsive Tables (`Dashboard.jsx`)**: Financial Tracking (Invoices) and Operational Tracking (Jobs) converted to compact responsive tables with expandable inline sub-rows, zero horizontal scroll on mobile, and direct navigation links. Desktop view is 100% identical and regression-free.
+- [x] **Bottom Sheet Pattern (`BaseModal.jsx`)**: Centered modals transform into native mobile bottom sheets (`rounded-t-2xl max-h-[90dvh]`) on screens `< 768px` with top grab handle and safe-area padding.
+- [x] **Popovers & Compact Filters (`DateRangeFilter.jsx`, `PageHeader.jsx`)**: Consolidated search and date filters with compact single-tap buttons and pills (`h-10 text-sm`), eliminating sprawling inputs.
+- [x] **Tooltips & Touch Suppression (`Tooltip.jsx`)**: Suppress hover tooltips on touch devices (`@media (hover: hover) and (pointer: fine)`).
+- [x] **Onboarding Mobile Ergonomics (`Onboarding.jsx`, `ProtectedRoute.jsx`)**: Vertical scroll enabled (`overflow-y-auto min-h-[100dvh]`) preventing virtual keyboard entrapment, standardized `rounded-xl` tokens, `inputMode="tel"`, and route guard redirecting onboarded users with tenant to `/`.
+- [x] **Invoice Builder Top Actions (`InvoiceBuilder.jsx`)**: Sized and aligned top action buttons (`h-10`, responsive grid/flex layout) on mobile screens, eliminating horizontal overflow and oversized buttons.
+- [x] **AI Copilot Floating Orb (`AiCopilotWidget.jsx`, `useDraggableResizableWindow.js`)**: Added `touch-none` to prevent mobile scroll hijacking, increased drag threshold to 10px to distinguish clicks/holds from drags, added fallback `onClick`, and offset floating circle above the bottom navigation dock.
 
 ---
 

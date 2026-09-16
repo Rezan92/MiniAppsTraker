@@ -10,6 +10,11 @@ export const ProtectedRoute = ({ children }) => {
     return <Navigate to="/login" replace />;
   }
 
+  // If user is authenticated and already has a tenant_id, redirect away from /onboarding
+  if (userData?.tenant_id && location.pathname === '/onboarding') {
+    return <Navigate to="/" replace />;
+  }
+
   // If user is authenticated but has no tenant_id, they must onboard
   // (unless they are already on the onboarding or join page)
   if (userData && !userData.tenant_id && location.pathname !== '/onboarding' && !location.pathname.startsWith('/join/')) {

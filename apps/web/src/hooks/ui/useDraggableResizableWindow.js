@@ -32,8 +32,10 @@ export function useDraggableResizableWindow({ onExpand } = {}) {
 
   const getDefaultCirclePosition = useCallback(() => {
     if (typeof window === 'undefined') return { x: 24, y: 24 };
-    const x = Math.max(16, window.innerWidth - CIRCLE_SIZE - 24);
-    const y = Math.max(16, window.innerHeight - CIRCLE_SIZE - 24);
+    const isMob = window.innerWidth < 768;
+    const x = Math.max(16, window.innerWidth - CIRCLE_SIZE - (isMob ? 16 : 24));
+    const bottomOffset = isMob ? 84 : 24;
+    const y = Math.max(16, window.innerHeight - CIRCLE_SIZE - bottomOffset);
     return { x, y };
   }, []);
 
@@ -64,8 +66,10 @@ export function useDraggableResizableWindow({ onExpand } = {}) {
       if (saved) {
         const parsed = JSON.parse(saved);
         if (typeof parsed.x === 'number' && typeof parsed.y === 'number') {
+          const isMob = window.innerWidth < 768;
+          const bottomOffset = isMob ? 84 : 16;
           const maxX = Math.max(16, window.innerWidth - CIRCLE_SIZE - 16);
-          const maxY = Math.max(16, window.innerHeight - CIRCLE_SIZE - 16);
+          const maxY = Math.max(16, window.innerHeight - CIRCLE_SIZE - bottomOffset);
           const clampedX = Math.max(16, Math.min(maxX, parsed.x));
           const clampedY = Math.max(16, Math.min(maxY, parsed.y));
           return { x: clampedX, y: clampedY };
@@ -143,8 +147,9 @@ export function useDraggableResizableWindow({ onExpand } = {}) {
       setIsMobile(mobile);
 
       setCirclePosition(prev => {
+        const bottomOffset = mobile ? 84 : 16;
         const maxX = Math.max(16, window.innerWidth - CIRCLE_SIZE - 16);
-        const maxY = Math.max(16, window.innerHeight - CIRCLE_SIZE - 16);
+        const maxY = Math.max(16, window.innerHeight - CIRCLE_SIZE - bottomOffset);
         return {
           x: Math.max(16, Math.min(maxX, prev.x)),
           y: Math.max(16, Math.min(maxY, prev.y))
@@ -272,16 +277,19 @@ export function useDraggableResizableWindow({ onExpand } = {}) {
 
     const dx = e.clientX - circleDragRef.current.startX;
     const dy = e.clientY - circleDragRef.current.startY;
+    const dist = Math.hypot(dx, dy);
 
-    if (!circleDragRef.current.hasMoved && (Math.abs(dx) > 3 || Math.abs(dy) > 3)) {
+    if (!circleDragRef.current.hasMoved && dist > 10) {
       circleDragRef.current.hasMoved = true;
       circleMovedRef.current = true;
       setIsDraggingCircle(true);
     }
 
     if (circleDragRef.current.hasMoved) {
+      const isMob = window.innerWidth < 768;
+      const bottomOffset = isMob ? 84 : 16;
       const maxX = Math.max(16, window.innerWidth - CIRCLE_SIZE - 16);
-      const maxY = Math.max(16, window.innerHeight - CIRCLE_SIZE - 16);
+      const maxY = Math.max(16, window.innerHeight - CIRCLE_SIZE - bottomOffset);
       const newX = Math.max(16, Math.min(maxX, circleDragRef.current.initialX + dx));
       const newY = Math.max(16, Math.min(maxY, circleDragRef.current.initialY + dy));
       setCirclePosition({ x: newX, y: newY });

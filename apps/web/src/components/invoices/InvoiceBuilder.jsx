@@ -313,47 +313,57 @@ export const InvoiceBuilder = () => {
   const totalDue = laborTotal + materialsSubtotal;
 
   return (
-    <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      <div className="flex justify-between items-center mb-8">
+    <div className="max-w-5xl mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-8">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6 sm:mb-8">
         <div>
-          <button onClick={handleBackNavigation} className="text-sm font-medium text-gray-500 hover:text-gray-700 flex items-center gap-1 mb-2">
+          <button 
+            onClick={handleBackNavigation} 
+            className="text-sm font-medium text-gray-500 hover:text-gray-700 flex items-center gap-1 mb-1 sm:mb-2 cursor-pointer transition-colors"
+          >
             <span className="material-symbols-outlined text-[18px]">arrow_back</span>
             {fromJobId ? 'Back to Job' : 'Back to Invoices'}
           </button>
-          <h1 className="text-headline-md font-bold text-gray-900">
+          <h1 className="text-xl sm:text-headline-md font-bold text-gray-900 tracking-tight">
             {isEditing ? `Edit Draft Invoice` : 'Create New Invoice'}
           </h1>
         </div>
-          <div className="flex gap-4">
-            {formData.job_id && (
-              <button 
-                type="button" 
-                onClick={() => guardedNavigate(`/jobs/${formData.job_id}`)}
-                className="px-6 py-2 border border-gray-300 rounded-lg font-title-sm text-gray-700 hover:bg-gray-50 cursor-pointer flex items-center gap-2"
-              >
-                <span className="material-symbols-outlined text-[18px]">work</span>
-                View Job
-              </button>
-            )}
+        <div className="flex items-center gap-2 sm:gap-3 flex-wrap sm:flex-nowrap w-full sm:w-auto">
+          {formData.job_id && (
             <button 
               type="button" 
-              onClick={handleBackNavigation}
-              className="px-6 py-2 border border-gray-300 rounded-lg font-title-sm text-gray-700 hover:bg-gray-50 cursor-pointer"
+              onClick={() => guardedNavigate(`/jobs/${formData.job_id}`)}
+              className="flex-1 sm:flex-initial px-3 sm:px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 cursor-pointer flex items-center justify-center gap-1.5 h-10 transition-colors"
             >
-              Cancel
+              <span className="material-symbols-outlined text-[18px]">work</span>
+              <span>View Job</span>
             </button>
-            <button 
-              onClick={() => saveMutation.mutate()}
-              disabled={saveMutation.isLoading || !formData.client_id}
-              className="px-6 py-2 bg-primary text-black rounded-lg font-title-sm hover:opacity-90 disabled:opacity-50 cursor-pointer"
-            >
-              {saveMutation.isLoading ? 'Saving...' : (isEditing ? 'Save Details' : 'Create Draft Invoice')}
-            </button>
-          </div>
+          )}
+          <button 
+            type="button" 
+            onClick={handleBackNavigation}
+            className="flex-1 sm:flex-initial px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 cursor-pointer text-center h-10 transition-colors"
+          >
+            Cancel
+          </button>
+          <button 
+            onClick={() => saveMutation.mutate()}
+            disabled={saveMutation.isLoading || !formData.client_id}
+            className="w-full sm:w-auto px-5 py-2 bg-primary text-black rounded-lg text-sm font-semibold hover:opacity-90 disabled:opacity-50 cursor-pointer flex items-center justify-center gap-2 h-10 shadow-xs transition-all"
+          >
+            {saveMutation.isLoading ? (
+              <>
+                <div className="inline-block animate-spin rounded-full h-4 w-4 border-2 border-black border-t-transparent"></div>
+                <span>Saving...</span>
+              </>
+            ) : (
+              <span>{isEditing ? 'Save Details' : 'Create Draft'}</span>
+            )}
+          </button>
         </div>
+      </div>
 
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 mb-8">
-        <div className="p-8 space-y-8">
+        <div className="p-4 sm:p-8 space-y-6 sm:space-y-8">
           
           {/* Header Info */}
           <ClientDetailsForm 

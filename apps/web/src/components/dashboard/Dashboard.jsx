@@ -17,6 +17,44 @@ export const Dashboard = () => {
   const [jobModalOpen, setJobModalOpen] = useState(false);
   const [activeTab, setActiveTab] = useState('all');
   const [jobTab, setJobTab] = useState('all');
+  const [expandedInvoices, setExpandedInvoices] = useState(() => new Set());
+  const [expandedJobs, setExpandedJobs] = useState(() => new Set());
+
+  const toggleInvoice = (id, e) => {
+    if (e) e.stopPropagation();
+    setExpandedInvoices(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const toggleJob = (id, e) => {
+    if (e) e.stopPropagation();
+    setExpandedJobs(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const handleInvoiceRowClick = (inv) => {
+    if (typeof window !== 'undefined' && window.innerWidth < 768) {
+      toggleInvoice(inv.id);
+    } else {
+      navigate(`/invoices/${inv.id}`);
+    }
+  };
+
+  const handleJobRowClick = (job) => {
+    if (typeof window !== 'undefined' && window.innerWidth < 768) {
+      toggleJob(job.id);
+    } else {
+      navigate(`/jobs/${job.id}`);
+    }
+  };
 
   const createClientMutation = useCreateClient();
   const createJobMutation = useCreateJob();
@@ -258,42 +296,111 @@ export const Dashboard = () => {
             </div>
           </div>
 
-          <div className="overflow-x-auto max-h-[400px] flex-1">
-            <table className="w-full text-left border-collapse min-w-[600px] relative">
+          <div className="overflow-x-auto max-h-[420px] flex-1">
+            <table className="w-full text-left border-collapse min-w-full md:min-w-[600px] relative">
               <thead className="sticky top-0 bg-[#1F2937] text-white z-10 border-b border-surface-container-high">
                 <tr>
-                  <th className="py-3 px-4 font-label-caps text-label-caps whitespace-nowrap">Invoice #</th>
-                  <th className="py-3 px-4 font-label-caps text-label-caps whitespace-nowrap">Client</th>
-                  <th className="py-3 px-4 font-label-caps text-label-caps whitespace-nowrap">Due Date</th>
-                  <th className="py-3 px-4 font-label-caps text-label-caps whitespace-nowrap text-right">Status</th>
-                  <th className="py-3 px-4 font-label-caps text-label-caps whitespace-nowrap text-right">Labor</th>
-                  <th className="py-3 px-4 font-label-caps text-label-caps whitespace-nowrap text-right">Materials</th>
-                  <th className="py-3 px-4 font-label-caps text-label-caps whitespace-nowrap text-right">Total</th>
+                  <th className="py-3 px-3 sm:px-4 font-label-caps text-label-caps whitespace-nowrap">Invoice #</th>
+                  <th className="hidden md:table-cell py-3 px-4 font-label-caps text-label-caps whitespace-nowrap">Client</th>
+                  <th className="hidden md:table-cell py-3 px-4 font-label-caps text-label-caps whitespace-nowrap">Due Date</th>
+                  <th className="py-3 px-3 sm:px-4 font-label-caps text-label-caps whitespace-nowrap text-right">Status</th>
+                  <th className="hidden md:table-cell py-3 px-4 font-label-caps text-label-caps whitespace-nowrap text-right">Labor</th>
+                  <th className="hidden md:table-cell py-3 px-4 font-label-caps text-label-caps whitespace-nowrap text-right">Materials</th>
+                  <th className="py-3 px-3 sm:px-4 font-label-caps text-label-caps whitespace-nowrap text-right">Total</th>
+                  <th className="md:hidden w-8 px-2 py-3 text-center"></th>
                 </tr>
               </thead>
               <tbody className="font-body-md divide-y divide-surface-container-high">
                 {filteredInvoices.length === 0 ? (
-                  <tr><td colSpan="7" className="px-5 py-8 text-center text-gray-500">No invoices found for this filter.</td></tr>
+                  <tr><td colSpan="8" className="px-5 py-8 text-center text-gray-500">No invoices found for this filter.</td></tr>
                 ) : (
-                  filteredInvoices.map((inv, idx) => (
-                    <tr key={inv.id} onClick={() => navigate(`/invoices/${inv.id}`)} className={`hover:bg-gray-100 cursor-pointer transition-colors group ${idx % 2 !== 0 ? 'bg-[#F9FAFB]' : 'bg-white'}`}>
-                      <td className="px-4 py-4 font-body-sm font-medium text-gray-900 group-hover:text-primary transition-colors">{inv.invoice_number}</td>
-                      <td className="px-4 py-4 font-body-sm text-gray-600">{inv.clients?.name}</td>
-                      <td className="px-4 py-4 font-body-sm text-gray-500">{formatDate(inv.due_date)}</td>
-                      <td className="px-4 py-4 text-right">{getStatusBadge(inv.status)}</td>
-                      <td className="px-4 py-4 text-right font-body-sm text-gray-900 font-medium">{formatCurrency(inv.labor_amount)}</td>
-                      <td className="px-4 py-4 text-right font-body-sm text-gray-900 font-medium">{formatCurrency(inv.materials_amount)}</td>
-                      <td className="px-4 py-4 text-right font-body-sm text-gray-900 font-medium">{formatCurrency(inv.total_amount)}</td>
-                    </tr>
-                  ))
+                  filteredInvoices.map((inv, idx) => {
+                    const isExpanded = expandedInvoices.has(inv.id);
+                    return (
+                      <React.Fragment key={inv.id}>
+                        <tr 
+                          onClick={() => handleInvoiceRowClick(inv)} 
+                          className={`hover:bg-gray-100 cursor-pointer transition-colors group ${
+                            isExpanded ? 'bg-amber-50/40 md:bg-white' : (idx % 2 !== 0 ? 'bg-[#F9FAFB]' : 'bg-white')
+                          }`}
+                        >
+                          <td className="px-3 sm:px-4 py-3 sm:py-4 font-body-sm font-medium text-gray-900 group-hover:text-primary transition-colors">
+                            <div className="font-semibold">{inv.invoice_number}</div>
+                            <div className="md:hidden text-xs text-gray-500 font-normal truncate max-w-[130px]">{inv.clients?.name}</div>
+                          </td>
+                          <td className="hidden md:table-cell px-4 py-4 font-body-sm text-gray-600">{inv.clients?.name}</td>
+                          <td className="hidden md:table-cell px-4 py-4 font-body-sm text-gray-500">{formatDate(inv.due_date)}</td>
+                          <td className="px-3 sm:px-4 py-3 sm:py-4 text-right whitespace-nowrap">{getStatusBadge(inv.status)}</td>
+                          <td className="hidden md:table-cell px-4 py-4 text-right font-body-sm text-gray-900 font-medium">{formatCurrency(inv.labor_amount)}</td>
+                          <td className="hidden md:table-cell px-4 py-4 text-right font-body-sm text-gray-900 font-medium">{formatCurrency(inv.materials_amount)}</td>
+                          <td className="px-3 sm:px-4 py-3 sm:py-4 text-right font-body-sm text-gray-900 font-semibold">{formatCurrency(inv.total_amount)}</td>
+                          
+                          {/* Mobile Expand Chevron */}
+                          <td 
+                            className="md:hidden px-2 py-3 text-center shrink-0" 
+                            onClick={(e) => toggleInvoice(inv.id, e)}
+                          >
+                            <button
+                              type="button"
+                              className="p-1 rounded-full hover:bg-gray-200 transition-colors text-gray-400 cursor-pointer"
+                              aria-label={isExpanded ? 'Collapse invoice details' : 'Expand invoice details'}
+                            >
+                              <span className={`material-symbols-outlined text-[18px] transition-transform duration-200 block ${isExpanded ? 'rotate-180 text-amber-600' : ''}`}>
+                                expand_more
+                              </span>
+                            </button>
+                          </td>
+                        </tr>
+
+                        {/* Mobile Expandable Sub-Row */}
+                        {isExpanded && (
+                          <tr className="md:hidden bg-gray-50/95 border-b border-surface-container-high transition-all">
+                            <td colSpan="4" className="p-3.5 text-xs">
+                              <div className="grid grid-cols-2 gap-x-4 gap-y-2 mb-3">
+                                <div>
+                                  <span className="text-gray-400 font-medium block text-[10px] uppercase tracking-wider mb-0.5">Due Date</span>
+                                  <span className="text-gray-800 font-medium">{formatDate(inv.due_date)}</span>
+                                </div>
+                                <div>
+                                  <span className="text-gray-400 font-medium block text-[10px] uppercase tracking-wider mb-0.5">Labor Amount</span>
+                                  <span className="text-gray-800 font-medium">{formatCurrency(inv.labor_amount)}</span>
+                                </div>
+                                <div>
+                                  <span className="text-gray-400 font-medium block text-[10px] uppercase tracking-wider mb-0.5">Materials Amount</span>
+                                  <span className="text-gray-800 font-medium">{formatCurrency(inv.materials_amount)}</span>
+                                </div>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => navigate(`/invoices/${inv.id}`)}
+                                className="w-full py-1.5 px-3 bg-white border border-gray-200 rounded-lg text-primary font-semibold hover:bg-gray-50 transition-colors flex items-center justify-center gap-1 cursor-pointer text-xs shadow-2xs"
+                              >
+                                <span>View Full Invoice</span>
+                                <span className="material-symbols-outlined text-[14px]">arrow_forward</span>
+                              </button>
+                            </td>
+                          </tr>
+                        )}
+                      </React.Fragment>
+                    );
+                  })
                 )}
               </tbody>
               <tfoot className="sticky bottom-0 bg-white border-t-2 border-gray-200 z-10">
                 <tr>
-                  <td colSpan="4" className="px-5 py-3 text-right font-title-sm text-gray-700">Total ({INVOICE_STATUSES.find(s => s.value === activeTab)?.label || 'All'})</td>
-                  <td className="px-5 py-3 text-right font-title-sm text-gray-900">{formatCurrency(laborTotal)}</td>
-                  <td className="px-5 py-3 text-right font-title-sm text-gray-900">{formatCurrency(materialTotal)}</td>
-                  <td className="px-5 py-3 text-right font-title-md font-bold text-gray-900">{formatCurrency(invoiceTotal)}</td>
+                  <td colSpan="4" className="hidden md:table-cell px-5 py-3 text-right font-title-sm text-gray-700">Total ({INVOICE_STATUSES.find(s => s.value === activeTab)?.label || 'All'})</td>
+                  <td className="hidden md:table-cell px-5 py-3 text-right font-title-sm text-gray-900">{formatCurrency(laborTotal)}</td>
+                  <td className="hidden md:table-cell px-5 py-3 text-right font-title-sm text-gray-900">{formatCurrency(materialTotal)}</td>
+                  <td className="hidden md:table-cell px-5 py-3 text-right font-title-md font-bold text-gray-900">{formatCurrency(invoiceTotal)}</td>
+
+                  {/* Mobile Tfoot */}
+                  <td colSpan="2" className="md:hidden px-3 py-2.5 text-left font-title-sm text-gray-700">
+                    Total ({INVOICE_STATUSES.find(s => s.value === activeTab)?.label || 'All'})
+                  </td>
+                  <td className="md:hidden px-3 py-2.5 text-right font-title-sm font-bold text-gray-900">
+                    {formatCurrency(invoiceTotal)}
+                  </td>
+                  <td className="md:hidden"></td>
                 </tr>
               </tfoot>
             </table>
@@ -317,28 +424,84 @@ export const Dashboard = () => {
             </div>
           </div>
 
-          <div className="overflow-x-auto max-h-[400px] flex-1">
-            <table className="w-full text-left border-collapse min-w-[600px] relative">
+          <div className="overflow-x-auto max-h-[420px] flex-1">
+            <table className="w-full text-left border-collapse min-w-full md:min-w-[600px] relative">
               <thead className="sticky top-0 bg-[#1F2937] text-white z-10 border-b border-surface-container-high">
                 <tr>
-                  <th className="py-3 px-4 font-label-caps text-label-caps whitespace-nowrap">Job Title</th>
-                  <th className="py-3 px-4 font-label-caps text-label-caps whitespace-nowrap">Client</th>
-                  <th className="py-3 px-4 font-label-caps text-label-caps whitespace-nowrap">Start Date</th>
-                  <th className="py-3 px-4 font-label-caps text-label-caps whitespace-nowrap text-right">Status</th>
+                  <th className="py-3 px-3 sm:px-4 font-label-caps text-label-caps whitespace-nowrap">Job Title</th>
+                  <th className="hidden md:table-cell py-3 px-4 font-label-caps text-label-caps whitespace-nowrap">Client</th>
+                  <th className="hidden md:table-cell py-3 px-4 font-label-caps text-label-caps whitespace-nowrap">Start Date</th>
+                  <th className="py-3 px-3 sm:px-4 font-label-caps text-label-caps whitespace-nowrap text-right">Status</th>
+                  <th className="md:hidden w-8 px-2 py-3 text-center"></th>
                 </tr>
               </thead>
               <tbody className="font-body-md divide-y divide-surface-container-high">
                 {filteredJobs.length === 0 ? (
-                  <tr><td colSpan="4" className="px-5 py-8 text-center text-gray-500">No jobs found for this filter.</td></tr>
+                  <tr><td colSpan="5" className="px-5 py-8 text-center text-gray-500">No jobs found for this filter.</td></tr>
                 ) : (
-                  filteredJobs.map((job, idx) => (
-                    <tr key={job.id} onClick={() => navigate(`/jobs/${job.id}`)} className={`hover:bg-gray-100 cursor-pointer transition-colors group ${idx % 2 !== 0 ? 'bg-[#F9FAFB]' : 'bg-white'}`}>
-                      <td className="px-4 py-4 font-body-sm font-medium text-gray-900 group-hover:text-primary transition-colors">{job.title}</td>
-                      <td className="px-4 py-4 font-body-sm text-gray-600">{job.clients?.name}</td>
-                      <td className="px-4 py-4 font-body-sm text-gray-500">{formatDate(job.start_date)}</td>
-                      <td className="px-4 py-4 text-right">{getStatusBadge(job.status)}</td>
-                    </tr>
-                  ))
+                  filteredJobs.map((job, idx) => {
+                    const isExpanded = expandedJobs.has(job.id);
+                    return (
+                      <React.Fragment key={job.id}>
+                        <tr 
+                          onClick={() => handleJobRowClick(job)} 
+                          className={`hover:bg-gray-100 cursor-pointer transition-colors group ${
+                            isExpanded ? 'bg-amber-50/40 md:bg-white' : (idx % 2 !== 0 ? 'bg-[#F9FAFB]' : 'bg-white')
+                          }`}
+                        >
+                          <td className="px-3 sm:px-4 py-3 sm:py-4 font-body-sm font-medium text-gray-900 group-hover:text-primary transition-colors">
+                            <div className="font-semibold">{job.title}</div>
+                            <div className="md:hidden text-xs text-gray-500 font-normal truncate max-w-[150px]">{job.clients?.name}</div>
+                          </td>
+                          <td className="hidden md:table-cell px-4 py-4 font-body-sm text-gray-600">{job.clients?.name}</td>
+                          <td className="hidden md:table-cell px-4 py-4 font-body-sm text-gray-500">{formatDate(job.start_date)}</td>
+                          <td className="px-3 sm:px-4 py-3 sm:py-4 text-right whitespace-nowrap">{getStatusBadge(job.status)}</td>
+
+                          {/* Mobile Expand Chevron */}
+                          <td 
+                            className="md:hidden px-2 py-3 text-center shrink-0" 
+                            onClick={(e) => toggleJob(job.id, e)}
+                          >
+                            <button
+                              type="button"
+                              className="p-1 rounded-full hover:bg-gray-200 transition-colors text-gray-400 cursor-pointer"
+                              aria-label={isExpanded ? 'Collapse job details' : 'Expand job details'}
+                            >
+                              <span className={`material-symbols-outlined text-[18px] transition-transform duration-200 block ${isExpanded ? 'rotate-180 text-amber-600' : ''}`}>
+                                expand_more
+                              </span>
+                            </button>
+                          </td>
+                        </tr>
+
+                        {/* Mobile Expandable Sub-Row */}
+                        {isExpanded && (
+                          <tr className="md:hidden bg-gray-50/95 border-b border-surface-container-high transition-all">
+                            <td colSpan="3" className="p-3.5 text-xs">
+                              <div className="grid grid-cols-2 gap-x-4 gap-y-2 mb-3">
+                                <div>
+                                  <span className="text-gray-400 font-medium block text-[10px] uppercase tracking-wider mb-0.5">Client</span>
+                                  <span className="text-gray-800 font-medium">{job.clients?.name || '—'}</span>
+                                </div>
+                                <div>
+                                  <span className="text-gray-400 font-medium block text-[10px] uppercase tracking-wider mb-0.5">Start Date</span>
+                                  <span className="text-gray-800 font-medium">{formatDate(job.start_date)}</span>
+                                </div>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => navigate(`/jobs/${job.id}`)}
+                                className="w-full py-1.5 px-3 bg-white border border-gray-200 rounded-lg text-primary font-semibold hover:bg-gray-50 transition-colors flex items-center justify-center gap-1 cursor-pointer text-xs shadow-2xs"
+                              >
+                                <span>View Full Job</span>
+                                <span className="material-symbols-outlined text-[14px]">arrow_forward</span>
+                              </button>
+                            </td>
+                          </tr>
+                        )}
+                      </React.Fragment>
+                    );
+                  })
                 )}
               </tbody>
             </table>

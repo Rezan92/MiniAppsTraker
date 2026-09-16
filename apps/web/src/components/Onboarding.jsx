@@ -57,14 +57,14 @@ export const Onboarding = () => {
   };
 
   return (
-    <div className="bg-background min-h-[100dvh] flex items-center justify-center relative overflow-hidden font-sans antialiased text-on-surface p-4">
+    <div className="bg-background min-h-[100dvh] flex items-center justify-center relative overflow-y-auto font-sans antialiased text-on-surface py-8 px-4">
       <div 
         className="absolute inset-0 z-0 bg-cover bg-center opacity-20 pointer-events-none" 
         style={{ backgroundImage: "url('https://lh3.googleusercontent.com/aida-public/AB6AXuCDC784Zr_DabjzbUHfBfQXKGVxcVgU4KL7VZU9haoKQpKkB30Oh1HqVckdIcbEHIvsPxzWiMMMIf5m6F8RsRzbpKkOB1A_I3beRYM2oyPpOn69kPUAE1cQxbRua1b3RrWZgnkmNogP8EAs8VKQU_2XFUrw7sllGFhtgQSUR2t2YLjKpG2JjH2QpqI7Ri3JT0ieArMB2lbpieuP8qfZKaFRA_3tH2-CMvNjQ9N5ulTCzigmFdghrTQqAQ')" }}
       ></div>
       
       <main className="w-full max-w-[32rem] z-10 relative">
-        <div className="bg-surface-container-lowest border border-outline-variant rounded-xl p-8 shadow-level-3">
+        <div className="bg-surface-container-lowest border border-outline-variant rounded-2xl p-5 sm:p-8 shadow-level-3">
           
           {/* Pending Invitations Banner */}
           {pendingInvites.length > 0 && (
@@ -112,7 +112,7 @@ export const Onboarding = () => {
                 type="text" 
                 placeholder="e.g. ProFix Handyman LLC"
                 {...register('name')}
-                className={`w-full px-4 py-3 border rounded-DEFAULT bg-surface-container-lowest font-body-md text-on-surface focus:outline-none focus:ring-0 focus:border-primary focus:border-[2px] transition-all min-h-[44px] ${
+                className={`w-full px-4 py-3 border rounded-xl bg-surface-container-lowest font-body-md text-on-surface focus:outline-none focus:ring-0 focus:border-primary focus:border-[2px] transition-all min-h-[44px] ${
                   errors.name ? 'border-red-500' : 'border-outline-variant'
                 }`}
               />
@@ -122,9 +122,10 @@ export const Onboarding = () => {
               <input 
                 id="phone" 
                 type="tel" 
+                inputMode="tel"
                 placeholder="(555) 123-4567"
                 {...register('phone')}
-                className={`w-full px-4 py-3 border rounded-DEFAULT bg-surface-container-lowest font-body-md text-on-surface focus:outline-none focus:ring-0 focus:border-primary focus:border-[2px] transition-all min-h-[44px] ${
+                className={`w-full px-4 py-3 border rounded-xl bg-surface-container-lowest font-body-md text-on-surface focus:outline-none focus:ring-0 focus:border-primary focus:border-[2px] transition-all min-h-[44px] ${
                   errors.phone ? 'border-red-500' : 'border-outline-variant'
                 }`}
               />
@@ -136,7 +137,7 @@ export const Onboarding = () => {
                 type="text" 
                 placeholder="123 Main St, City, ST"
                 {...register('address')}
-                className={`w-full px-4 py-3 border rounded-DEFAULT bg-surface-container-lowest font-body-md text-on-surface focus:outline-none focus:ring-0 focus:border-primary focus:border-[2px] transition-all min-h-[44px] ${
+                className={`w-full px-4 py-3 border rounded-xl bg-surface-container-lowest font-body-md text-on-surface focus:outline-none focus:ring-0 focus:border-primary focus:border-[2px] transition-all min-h-[44px] ${
                   errors.address ? 'border-red-500' : 'border-outline-variant'
                 }`}
               />
@@ -145,7 +146,7 @@ export const Onboarding = () => {
             <button 
               type="submit" 
               disabled={isSubmitting}
-              className="w-full bg-primary text-on-primary font-title-md text-title-md py-3 px-4 rounded-DEFAULT hover:bg-primary-container transition-colors min-h-[44px] flex items-center justify-center disabled:opacity-50 mt-4 cursor-pointer gap-2"
+              className="w-full bg-primary text-on-primary font-title-md text-title-md py-3 px-4 rounded-xl hover:bg-primary-container transition-colors min-h-[44px] flex items-center justify-center disabled:opacity-50 mt-4 cursor-pointer gap-2"
             >
               {isSubmitting && (
                 <div className="inline-block animate-spin rounded-full h-4 w-4 border-2 border-black border-t-transparent"></div>
@@ -167,7 +168,7 @@ export const Onboarding = () => {
                   await signOut();
                   window.location.href = '/login';
                 }}
-                className="w-full text-on-surface border border-outline-variant hover:bg-surface-container-high transition-colors font-title-sm py-2 px-4 rounded-DEFAULT flex items-center justify-center gap-2 cursor-pointer"
+                className="w-full text-on-surface border border-outline-variant hover:bg-surface-container-high transition-colors font-title-sm py-2 px-4 rounded-xl flex items-center justify-center gap-2 cursor-pointer"
               >
                 <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>logout</span>
                 Log Out
