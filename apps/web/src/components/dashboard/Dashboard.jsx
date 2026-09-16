@@ -90,8 +90,8 @@ export const Dashboard = () => {
             <div className="h-10 bg-gray-200 rounded w-32"></div>
           </div>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-          {[1,2,3,4].map(i => <div key={i} className="h-28 bg-gray-200 rounded-xl"></div>)}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6">
+          {[1,2,3,4].map(i => <div key={i} className="h-24 sm:h-28 bg-gray-200 rounded-xl"></div>)}
         </div>
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2 h-96 bg-gray-200 rounded-xl"></div>
@@ -204,37 +204,37 @@ export const Dashboard = () => {
       </div>
 
       {/* KPI Row */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-        <div className="bg-white border border-gray-200 rounded-xl p-5 shadow-sm flex flex-col justify-between">
-          <div className="flex justify-between items-start mb-4">
-            <h3 className="font-title-sm text-gray-500">Total Revenue (This Month)</h3>
-            <span className="material-symbols-outlined text-green-500 bg-green-50 p-2 rounded-lg">payments</span>
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6">
+        <div className="bg-white border border-gray-200 rounded-xl p-3.5 sm:p-5 shadow-sm flex flex-col justify-between">
+          <div className="flex justify-between items-start mb-2 sm:mb-4 gap-1">
+            <h3 className="font-title-sm text-xs sm:text-sm text-gray-500 truncate" title="Total Revenue (This Month)">Total Revenue</h3>
+            <span className="material-symbols-outlined text-green-500 bg-green-50 p-1.5 sm:p-2 rounded-lg text-[18px] sm:text-[24px] shrink-0">payments</span>
           </div>
-          <div className="font-headline-lg font-bold text-gray-900">{formatCurrency(revenueThisMonth)}</div>
+          <div className="font-headline-lg text-base sm:text-headline-lg font-bold text-gray-900 truncate">{formatCurrency(revenueThisMonth)}</div>
         </div>
 
-        <div className="bg-white border border-gray-200 rounded-xl p-5 shadow-sm flex flex-col justify-between">
-          <div className="flex justify-between items-start mb-4">
-            <h3 className="font-title-sm text-gray-500">Labor Revenue</h3>
-            <span className="material-symbols-outlined text-blue-500 bg-blue-50 p-2 rounded-lg">engineering</span>
+        <div className="bg-white border border-gray-200 rounded-xl p-3.5 sm:p-5 shadow-sm flex flex-col justify-between">
+          <div className="flex justify-between items-start mb-2 sm:mb-4 gap-1">
+            <h3 className="font-title-sm text-xs sm:text-sm text-gray-500 truncate" title="Labor Revenue">Labor Revenue</h3>
+            <span className="material-symbols-outlined text-blue-500 bg-blue-50 p-1.5 sm:p-2 rounded-lg text-[18px] sm:text-[24px] shrink-0">engineering</span>
           </div>
-          <div className="font-headline-lg font-bold text-gray-900">{formatCurrency(laborRevenueThisMonth)}</div>
+          <div className="font-headline-lg text-base sm:text-headline-lg font-bold text-gray-900 truncate">{formatCurrency(laborRevenueThisMonth)}</div>
         </div>
 
-        <div className="bg-white border border-gray-200 rounded-xl p-5 shadow-sm flex flex-col justify-between">
-          <div className="flex justify-between items-start mb-4">
-            <h3 className="font-title-sm text-gray-500">Material Costs</h3>
-            <span className="material-symbols-outlined text-red-500 bg-red-50 p-2 rounded-lg">inventory</span>
+        <div className="bg-white border border-gray-200 rounded-xl p-3.5 sm:p-5 shadow-sm flex flex-col justify-between">
+          <div className="flex justify-between items-start mb-2 sm:mb-4 gap-1">
+            <h3 className="font-title-sm text-xs sm:text-sm text-gray-500 truncate" title="Material Costs">Material Costs</h3>
+            <span className="material-symbols-outlined text-red-500 bg-red-50 p-1.5 sm:p-2 rounded-lg text-[18px] sm:text-[24px] shrink-0">inventory</span>
           </div>
-          <div className="font-headline-lg font-bold text-gray-900">{formatCurrency(materialCostThisMonth)}</div>
+          <div className="font-headline-lg text-base sm:text-headline-lg font-bold text-gray-900 truncate">{formatCurrency(materialCostThisMonth)}</div>
         </div>
 
-        <div className="bg-white border border-gray-200 rounded-xl p-5 shadow-sm flex flex-col justify-between">
-          <div className="flex justify-between items-start mb-4">
-            <h3 className="font-title-sm text-gray-500">Total Jobs (This Month)</h3>
-            <span className="material-symbols-outlined text-amber-500 bg-amber-50 p-2 rounded-lg">work</span>
+        <div className="bg-white border border-gray-200 rounded-xl p-3.5 sm:p-5 shadow-sm flex flex-col justify-between">
+          <div className="flex justify-between items-start mb-2 sm:mb-4 gap-1">
+            <h3 className="font-title-sm text-xs sm:text-sm text-gray-500 truncate" title="Total Jobs (This Month)">Total Jobs</h3>
+            <span className="material-symbols-outlined text-amber-500 bg-amber-50 p-1.5 sm:p-2 rounded-lg text-[18px] sm:text-[24px] shrink-0">work</span>
           </div>
-          <div className="font-headline-lg font-bold text-gray-900">{jobsThisMonth || 0}</div>
+          <div className="font-headline-lg text-base sm:text-headline-lg font-bold text-gray-900 truncate">{jobsThisMonth || 0}</div>
         </div>
       </div>
 

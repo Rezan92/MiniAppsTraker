@@ -514,146 +514,153 @@ export const AiCopilotWidget = () => {
                 triggerCollapse({ x: e.clientX, y: e.clientY });
               }
             }}
-            className={`p-3 sm:p-3.5 border-b border-gray-800 flex items-center justify-between bg-gray-900 text-white select-none ${
+            className={`p-3 sm:p-3.5 border-b border-gray-800 bg-gray-900 text-white select-none ${
               !isMobile && !isMaximized ? 'cursor-move' : ''
             }`}
             title={!isMobile && !isMaximized ? "Click and drag to move • Double click to collapse to circle" : undefined}
           >
-            <div className="flex items-center gap-2 min-w-0 flex-1 mr-2">
-              <div className="w-8 h-8 rounded-lg bg-primary text-black flex items-center justify-center shadow-xs shrink-0">
-                <span className="material-symbols-outlined text-[20px]">smart_toy</span>
-              </div>
-              <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-1.5 flex-wrap">
-                  <h2 className="font-bold text-sm tracking-tight text-white shrink-0">MiniApps Copilot</h2>
-                  
-                  {/* Tier Toggle Switch */}
-                  <div className="flex items-center bg-gray-800 p-0.5 rounded-md border border-gray-700" data-no-drag>
-                    <button
-                      type="button"
-                      onClick={() => setSelectedTier('free')}
-                      className={`px-1.5 py-0.5 text-[10px] font-semibold rounded transition-all flex items-center gap-1 cursor-pointer ${
-                        selectedTier === 'free'
-                          ? 'bg-emerald-600 text-white shadow-xs'
-                          : 'text-gray-400 hover:text-gray-200'
-                      }`}
-                      title="Free Tier (GEMINI_API_KEY)"
-                    >
-                      <span>🌱</span> Free
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setSelectedTier('paid')}
-                      className={`px-1.5 py-0.5 text-[10px] font-semibold rounded transition-all flex items-center gap-1 cursor-pointer ${
-                        selectedTier === 'paid'
-                          ? 'bg-amber-400 text-black shadow-xs'
-                          : 'text-gray-400 hover:text-gray-200'
-                      }`}
-                      title={aiConfig?.hasPaidKey ? "Paid Tier (GEMINI_API_KEY_PAID configured)" : "Paid Tier (Configure GEMINI_API_KEY_PAID in .env)"}
-                    >
-                      <span>⚡</span> Paid
-                      {aiConfig && !aiConfig.hasPaidKey && (
-                        <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" title="Paid key not configured yet in .env" />
-                      )}
-                    </button>
+            {/* Row 1: App Title, Focus Mode & Header Actions */}
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2 min-w-0">
+                <div className="w-8 h-8 rounded-lg bg-primary text-black flex items-center justify-center shadow-xs shrink-0">
+                  <span className="material-symbols-outlined text-[20px]">smart_toy</span>
+                </div>
+                <div className="min-w-0">
+                  <h2 className="font-bold text-sm tracking-tight text-white truncate">MiniApps Copilot</h2>
+                  <div className="text-[11px] text-gray-400 flex items-center gap-1 min-w-0">
+                    {screenContext?.screen ? (
+                      <>
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shrink-0"></span>
+                        <span className="text-emerald-300 font-medium truncate max-w-[170px] sm:max-w-none" title={getScreenFocusLabel(screenContext)}>
+                          {getScreenFocusLabel(screenContext)}
+                        </span>
+                      </>
+                    ) : (
+                      <span>🌐 Global Workspace</span>
+                    )}
                   </div>
-
-                  {/* Model Selector */}
-                  <select
-                    data-no-drag
-                    value={selectedModel}
-                    onChange={(e) => setSelectedModel(e.target.value)}
-                    aria-label="Select AI Model"
-                    className="text-[10px] bg-gray-800 text-primary border border-primary/40 rounded px-1.5 py-0.5 font-semibold focus:outline-none focus:ring-1 focus:ring-primary cursor-pointer hover:bg-gray-700 transition-colors shrink-0"
-                  >
-                    <optgroup label="Google Gemini" className="bg-gray-950 text-gray-400 font-bold">
-                      {availableModels.filter(m => m.provider !== 'nvidia').map((m) => (
-                        <option key={m.id} value={m.id} className="bg-gray-900 text-white font-normal">
-                          {m.label}
-                        </option>
-                      ))}
-                    </optgroup>
-                    <optgroup label="NVIDIA Build (Free)" className="bg-gray-950 text-emerald-400 font-bold">
-                      {availableModels.filter(m => m.provider === 'nvidia').map((m) => (
-                        <option key={m.id} value={m.id} className="bg-gray-900 text-white font-normal">
-                          {m.label}
-                        </option>
-                      ))}
-                    </optgroup>
-                  </select>
-                </div>
-
-                <div className="text-[11px] text-gray-400 flex items-center gap-1 mt-0.5 min-w-0">
-                  {screenContext?.screen ? (
-                    <>
-                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shrink-0"></span>
-                      <span className="text-emerald-300 font-medium truncate" title={getScreenFocusLabel(screenContext)}>
-                        {getScreenFocusLabel(screenContext)}
-                      </span>
-                    </>
-                  ) : (
-                    <span>🌐 Global Workspace Mode</span>
-                  )}
                 </div>
               </div>
-            </div>
 
-            {/* Window Controls */}
-            <div className="flex items-center gap-0.5 shrink-0" data-no-drag>
-              <button
-                type="button"
-                onClick={clearChat}
-                title="Clear conversation"
-                className="p-1 text-gray-400 hover:text-white rounded hover:bg-gray-800 transition-colors cursor-pointer"
-              >
-                <span className="material-symbols-outlined text-[18px]">delete_sweep</span>
-              </button>
-
-              {!isMobile && (
+              {/* Window Controls (Clear, Maximize, Close) */}
+              <div className="flex items-center gap-1 shrink-0" data-no-drag>
                 <button
                   type="button"
-                  onClick={resetPosition}
-                  title="Reset window size and position"
-                  className="p-1 text-gray-400 hover:text-white rounded hover:bg-gray-800 transition-colors cursor-pointer"
+                  onClick={clearChat}
+                  title="Clear conversation"
+                  aria-label="Clear chat conversation"
+                  className="h-8 px-2 text-gray-300 hover:text-white rounded-md hover:bg-gray-800 transition-colors cursor-pointer flex items-center gap-1 text-xs border border-gray-700/60"
                 >
-                  <span className="material-symbols-outlined text-[18px]">restart_alt</span>
+                  <span className="material-symbols-outlined text-[17px]">delete_sweep</span>
+                  <span className="text-xs">Clear</span>
                 </button>
-              )}
 
-              {!isMobile && (
+                {!isMobile && (
+                  <button
+                    type="button"
+                    onClick={resetPosition}
+                    title="Reset window size and position"
+                    className="w-8 h-8 flex items-center justify-center text-gray-400 hover:text-white rounded-md hover:bg-gray-800 transition-colors cursor-pointer"
+                  >
+                    <span className="material-symbols-outlined text-[18px]">restart_alt</span>
+                  </button>
+                )}
+
+                {!isMobile && (
+                  <button
+                    type="button"
+                    onClick={(e) => triggerCollapse({ x: e.clientX, y: e.clientY })}
+                    title="Collapse to circle"
+                    className="w-8 h-8 flex items-center justify-center text-gray-400 hover:text-white rounded-md hover:bg-gray-800 transition-colors cursor-pointer"
+                  >
+                    <span className="material-symbols-outlined text-[18px]">
+                      close_fullscreen
+                    </span>
+                  </button>
+                )}
+
+                {!isMobile && (
+                  <button
+                    type="button"
+                    onClick={toggleMaximize}
+                    title={isMaximized ? "Restore window size" : "Maximize window"}
+                    className="w-8 h-8 flex items-center justify-center text-gray-400 hover:text-white rounded-md hover:bg-gray-800 transition-colors cursor-pointer"
+                  >
+                    <span className="material-symbols-outlined text-[18px]">
+                      {isMaximized ? 'filter_none' : 'fullscreen'}
+                    </span>
+                  </button>
+                )}
+
                 <button
                   type="button"
                   onClick={(e) => triggerCollapse({ x: e.clientX, y: e.clientY })}
-                  title="Collapse to circle"
-                  className="p-1 text-gray-400 hover:text-white rounded hover:bg-gray-800 transition-colors cursor-pointer"
+                  title="Close Copilot"
+                  aria-label="Close Copilot"
+                  className="w-8 h-8 flex items-center justify-center text-gray-400 hover:text-white rounded-md hover:bg-gray-800 transition-colors cursor-pointer"
                 >
-                  <span className="material-symbols-outlined text-[18px]">
-                    close_fullscreen
-                  </span>
+                  <span className="material-symbols-outlined text-[20px]">close</span>
                 </button>
-              )}
+              </div>
+            </div>
 
-              {!isMobile && (
+            {/* Row 2: Dedicated Model & Tier Selector Bar */}
+            <div className="flex items-center gap-2 mt-2 pt-2 border-t border-gray-800/80" data-no-drag>
+              {/* Tier Toggle Switch */}
+              <div className="flex items-center bg-gray-800 p-0.5 rounded-md border border-gray-700 shrink-0">
                 <button
                   type="button"
-                  onClick={toggleMaximize}
-                  title={isMaximized ? "Restore window size" : "Maximize window"}
-                  className="p-1 text-gray-400 hover:text-white rounded hover:bg-gray-800 transition-colors cursor-pointer"
+                  onClick={() => setSelectedTier('free')}
+                  className={`px-2 py-1 text-[10px] font-semibold rounded transition-all flex items-center gap-1 cursor-pointer ${
+                    selectedTier === 'free'
+                      ? 'bg-emerald-600 text-white shadow-xs'
+                      : 'text-gray-400 hover:text-gray-200'
+                  }`}
+                  title="Free Tier (GEMINI_API_KEY)"
                 >
-                  <span className="material-symbols-outlined text-[18px]">
-                    {isMaximized ? 'filter_none' : 'fullscreen'}
-                  </span>
+                  <span>🌱</span> Free
                 </button>
-              )}
+                <button
+                  type="button"
+                  onClick={() => setSelectedTier('paid')}
+                  className={`px-2 py-1 text-[10px] font-semibold rounded transition-all flex items-center gap-1 cursor-pointer ${
+                    selectedTier === 'paid'
+                      ? 'bg-amber-400 text-black shadow-xs'
+                      : 'text-gray-400 hover:text-gray-200'
+                  }`}
+                  title={aiConfig?.hasPaidKey ? "Paid Tier (GEMINI_API_KEY_PAID configured)" : "Paid Tier (Configure GEMINI_API_KEY_PAID in .env)"}
+                >
+                  <span>⚡</span> Paid
+                  {aiConfig && !aiConfig.hasPaidKey && (
+                    <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" title="Paid key not configured yet in .env" />
+                  )}
+                </button>
+              </div>
 
-              <button
-                type="button"
-                onClick={(e) => triggerCollapse({ x: e.clientX, y: e.clientY })}
-                title="Collapse to circle"
-                className="p-1 text-gray-400 hover:text-white rounded hover:bg-gray-800 transition-colors cursor-pointer"
-              >
-                <span className="material-symbols-outlined text-[20px]">close</span>
-              </button>
+              {/* Model Selector Dropdown - Expands to fill available width */}
+              <div className="flex-1 min-w-0">
+                <select
+                  value={selectedModel}
+                  onChange={(e) => setSelectedModel(e.target.value)}
+                  aria-label="Select AI Model"
+                  className="w-full text-[11px] bg-gray-800 text-primary border border-primary/40 rounded-md px-2 py-1 font-semibold focus:outline-none focus:ring-1 focus:ring-primary cursor-pointer hover:bg-gray-700 transition-colors truncate"
+                >
+                  <optgroup label="Google Gemini" className="bg-gray-950 text-gray-400 font-bold">
+                    {availableModels.filter(m => m.provider !== 'nvidia').map((m) => (
+                      <option key={m.id} value={m.id} className="bg-gray-900 text-white font-normal">
+                        {m.label}
+                      </option>
+                    ))}
+                  </optgroup>
+                  <optgroup label="NVIDIA Build (Free)" className="bg-gray-950 text-emerald-400 font-bold">
+                    {availableModels.filter(m => m.provider === 'nvidia').map((m) => (
+                      <option key={m.id} value={m.id} className="bg-gray-900 text-white font-normal">
+                        {m.label}
+                      </option>
+                    ))}
+                  </optgroup>
+                </select>
+              </div>
             </div>
           </div>
 
