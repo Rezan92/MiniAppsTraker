@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { EmptyState } from './EmptyState';
+import { useIsMobile } from '../../hooks/ui/useMediaQuery';
 
 export const DataTable = ({
   columns = [],
@@ -13,162 +14,104 @@ export const DataTable = ({
   onRowClick,
   minWidth = '800px',
   footer = null,
-  skeletonRowCount = 5,
-  renderMobileCard = null
+  skeletonRowCount = 5
 }) => {
-  // Find key column roles for mobile card mapping
-  const primaryCol = columns[0];
-  const statusCol = columns.find(c => c.key === 'status' || c.accessor === 'status');
-  const actionCol = columns.find(c => c.key === 'actions' || c.accessor === 'actions');
-  const secondaryCols = columns.filter(c => c !== primaryCol && c !== statusCol && c !== actionCol);
+  const isMobile = useIsMobile(768);
+  const [expandedRows, setExpandedRows] = useState(() => new Set());
+
+  const toggleRow = (id, e) => {
+    if (e) e.stopPropagation();
+    setExpandedRows(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  };
+
+  // Determine mobile visible columns vs hidden (expandable) columns
+  // Priority:
+  // 1. Explicit `hideOnMobile: true` -> hidden on mobile
+  // 2. Explicit `showOnMobile: true` -> visible on mobile
+  // 3. Fallback smart defaults if no columns have explicit mobile config:
+  //    - First column (columns[0]) is always visible
+  //    - Status column (key === 'status') is visible
+  //    - Total / Amount column (key === 'total_amount') is visible
+  const hasExplicitMobileConfig = columns.some(c => c.showOnMobile !== undefined);
+
+  const isColVisibleOnMobile = (col, idx) => {
+    if (col.hideOnMobile) return false;
+    if (col.showOnMobile) return true;
+    if (hasExplicitMobileConfig) return false;
+
+    // Smart defaults
+    if (idx === 0) return true;
+    if (col.key === 'status' || col.accessor === 'status') return true;
+    if (col.key === 'total_amount' || col.accessor === 'total_amount') return true;
+    return false;
+  };
+
+  const hiddenColsMobile = columns.filter((col, idx) => !isColVisibleOnMobile(col, idx));
+  const hasExpandableColumns = hiddenColsMobile.length > 0;
+  const mobileColSpan = columns.filter((col, idx) => isColVisibleOnMobile(col, idx)).length + (hasExpandableColumns ? 1 : 0);
 
   return (
-    <div className="bg-white border border-surface-container-high rounded-lg shadow-sm overflow-hidden flex flex-col">
-      {/* Mobile Stacked Card View (< 768px) */}
-      <div className="block md:hidden">
-        {isLoading ? (
-          <div className="p-3 space-y-3">
-            {Array.from({ length: skeletonRowCount }).map((_, rIdx) => (
-              <div key={`skeleton-card-${rIdx}`} className="bg-white border border-gray-200 rounded-xl p-4 shadow-xs animate-pulse space-y-3">
-                <div className="flex justify-between items-start">
-                  <div className="h-5 bg-gray-200 rounded w-1/2"></div>
-                  <div className="h-5 bg-gray-200 rounded w-20"></div>
-                </div>
-                <div className="space-y-2 pt-2 border-t border-gray-100">
-                  <div className="h-3.5 bg-gray-200 rounded w-3/4"></div>
-                  <div className="h-3.5 bg-gray-200 rounded w-2/3"></div>
-                </div>
-              </div>
-            ))}
-          </div>
-        ) : data.length === 0 ? (
-          <EmptyState
-            icon={emptyIcon}
-            title={emptyTitle}
-            description={emptyDescription}
-            actionText={emptyActionText}
-            onActionClick={onEmptyAction}
-          />
-        ) : (
-          <div className="p-3 space-y-3 divide-y-0">
-            {data.map((item, rowIdx) => {
-              if (renderMobileCard) {
-                return (
-                  <div 
-                    key={item.id || rowIdx}
-                    onClick={() => onRowClick && onRowClick(item)}
-                    className={onRowClick ? 'cursor-pointer' : ''}
-                  >
-                    {renderMobileCard(item, rowIdx)}
-                  </div>
-                );
-              }
-
-              return (
-                <div
-                  key={item.id || rowIdx}
-                  onClick={() => onRowClick && onRowClick(item)}
-                  className={`bg-white border border-gray-200 rounded-xl p-4 shadow-xs transition-colors ${
-                    onRowClick ? 'cursor-pointer hover:bg-gray-50 active:bg-gray-100/70' : ''
-                  }`}
-                >
-                  {/* Card Header: Primary Column & Status / Actions */}
-                  <div className="flex items-start justify-between gap-2 pb-3 border-b border-gray-100">
-                    <div className="min-w-0 flex-1">
-                      {primaryCol && (
-                        primaryCol.render 
-                          ? primaryCol.render(item, rowIdx) 
-                          : <span className="font-semibold text-gray-900">{item[primaryCol.accessor || primaryCol.key]}</span>
-                      )}
-                    </div>
-                    {statusCol && (
-                      <div className="shrink-0" onClick={(e) => e.stopPropagation()}>
-                        {statusCol.render 
-                          ? statusCol.render(item, rowIdx) 
-                          : <span className="text-xs">{item[statusCol.accessor || statusCol.key]}</span>
-                        }
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Card Body: Secondary Details */}
-                  {secondaryCols.length > 0 && (
-                    <div className="grid grid-cols-2 gap-x-3 gap-y-2 py-3 text-xs">
-                      {secondaryCols.map((col, colIdx) => (
-                        <div key={col.key || colIdx} className="min-w-0">
-                          <span className="text-gray-400 font-medium block truncate text-[11px] mb-0.5">
-                            {col.header}
-                          </span>
-                          <div className="text-gray-800 font-medium truncate">
-                            {col.render ? col.render(item, rowIdx) : item[col.accessor || col.key] || '—'}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-
-                  {/* Card Footer: Quick Actions */}
-                  {actionCol && (
-                    <div 
-                      className="pt-2.5 mt-1 border-t border-gray-100 flex items-center justify-end gap-2"
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      {actionCol.render 
-                        ? actionCol.render(item, rowIdx) 
-                        : item[actionCol.accessor || actionCol.key]
-                      }
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        )}
-        {footer && (
-          <div className="border-t border-gray-200 bg-gray-50 overflow-x-auto">
-            {React.isValidElement(footer) && footer.type === 'tr' ? (
-              <table className="w-full text-left border-collapse">
-                <tbody>{footer}</tbody>
-              </table>
-            ) : (
-              <div className="p-3">{footer}</div>
-            )}
-          </div>
-        )}
-      </div>
-
-      {/* Desktop Standard HTML Table (>= 768px) - 100% UNTOUCHED */}
-      <div className="hidden md:block overflow-x-auto min-h-[300px]">
-        <table className="w-full text-left border-collapse" style={{ minWidth }}>
+    <div className="bg-white border border-surface-container-high rounded-xl shadow-sm overflow-hidden flex flex-col">
+      <div className="overflow-x-auto min-h-[300px]">
+        <table
+          className="w-full text-left border-collapse"
+          style={{ minWidth: isMobile ? '100%' : minWidth }}
+        >
           <thead>
             <tr className="bg-[#1F2937] text-white border-b border-surface-container-high">
-              {columns.map((col, idx) => (
-                <th
-                  key={col.key || idx}
-                  className={`py-3 px-4 font-label-caps text-label-caps whitespace-nowrap ${
-                    col.align === 'right' ? 'text-right' : col.align === 'center' ? 'text-center' : 'text-left'
-                  } ${col.className || ''}`}
-                  style={col.width ? { width: col.width } : undefined}
-                >
-                  {col.header}
-                </th>
-              ))}
+              {columns.map((col, idx) => {
+                const visibleOnMobile = isColVisibleOnMobile(col, idx);
+                return (
+                  <th
+                    key={col.key || idx}
+                    className={`py-3 px-3 sm:px-4 font-label-caps text-label-caps whitespace-nowrap ${
+                      col.align === 'right' ? 'text-right' : col.align === 'center' ? 'text-center' : 'text-left'
+                    } ${visibleOnMobile ? '' : 'hidden md:table-cell'} ${col.className || ''}`}
+                    style={col.width ? { width: col.width } : undefined}
+                  >
+                    {col.header}
+                  </th>
+                );
+              })}
+              {/* Expand chevron header (mobile only) */}
+              {hasExpandableColumns && (
+                <th className="md:hidden w-10 px-2 py-3 text-center font-label-caps text-label-caps"></th>
+              )}
             </tr>
           </thead>
           <tbody>
             {isLoading ? (
               Array.from({ length: skeletonRowCount }).map((_, rIdx) => (
                 <tr key={`skeleton-${rIdx}`} className="border-b border-surface-container-high animate-pulse">
-                  {columns.map((col, cIdx) => (
-                    <td key={`skeleton-cell-${cIdx}`} className="py-4 px-4">
-                      <div className="h-4 bg-gray-200 rounded w-3/4"></div>
+                  {columns.map((col, cIdx) => {
+                    const visibleOnMobile = isColVisibleOnMobile(col, cIdx);
+                    return (
+                      <td
+                        key={`skeleton-cell-${cIdx}`}
+                        className={`py-3.5 px-3 sm:px-4 ${visibleOnMobile ? '' : 'hidden md:table-cell'}`}
+                      >
+                        <div className="h-4 bg-gray-200 rounded w-3/4"></div>
+                      </td>
+                    );
+                  })}
+                  {hasExpandableColumns && (
+                    <td className="md:hidden px-2 py-3.5">
+                      <div className="h-4 bg-gray-200 rounded w-4 mx-auto"></div>
                     </td>
-                  ))}
+                  )}
                 </tr>
               ))
             ) : data.length === 0 ? (
               <tr>
-                <td colSpan={columns.length} className="p-0">
+                <td colSpan={columns.length + (hasExpandableColumns ? 1 : 0)} className="p-0">
                   <EmptyState
                     icon={emptyIcon}
                     title={emptyTitle}
@@ -179,26 +122,102 @@ export const DataTable = ({
                 </td>
               </tr>
             ) : (
-              data.map((item, rowIdx) => (
-                <tr
-                  key={item.id || rowIdx}
-                  onClick={() => onRowClick && onRowClick(item)}
-                  className={`border-b border-surface-container-high transition-colors ${
-                    onRowClick ? 'cursor-pointer hover:bg-surface-container-low/60' : 'hover:bg-surface-container-low/40'
-                  }`}
-                >
-                  {columns.map((col, colIdx) => (
-                    <td
-                      key={col.key || colIdx}
-                      className={`py-3.5 px-4 font-table-data text-table-data text-on-surface ${
-                        col.align === 'right' ? 'text-right' : col.align === 'center' ? 'text-center' : 'text-left'
-                      } ${col.cellClassName || ''}`}
+              data.map((item, rowIdx) => {
+                const rowId = item.id || `row-${rowIdx}`;
+                const isExpanded = expandedRows.has(rowId);
+
+                const handleRowClick = () => {
+                  if (isMobile && hasExpandableColumns) {
+                    toggleRow(rowId);
+                  } else if (onRowClick) {
+                    onRowClick(item);
+                  }
+                };
+
+                return (
+                  <React.Fragment key={rowId}>
+                    <tr
+                      onClick={handleRowClick}
+                      className={`border-b border-surface-container-high transition-colors ${
+                        onRowClick || (isMobile && hasExpandableColumns)
+                          ? 'cursor-pointer hover:bg-surface-container-low/60 active:bg-surface-container-low/80'
+                          : 'hover:bg-surface-container-low/40'
+                      } ${isExpanded ? 'bg-amber-50/40 md:bg-transparent' : ''}`}
                     >
-                      {col.render ? col.render(item, rowIdx) : item[col.accessor || col.key]}
-                    </td>
-                  ))}
-                </tr>
-              ))
+                      {columns.map((col, colIdx) => {
+                        const visibleOnMobile = isColVisibleOnMobile(col, colIdx);
+                        return (
+                          <td
+                            key={col.key || colIdx}
+                            className={`py-3 px-3 sm:px-4 font-table-data text-table-data text-on-surface ${
+                              col.align === 'right' ? 'text-right' : col.align === 'center' ? 'text-center' : 'text-left'
+                            } ${visibleOnMobile ? '' : 'hidden md:table-cell'} ${col.cellClassName || ''}`}
+                          >
+                            {col.render ? col.render(item, rowIdx) : item[col.accessor || col.key]}
+                          </td>
+                        );
+                      })}
+
+                      {/* Mobile Expand Chevron Cell */}
+                      {hasExpandableColumns && (
+                        <td
+                          className="md:hidden px-2 py-3 text-center shrink-0"
+                          onClick={(e) => toggleRow(rowId, e)}
+                        >
+                          <button
+                            type="button"
+                            className="p-1 rounded-full hover:bg-gray-100 transition-colors text-gray-400 cursor-pointer"
+                            aria-label={isExpanded ? 'Collapse row' : 'Expand row'}
+                          >
+                            <span
+                              className={`material-symbols-outlined text-[20px] transition-transform duration-200 block ${
+                                isExpanded ? 'rotate-180 text-amber-600' : ''
+                              }`}
+                            >
+                              expand_more
+                            </span>
+                          </button>
+                        </td>
+                      )}
+                    </tr>
+
+                    {/* Mobile Expandable Sub-Row */}
+                    {hasExpandableColumns && isExpanded && (
+                      <tr className="md:hidden bg-gray-50/95 border-b border-surface-container-high transition-all">
+                        <td colSpan={mobileColSpan} className="p-3.5 sm:p-4 text-xs">
+                          {/* 2-Column Grid of Hidden Columns */}
+                          <div className="grid grid-cols-2 gap-x-4 gap-y-2.5">
+                            {hiddenColsMobile.map((col, cIdx) => (
+                              <div key={col.key || cIdx} className="min-w-0">
+                                <span className="text-gray-400 font-medium block text-[11px] uppercase tracking-wider mb-0.5">
+                                  {col.header}
+                                </span>
+                                <div className="text-gray-900 font-medium text-xs break-words">
+                                  {col.render ? col.render(item, rowIdx) : item[col.accessor || col.key] || '—'}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+
+                          {/* Navigation & Details Link */}
+                          {onRowClick && (
+                            <div className="pt-2.5 mt-2.5 border-t border-gray-200/80 flex items-center justify-between">
+                              <button
+                                type="button"
+                                onClick={() => onRowClick(item)}
+                                className="text-amber-600 hover:text-amber-700 font-semibold text-xs flex items-center gap-1 cursor-pointer py-1"
+                              >
+                                <span>View full details</span>
+                                <span className="material-symbols-outlined text-[15px]">arrow_forward</span>
+                              </button>
+                            </div>
+                          )}
+                        </td>
+                      </tr>
+                    )}
+                  </React.Fragment>
+                );
+              })
             )}
           </tbody>
           {footer && <tfoot>{footer}</tfoot>}

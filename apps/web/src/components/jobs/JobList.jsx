@@ -231,7 +231,7 @@ export const JobList = () => {
 
   const tableFooter = (
     <tr>
-      <td colSpan={columns.length} className="bg-gray-50 border-t border-gray-200 px-4 py-3 text-sm text-gray-500">
+      <td colSpan={columns.length + 1} className="bg-gray-50 border-t border-gray-200 px-4 py-3 text-sm text-gray-500">
         <div className="flex items-center justify-between">
           <div>Showing {filteredJobs.length} {filteredJobs.length === 1 ? 'job' : 'jobs'}</div>
         </div>

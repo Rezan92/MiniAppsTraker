@@ -31,7 +31,7 @@ const getYearRange = () => {
   return years;
 };
 
-export const DateRangeFilter = ({ value, onChange }) => {
+export const DateRangeFilter = ({ value, onChange, compact = false, className = '' }) => {
   const isMobile = useIsMobile(640);
   const [isOpen, setIsOpen] = useState(false);
   const [viewDate, setViewDate] = useState(new Date());
@@ -213,20 +213,58 @@ export const DateRangeFilter = ({ value, onChange }) => {
     );
   }
 
+  const hasActiveRange = Boolean(value?.startDate || value?.endDate);
+
   return (
-    <div className="relative w-full sm:w-72 z-20">
+    <div className={`relative z-20 ${className}`}>
       {/* Input Trigger */}
-      <button
-        ref={buttonRef}
-        type="button"
-        onClick={() => { setIsOpen(!isOpen); setShowMonthYearPicker(false); }}
-        className="w-full flex items-center justify-between px-4 py-2 border border-gray-300 rounded-xl bg-white text-sm text-gray-700 shadow-sm focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary transition-shadow cursor-pointer"
-      >
-        <span className={formatDisplay() ? 'text-gray-900' : 'text-gray-400'}>
-          {formatDisplay() || 'Select date range'}
-        </span>
-        <span className="material-symbols-outlined text-gray-400 text-xl">calendar_today</span>
-      </button>
+      {compact ? (
+        hasActiveRange ? (
+          <div className="flex items-center gap-1.5 px-3 py-1.5 border border-amber-300 rounded-xl bg-amber-50 text-xs sm:text-sm font-semibold text-amber-900 shadow-xs h-10 shrink-0">
+            <button
+              ref={buttonRef}
+              type="button"
+              onClick={() => { setIsOpen(!isOpen); setShowMonthYearPicker(false); }}
+              className="flex items-center gap-1.5 cursor-pointer whitespace-nowrap"
+            >
+              <span className="material-symbols-outlined text-amber-600 text-[18px]">event</span>
+              <span>{formatDisplay()}</span>
+            </button>
+            <button
+              type="button"
+              onClick={(e) => { e.stopPropagation(); handleClear(); }}
+              className="p-1 hover:bg-amber-200/70 rounded-full text-amber-700 hover:text-amber-900 transition-colors cursor-pointer"
+              title="Clear date filter"
+              aria-label="Clear date filter"
+            >
+              <span className="material-symbols-outlined text-[15px]">close</span>
+            </button>
+          </div>
+        ) : (
+          <button
+            ref={buttonRef}
+            type="button"
+            onClick={() => { setIsOpen(!isOpen); setShowMonthYearPicker(false); }}
+            className="flex items-center gap-1.5 px-3 py-2 border border-gray-300 rounded-xl bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 hover:border-gray-400 shadow-xs focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary transition-all cursor-pointer whitespace-nowrap h-10 shrink-0"
+          >
+            <span className="material-symbols-outlined text-gray-500 text-[18px]">calendar_today</span>
+            <span className="hidden sm:inline">Date Range</span>
+            <span className="material-symbols-outlined text-gray-400 text-[16px]">expand_more</span>
+          </button>
+        )
+      ) : (
+        <button
+          ref={buttonRef}
+          type="button"
+          onClick={() => { setIsOpen(!isOpen); setShowMonthYearPicker(false); }}
+          className="w-full sm:w-72 flex items-center justify-between px-4 py-2 border border-gray-300 rounded-xl bg-white text-sm text-gray-700 shadow-xs focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary transition-shadow cursor-pointer h-10"
+        >
+          <span className={formatDisplay() ? 'text-gray-900 font-medium' : 'text-gray-400'}>
+            {formatDisplay() || 'Select date range'}
+          </span>
+          <span className="material-symbols-outlined text-gray-400 text-xl">calendar_today</span>
+        </button>
+      )}
 
       {/* Calendar Dropdown / Mobile Sheet */}
       {isOpen && createPortal(

@@ -104,9 +104,15 @@ export const InvoiceList = () => {
     {
       header: 'Invoice',
       key: 'invoice_number',
+      showOnMobile: true,
       render: (inv) => (
-        <div className="font-title-sm font-semibold text-gray-900 group-hover:text-primary transition-colors">
-          #{inv.invoice_number}
+        <div>
+          <div className="font-title-sm font-semibold text-gray-900 group-hover:text-primary transition-colors">
+            #{inv.invoice_number}
+          </div>
+          <div className="text-xs text-gray-500 truncate max-w-[130px] md:hidden">
+            {inv.clients?.name || 'Unknown Client'}
+          </div>
         </div>
       )
     },
@@ -158,11 +164,12 @@ export const InvoiceList = () => {
       )
     },
     {
-      header: 'Total Amount',
+      header: 'Total',
       key: 'total_amount',
       align: 'right',
+      showOnMobile: true,
       render: (inv) => (
-        <div className="font-title-sm text-gray-900 font-bold">
+        <div className="font-title-sm text-gray-900 font-bold whitespace-nowrap">
           {formatCurrency(inv.total_amount)}
         </div>
       )
@@ -171,6 +178,7 @@ export const InvoiceList = () => {
       header: 'Status',
       key: 'status',
       align: 'right',
+      showOnMobile: true,
       render: (inv) => (
         <div onClick={(e) => e.stopPropagation()} className="flex justify-end">
           <StatusBadgeDropdown
@@ -185,13 +193,21 @@ export const InvoiceList = () => {
 
   const tableFooter = (
     <tr className="bg-[#1F2937] text-white">
-      <td colSpan="4" className="px-4 py-3.5 text-right font-label-caps text-label-caps text-gray-300 tracking-wider">
+      <td colSpan="4" className="hidden md:table-cell px-4 py-3.5 text-right font-label-caps text-label-caps text-gray-300 tracking-wider">
         Totals · {filter === 'all' ? 'All Invoices' : filter.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
       </td>
-      <td className="px-4 py-3.5 text-right font-title-sm text-amber-400 font-semibold">{formatCurrency(laborTotal)}</td>
-      <td className="px-4 py-3.5 text-right font-title-sm text-amber-400 font-semibold">{formatCurrency(materialTotal)}</td>
-      <td className="px-4 py-3.5 text-right font-title-md font-bold text-white">{formatCurrency(invoiceTotal)}</td>
-      <td className="bg-[#1F2937]"></td>
+      <td className="hidden md:table-cell px-4 py-3.5 text-right font-title-sm text-amber-400 font-semibold">{formatCurrency(laborTotal)}</td>
+      <td className="hidden md:table-cell px-4 py-3.5 text-right font-title-sm text-amber-400 font-semibold">{formatCurrency(materialTotal)}</td>
+      <td className="hidden md:table-cell px-4 py-3.5 text-right font-title-md font-bold text-white">{formatCurrency(invoiceTotal)}</td>
+      <td className="hidden md:table-cell bg-[#1F2937]"></td>
+
+      {/* Mobile Footer: Spans full width of mobile columns */}
+      <td colSpan={4} className="md:hidden px-3 py-3">
+        <div className="flex justify-between items-center text-xs">
+          <span className="text-gray-300 font-medium">Total ({filteredInvoices.length}):</span>
+          <span className="font-title-md font-bold text-white text-sm">{formatCurrency(invoiceTotal)}</span>
+        </div>
+      </td>
     </tr>
   );
 
@@ -213,6 +229,7 @@ export const InvoiceList = () => {
         <DateRangeFilter 
           value={dateRange}
           onChange={setDateRange}
+          compact
         />
       </PageHeader>
 
