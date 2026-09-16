@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
+import { useIsMobile } from '../../hooks/ui/useMediaQuery';
 
 const DAYS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
@@ -31,6 +32,7 @@ const getYearRange = () => {
 };
 
 export const DateRangeFilter = ({ value, onChange }) => {
+  const isMobile = useIsMobile(640);
   const [isOpen, setIsOpen] = useState(false);
   const [viewDate, setViewDate] = useState(new Date());
   const [pickStart, setPickStart] = useState(null);
@@ -59,6 +61,7 @@ export const DateRangeFilter = ({ value, onChange }) => {
     if (buttonRef.current) {
       const rect = buttonRef.current.getBoundingClientRect();
       const dropdownHeight = dropdownRef.current ? dropdownRef.current.offsetHeight : 340;
+      const dropdownWidth = dropdownRef.current ? dropdownRef.current.offsetWidth : 320;
       const spaceBelow = window.innerHeight - rect.bottom;
       
       let top = rect.bottom + window.scrollY + 8;
@@ -66,9 +69,14 @@ export const DateRangeFilter = ({ value, onChange }) => {
         top = rect.top + window.scrollY - dropdownHeight - 8;
       }
 
+      let left = rect.left + window.scrollX;
+      if (left + dropdownWidth > window.innerWidth - 16) {
+        left = Math.max(16, window.innerWidth - dropdownWidth - 16);
+      }
+
       setCoords({
         top,
-        left: rect.left + window.scrollX,
+        left,
         width: rect.width
       });
     }
@@ -89,6 +97,7 @@ export const DateRangeFilter = ({ value, onChange }) => {
   // Close on outside click
   useEffect(() => {
     const handler = (e) => {
+      if (isMobile) return;
       const isOutsideButton = buttonRef.current && !buttonRef.current.contains(e.target);
       const isOutsideDropdown = dropdownRef.current && !dropdownRef.current.contains(e.target);
       
@@ -99,7 +108,7 @@ export const DateRangeFilter = ({ value, onChange }) => {
     };
     document.addEventListener('mousedown', handler, true);
     return () => document.removeEventListener('mousedown', handler, true);
-  }, []);
+  }, [isMobile]);
 
   const year = viewDate.getFullYear();
   const month = viewDate.getMonth();
@@ -219,123 +228,255 @@ export const DateRangeFilter = ({ value, onChange }) => {
         <span className="material-symbols-outlined text-gray-400 text-xl">calendar_today</span>
       </button>
 
-      {/* Calendar Dropdown */}
+      {/* Calendar Dropdown / Mobile Sheet */}
       {isOpen && createPortal(
-        <div 
-          ref={dropdownRef}
-          style={{ top: coords.top, left: coords.left, position: 'absolute' }}
-          className="w-[320px] bg-white border border-gray-200 rounded-xl shadow-lg p-4 z-[9999]"
-        >
-          {/* Month/Year Nav */}
-          <div className="flex items-center justify-between mb-4">
-            <button
-              type="button"
-              onClick={() => setShowMonthYearPicker(!showMonthYearPicker)}
-              className="flex items-center gap-1 text-sm font-semibold text-gray-900 hover:bg-gray-100 px-2 py-1 rounded-md transition-colors cursor-pointer"
+        isMobile ? (
+          <div 
+            className="fixed inset-0 z-[9999] bg-gray-900/60 backdrop-blur-xs flex items-end justify-center p-0 animate-[modalFadeIn_0.15s_ease-out]"
+            onMouseDown={() => { setIsOpen(false); setShowMonthYearPicker(false); }}
+          >
+            <div 
+              ref={dropdownRef}
+              className="w-full bg-white border-t border-gray-200 rounded-t-2xl shadow-2xl p-4 pb-[calc(1rem+var(--sab,0px))] flex flex-col max-h-[85dvh] overflow-y-auto animate-[modalSlideUpMobile_0.2s_ease-out]"
+              onMouseDown={(e) => e.stopPropagation()}
             >
-              {MONTHS[month]} {year}
-              <span className="material-symbols-outlined text-gray-400" style={{ fontSize: '16px' }}>
-                {showMonthYearPicker ? 'expand_less' : 'expand_more'}
-              </span>
-            </button>
-            {!showMonthYearPicker && (
-              <div className="flex items-center gap-1">
-                <button
-                  type="button"
-                  onClick={prevMonth}
-                  className="p-1 rounded-full hover:bg-gray-100 transition-colors cursor-pointer"
-                >
-                  <span className="material-symbols-outlined text-gray-500 text-xl">chevron_left</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={nextMonth}
-                  className="p-1 rounded-full hover:bg-gray-100 transition-colors cursor-pointer"
-                >
-                  <span className="material-symbols-outlined text-gray-500 text-xl">chevron_right</span>
-                </button>
-              </div>
-            )}
-          </div>
-
-          {showMonthYearPicker ? (
-            /* Month & Year Picker View */
-            <div>
-              {/* Year Selector */}
-              <div className="flex items-center justify-between mb-3 px-1">
-                <button
-                  type="button"
-                  onClick={() => handleYearChange(year - 1)}
-                  className="p-1 rounded-full hover:bg-gray-100 transition-colors cursor-pointer"
-                >
-                  <span className="material-symbols-outlined text-gray-500 text-xl">chevron_left</span>
-                </button>
-                <span className="text-sm font-bold text-gray-900">{year}</span>
-                <button
-                  type="button"
-                  onClick={() => handleYearChange(year + 1)}
-                  className="p-1 rounded-full hover:bg-gray-100 transition-colors cursor-pointer"
-                >
-                  <span className="material-symbols-outlined text-gray-500 text-xl">chevron_right</span>
-                </button>
+              {/* Grab handle */}
+              <div className="flex justify-center pb-2.5 shrink-0">
+                <div className="w-10 h-1.5 rounded-full bg-gray-300" />
               </div>
 
-              {/* Month Grid */}
-              <div className="grid grid-cols-3 gap-2">
-                {MONTHS_SHORT.map((m, idx) => (
-                  <button
-                    key={m}
-                    type="button"
-                    onClick={() => handleMonthSelect(idx)}
-                    className={`py-2.5 rounded-lg text-sm font-medium transition-colors cursor-pointer ${
-                      idx === month
-                        ? 'bg-amber-500 text-white'
-                        : 'text-gray-700 hover:bg-gray-100'
-                    }`}
-                  >
-                    {m}
-                  </button>
-                ))}
+              {/* Month/Year Nav */}
+              <div className="flex items-center justify-between mb-4">
+                <button
+                  type="button"
+                  onClick={() => setShowMonthYearPicker(!showMonthYearPicker)}
+                  className="flex items-center gap-1 text-sm font-semibold text-gray-900 hover:bg-gray-100 px-2 py-1 rounded-md transition-colors cursor-pointer"
+                >
+                  {MONTHS[month]} {year}
+                  <span className="material-symbols-outlined text-gray-400" style={{ fontSize: '16px' }}>
+                    {showMonthYearPicker ? 'expand_less' : 'expand_more'}
+                  </span>
+                </button>
+                {!showMonthYearPicker && (
+                  <div className="flex items-center gap-1">
+                    <button
+                      type="button"
+                      onClick={prevMonth}
+                      className="p-1 rounded-full hover:bg-gray-100 transition-colors cursor-pointer"
+                      aria-label="Previous month"
+                    >
+                      <span className="material-symbols-outlined text-gray-500 text-xl">chevron_left</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={nextMonth}
+                      className="p-1 rounded-full hover:bg-gray-100 transition-colors cursor-pointer"
+                      aria-label="Next month"
+                    >
+                      <span className="material-symbols-outlined text-gray-500 text-xl">chevron_right</span>
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {showMonthYearPicker ? (
+                /* Month & Year Picker View */
+                <div>
+                  {/* Year Selector */}
+                  <div className="flex items-center justify-between mb-3 px-1">
+                    <button
+                      type="button"
+                      onClick={() => handleYearChange(year - 1)}
+                      className="p-1 rounded-full hover:bg-gray-100 transition-colors cursor-pointer"
+                      aria-label="Previous year"
+                    >
+                      <span className="material-symbols-outlined text-gray-500 text-xl">chevron_left</span>
+                    </button>
+                    <span className="text-sm font-bold text-gray-900">{year}</span>
+                    <button
+                      type="button"
+                      onClick={() => handleYearChange(year + 1)}
+                      className="p-1 rounded-full hover:bg-gray-100 transition-colors cursor-pointer"
+                      aria-label="Next year"
+                    >
+                      <span className="material-symbols-outlined text-gray-500 text-xl">chevron_right</span>
+                    </button>
+                  </div>
+
+                  {/* Month Grid */}
+                  <div className="grid grid-cols-3 gap-2">
+                    {MONTHS_SHORT.map((m, idx) => (
+                      <button
+                        key={m}
+                        type="button"
+                        onClick={() => handleMonthSelect(idx)}
+                        className={`py-2.5 rounded-lg text-sm font-medium transition-colors cursor-pointer ${
+                          idx === month
+                            ? 'bg-amber-500 text-white'
+                            : 'text-gray-700 hover:bg-gray-100'
+                        }`}
+                      >
+                        {m}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                /* Calendar Day View */
+                <>
+                  {/* Day Headers */}
+                  <div className="grid grid-cols-7 gap-1 mb-1">
+                    {DAYS.map((d, i) => (
+                      <div key={i} className="h-9 w-9 mx-auto flex items-center justify-center text-xs font-medium text-gray-400">
+                        {d}
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Day Grid */}
+                  <div className="grid grid-cols-7 gap-1 place-items-center">
+                    {cells}
+                  </div>
+                </>
+              )}
+
+              {/* Footer Buttons */}
+              <div className="flex items-center justify-between mt-4 pt-3 border-t border-gray-100">
+                <button
+                  type="button"
+                  onClick={handleClear}
+                  className="px-3 py-1.5 text-sm font-medium text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-md transition-colors cursor-pointer"
+                >
+                  Clear
+                </button>
+                <button
+                  type="button"
+                  onClick={handleApply}
+                  disabled={!pickStart}
+                  className="px-4 py-1.5 text-sm font-semibold bg-amber-500 text-white rounded-md hover:bg-amber-600 disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer"
+                >
+                  Apply
+                </button>
               </div>
             </div>
-          ) : (
-            /* Calendar Day View */
-            <>
-              {/* Day Headers */}
-              <div className="grid grid-cols-7 gap-1 mb-1">
-                {DAYS.map((d, i) => (
-                  <div key={i} className="h-9 w-9 flex items-center justify-center text-xs font-medium text-gray-400">
-                    {d}
-                  </div>
-                ))}
-              </div>
-
-              {/* Day Grid */}
-              <div className="grid grid-cols-7 gap-1">
-                {cells}
-              </div>
-            </>
-          )}
-
-          {/* Footer Buttons */}
-          <div className="flex items-center justify-between mt-4 pt-3 border-t border-gray-100">
-            <button
-              type="button"
-              onClick={handleClear}
-              className="px-3 py-1.5 text-sm font-medium text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-md transition-colors cursor-pointer"
-            >
-              Clear
-            </button>
-            <button
-              type="button"
-              onClick={handleApply}
-              disabled={!pickStart}
-              className="px-4 py-1.5 text-sm font-semibold bg-amber-500 text-white rounded-md hover:bg-amber-600 disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer"
-            >
-              Apply
-            </button>
           </div>
-        </div>
+        ) : (
+          <div 
+            ref={dropdownRef}
+            style={{ top: coords.top, left: coords.left, position: 'absolute' }}
+            className="w-[320px] bg-white border border-gray-200 rounded-xl shadow-lg p-4 z-[9999]"
+          >
+            {/* Month/Year Nav */}
+            <div className="flex items-center justify-between mb-4">
+              <button
+                type="button"
+                onClick={() => setShowMonthYearPicker(!showMonthYearPicker)}
+                className="flex items-center gap-1 text-sm font-semibold text-gray-900 hover:bg-gray-100 px-2 py-1 rounded-md transition-colors cursor-pointer"
+              >
+                {MONTHS[month]} {year}
+                <span className="material-symbols-outlined text-gray-400" style={{ fontSize: '16px' }}>
+                  {showMonthYearPicker ? 'expand_less' : 'expand_more'}
+                </span>
+              </button>
+              {!showMonthYearPicker && (
+                <div className="flex items-center gap-1">
+                  <button
+                    type="button"
+                    onClick={prevMonth}
+                    className="p-1 rounded-full hover:bg-gray-100 transition-colors cursor-pointer"
+                  >
+                    <span className="material-symbols-outlined text-gray-500 text-xl">chevron_left</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={nextMonth}
+                    className="p-1 rounded-full hover:bg-gray-100 transition-colors cursor-pointer"
+                  >
+                    <span className="material-symbols-outlined text-gray-500 text-xl">chevron_right</span>
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {showMonthYearPicker ? (
+              /* Month & Year Picker View */
+              <div>
+                {/* Year Selector */}
+                <div className="flex items-center justify-between mb-3 px-1">
+                  <button
+                    type="button"
+                    onClick={() => handleYearChange(year - 1)}
+                    className="p-1 rounded-full hover:bg-gray-100 transition-colors cursor-pointer"
+                  >
+                    <span className="material-symbols-outlined text-gray-500 text-xl">chevron_left</span>
+                  </button>
+                  <span className="text-sm font-bold text-gray-900">{year}</span>
+                  <button
+                    type="button"
+                    onClick={() => handleYearChange(year + 1)}
+                    className="p-1 rounded-full hover:bg-gray-100 transition-colors cursor-pointer"
+                  >
+                    <span className="material-symbols-outlined text-gray-500 text-xl">chevron_right</span>
+                  </button>
+                </div>
+
+                {/* Month Grid */}
+                <div className="grid grid-cols-3 gap-2">
+                  {MONTHS_SHORT.map((m, idx) => (
+                    <button
+                      key={m}
+                      type="button"
+                      onClick={() => handleMonthSelect(idx)}
+                      className={`py-2.5 rounded-lg text-sm font-medium transition-colors cursor-pointer ${
+                        idx === month
+                          ? 'bg-amber-500 text-white'
+                          : 'text-gray-700 hover:bg-gray-100'
+                      }`}
+                    >
+                      {m}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              /* Calendar Day View */
+              <>
+                {/* Day Headers */}
+                <div className="grid grid-cols-7 gap-1 mb-1">
+                  {DAYS.map((d, i) => (
+                    <div key={i} className="h-9 w-9 flex items-center justify-center text-xs font-medium text-gray-400">
+                      {d}
+                    </div>
+                  ))}
+                </div>
+
+                {/* Day Grid */}
+                <div className="grid grid-cols-7 gap-1">
+                  {cells}
+                </div>
+              </>
+            )}
+
+            {/* Footer Buttons */}
+            <div className="flex items-center justify-between mt-4 pt-3 border-t border-gray-100">
+              <button
+                type="button"
+                onClick={handleClear}
+                className="px-3 py-1.5 text-sm font-medium text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-md transition-colors cursor-pointer"
+              >
+                Clear
+              </button>
+              <button
+                type="button"
+                onClick={handleApply}
+                disabled={!pickStart}
+                className="px-4 py-1.5 text-sm font-semibold bg-amber-500 text-white rounded-md hover:bg-amber-600 disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer"
+              >
+                Apply
+              </button>
+            </div>
+          </div>
+        )
       , document.body)}
     </div>
   );

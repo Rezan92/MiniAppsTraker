@@ -32,11 +32,11 @@ This document serves as the single source of truth for the mobile optimization i
 ---
 
 ### Phase 2: Design System & Common UI Primitives (`apps/web/src/components/common/`)
-- [ ] **Adaptive Tables (`DataTable.jsx`)**: Render standard `<table>` on desktop (`hidden md:table`); render stacked readable cards on mobile (`md:hidden`).
-- [ ] **Bottom Sheet Pattern (`BaseModal.jsx`)**: Transform centered dialogs into native-feeling mobile bottom sheets (`rounded-t-2xl max-h-[90dvh]`) on screens `< 768px`.
-- [ ] **Popovers & Date Pickers (`DatePicker.jsx`, `DateRangeFilter.jsx`)**: Responsive popovers preventing horizontal screen clipping; mobile single-column sheets.
-- [ ] **Tooltips & Hover Suppression (`Tooltip.jsx`)**: Suppress hover tooltips on touch devices (`@media (hover: hover)`).
-- [ ] **Horizontal Pill Scrollers**: Touch-scrollable filter bars and chips with `-mx-4 px-4 overflow-x-auto`.
+- [x] **Adaptive Tables (`DataTable.jsx`)**: Render standard `<table>` on desktop (`hidden md:table`); render stacked readable cards on mobile (`md:hidden`).
+- [x] **Bottom Sheet Pattern (`BaseModal.jsx`)**: Transform centered dialogs into native-feeling mobile bottom sheets (`rounded-t-2xl max-h-[90dvh]`) on screens `< 768px`.
+- [x] **Popovers & Date Pickers (`DatePicker.jsx`, `DateRangeFilter.jsx`)**: Responsive popovers preventing horizontal screen clipping; mobile single-column sheets.
+- [x] **Tooltips & Hover Suppression (`Tooltip.jsx`)**: Suppress hover tooltips on touch devices (`@media (hover: hover)`).
+- [x] **Horizontal Pill Scrollers**: Touch-scrollable filter bars and chips with `-mx-4 px-4 overflow-x-auto`.
 
 ---
 

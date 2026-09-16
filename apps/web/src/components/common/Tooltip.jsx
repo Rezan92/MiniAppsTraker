@@ -20,7 +20,7 @@ export const Tooltip = ({ children, text, position = 'top', className = '' }) =>
   return (
     <div className={`relative group ${className || 'inline-block'}`}>
       {children}
-      <div className={`absolute ${positionClasses[position]} hidden group-hover:block z-50 animate-[fadeIn_0.15s_ease-out] w-max max-w-[250px]`}>
+      <div className={`absolute ${positionClasses[position]} hidden [@media(hover:hover)_and_(pointer:fine)]:group-hover:block pointer-events-none z-50 animate-[fadeIn_0.15s_ease-out] w-max max-w-[250px]`}>
         <div className="bg-gray-900 text-white text-xs px-3 py-2 rounded shadow-lg whitespace-normal text-center">
           {text}
         </div>

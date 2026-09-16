@@ -50,18 +50,23 @@ export const BaseModal = ({
 
   const modalContent = (
     <div
-      className="fixed inset-0 z-[1000] flex items-center justify-center bg-gray-900/60 backdrop-blur-sm p-4 animate-[modalFadeIn_0.15s_ease-out]"
+      className="fixed inset-0 z-[1000] flex items-end md:items-center justify-center bg-gray-900/60 backdrop-blur-sm p-0 md:p-4 animate-[modalFadeIn_0.15s_ease-out]"
       onMouseDown={closeOnBackdrop ? onClose : undefined}
       role="dialog"
       aria-modal="true"
     >
       <div
-        className={`bg-white border border-gray-200 rounded-xl w-[90vw] ${widthClass} shadow-2xl flex flex-col max-h-[90vh] overflow-hidden animate-[modalScaleIn_0.2s_ease-out] ${className}`}
+        className={`bg-white border-t md:border border-gray-200 rounded-t-2xl md:rounded-xl w-full md:w-[90vw] ${widthClass} shadow-2xl flex flex-col max-h-[90dvh] md:max-h-[90vh] overflow-hidden animate-[modalSlideUpMobile_0.25s_ease-out] md:animate-[modalScaleIn_0.2s_ease-out] ${className}`}
         onMouseDown={(e) => e.stopPropagation()}
       >
+        {/* Mobile grab handle indicator */}
+        <div className="md:hidden flex justify-center pt-2.5 pb-1 bg-white shrink-0">
+          <div className="w-10 h-1.5 rounded-full bg-gray-300" />
+        </div>
+
         {/* Header if title provided */}
         {(title || showCloseButton) && (
-          <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center bg-white shrink-0">
+          <div className="px-4 py-3 md:px-6 md:py-4 border-b border-gray-200 flex justify-between items-center bg-white shrink-0">
             <div>
               {title && (
                 <h2 className="font-title-md text-title-md font-bold text-gray-900">
@@ -78,7 +83,7 @@ export const BaseModal = ({
               <button
                 type="button"
                 onClick={onClose}
-                className="text-gray-400 hover:text-gray-600 transition-colors p-1 rounded-lg hover:bg-gray-100 cursor-pointer ml-auto"
+                className="text-gray-400 hover:text-gray-600 transition-colors p-1.5 rounded-lg hover:bg-gray-100 cursor-pointer ml-auto"
                 aria-label="Close modal"
               >
                 <span className="material-symbols-outlined text-[22px]">close</span>
@@ -87,14 +92,14 @@ export const BaseModal = ({
           </div>
         )}
 
-        {/* Content / Body */}
-        <div className="p-6 flex-1 overflow-y-auto">
+        {/* Content / Body with overscroll containment */}
+        <div className="p-4 md:p-6 flex-1 overflow-y-auto overscroll-contain">
           {children}
         </div>
 
         {/* Footer if provided */}
         {footer && (
-          <div className="px-6 py-4 bg-gray-50 border-t border-gray-200 flex justify-end gap-3 shrink-0">
+          <div className="px-4 py-3 md:px-6 md:py-4 bg-gray-50 border-t border-gray-200 flex justify-end gap-2 md:gap-3 shrink-0 pb-[calc(0.75rem+var(--sab,0px))] md:pb-4">
             {footer}
           </div>
         )}
@@ -113,6 +118,14 @@ export const BaseModal = ({
           to {
             opacity: 1;
             transform: translateY(0) scale(1);
+          }
+        }
+        @keyframes modalSlideUpMobile {
+          from {
+            transform: translateY(100%);
+          }
+          to {
+            transform: translateY(0);
           }
         }
       `}</style>

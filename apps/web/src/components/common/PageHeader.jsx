@@ -29,7 +29,7 @@ export const PageHeader = ({
           actionLinkTo ? (
             <Link 
               to={actionLinkTo}
-              className="flex items-center justify-center gap-2 bg-primary text-black px-4 py-2 rounded font-body-md font-bold cursor-pointer hover:bg-opacity-90 transition-colors shadow-[0_0_10px_rgba(245,158,11,0.15)] h-11 whitespace-nowrap"
+              className="flex items-center justify-center gap-2 bg-primary text-black px-4 py-2 rounded font-body-md font-bold cursor-pointer hover:bg-opacity-90 transition-colors shadow-[0_0_10px_rgba(245,158,11,0.15)] h-11 whitespace-nowrap w-full sm:w-auto shrink-0"
             >
               {actionButtonIcon && <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>{actionButtonIcon}</span>}
               {actionButtonText}
@@ -37,7 +37,7 @@ export const PageHeader = ({
           ) : (
             <button 
               onClick={onActionClick}
-              className="flex items-center justify-center gap-2 bg-primary text-black px-4 py-2 rounded font-body-md font-bold cursor-pointer hover:bg-opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-[0_0_10px_rgba(245,158,11,0.15)] h-11 whitespace-nowrap"
+              className="flex items-center justify-center gap-2 bg-primary text-black px-4 py-2 rounded font-body-md font-bold cursor-pointer hover:bg-opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-[0_0_10px_rgba(245,158,11,0.15)] h-11 whitespace-nowrap w-full sm:w-auto shrink-0"
             >
               {actionButtonIcon && <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>{actionButtonIcon}</span>}
               {actionButtonText}
@@ -50,23 +50,27 @@ export const PageHeader = ({
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         {/* Tabs */}
         {tabs.length > 0 && (
-          <div className="flex space-x-1 p-1 bg-gray-100 rounded-xl border border-gray-200 inline-flex overflow-x-auto scrollbar-hide w-full md:w-auto">
-            {tabs.map(tab => (
-              <button 
-                key={tab.value}
-                onClick={() => onTabChange(tab.value)}
-                className={`px-4 py-1.5 text-sm font-medium rounded-md whitespace-nowrap transition-colors cursor-pointer ${activeTab === tab.value ? 'bg-white text-gray-900 shadow-sm border border-gray-200' : 'text-gray-600 hover:text-gray-900 hover:bg-white/50 border border-transparent'}`}
-              >
-                {tab.label}
-              </button>
-            ))}
+          <div className="-mx-4 px-4 sm:mx-0 sm:px-0 overflow-x-auto scrollbar-none w-[calc(100%+2rem)] sm:w-auto shrink-0">
+            <div className="flex space-x-1 p-1 bg-gray-100 rounded-xl border border-gray-200 inline-flex">
+              {tabs.map(tab => (
+                <button 
+                  key={tab.value}
+                  onClick={() => onTabChange(tab.value)}
+                  className={`px-4 py-1.5 text-sm font-medium rounded-md whitespace-nowrap transition-colors cursor-pointer ${activeTab === tab.value ? 'bg-white text-gray-900 shadow-sm border border-gray-200' : 'text-gray-600 hover:text-gray-900 hover:bg-white/50 border border-transparent'}`}
+                >
+                  {tab.label}
+                </button>
+              ))}
+            </div>
           </div>
         )}
         
         {/* Extra Filters (like Date Pickers) passed as children */}
-        <div className="flex flex-row items-center gap-4 flex-1">
-          {children}
-        </div>
+        {children && (
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 md:gap-4 flex-1">
+            {children}
+          </div>
+        )}
 
         {/* Table Search */}
         {onSearchChange && (
