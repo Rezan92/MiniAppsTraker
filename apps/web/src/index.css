@@ -3,6 +3,13 @@
 @plugin "@tailwindcss/forms";
 @plugin "@tailwindcss/container-queries";
 
+:root {
+  --sat: env(safe-area-inset-top, 0px);
+  --sab: env(safe-area-inset-bottom, 0px);
+  --sal: env(safe-area-inset-left, 0px);
+  --sar: env(safe-area-inset-right, 0px);
+}
+
 @theme {
   --color-surface-container-lowest: #ffffff;
   --color-secondary-fixed: #ffddb8;
@@ -122,4 +129,14 @@
 
 .shadow-level-3 {
     box-shadow: 0px 12px 24px rgba(15, 23, 42, 0.12);
+}
+
+@layer base {
+  @media (max-width: 639px) {
+    input:not([type="checkbox"]):not([type="radio"]),
+    select,
+    textarea {
+      font-size: 16px !important;
+    }
+  }
 }

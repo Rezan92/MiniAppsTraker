@@ -19,8 +19,8 @@ export const ToastProvider = ({ children }) => {
     <ToastContext.Provider value={{ showSuccess, showError }}>
       {children}
       {toast && (
-        <div className="fixed bottom-4 right-4 z-[100] animate-in fade-in slide-in-from-bottom-4 duration-300">
-          <div className={`px-4 py-3 rounded-lg shadow-lg flex items-center gap-3 min-w-[250px] max-w-[420px] ${
+        <div className="fixed top-[calc(1rem+var(--sat,0px))] inset-x-4 md:inset-x-auto md:top-auto md:bottom-4 md:right-4 z-[100] flex justify-center md:block pointer-events-none animate-in fade-in slide-in-from-top-4 md:slide-in-from-bottom-4 duration-300">
+          <div className={`pointer-events-auto px-4 py-3 rounded-lg shadow-lg flex items-center gap-3 min-w-[250px] max-w-[420px] w-full ${
             toast.type === 'success' ? 'bg-green-100 text-green-900 border border-green-200' :
             toast.type === 'error' ? 'bg-red-100 text-red-900 border border-red-200' :
             'bg-surface text-on-surface border border-outline-variant'

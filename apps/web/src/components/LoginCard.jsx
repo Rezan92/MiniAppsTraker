@@ -39,7 +39,7 @@ export const LoginCard = () => {
   };
 
   return (
-    <div className="bg-background min-h-screen flex items-center justify-center relative overflow-hidden font-sans antialiased text-on-surface">
+    <div className="bg-background min-h-[100dvh] flex items-center justify-center relative overflow-hidden font-sans antialiased text-on-surface">
       {/* Subtle Background Image */}
       <div 
         className="absolute inset-0 z-0 bg-cover bg-center opacity-20 pointer-events-none" 

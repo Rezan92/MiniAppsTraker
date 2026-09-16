@@ -57,7 +57,7 @@ export const Onboarding = () => {
   };
 
   return (
-    <div className="bg-background min-h-screen flex items-center justify-center relative overflow-hidden font-sans antialiased text-on-surface p-4">
+    <div className="bg-background min-h-[100dvh] flex items-center justify-center relative overflow-hidden font-sans antialiased text-on-surface p-4">
       <div 
         className="absolute inset-0 z-0 bg-cover bg-center opacity-20 pointer-events-none" 
         style={{ backgroundImage: "url('https://lh3.googleusercontent.com/aida-public/AB6AXuCDC784Zr_DabjzbUHfBfQXKGVxcVgU4KL7VZU9haoKQpKkB30Oh1HqVckdIcbEHIvsPxzWiMMMIf5m6F8RsRzbpKkOB1A_I3beRYM2oyPpOn69kPUAE1cQxbRua1b3RrWZgnkmNogP8EAs8VKQU_2XFUrw7sllGFhtgQSUR2t2YLjKpG2JjH2QpqI7Ri3JT0ieArMB2lbpieuP8qfZKaFRA_3tH2-CMvNjQ9N5ulTCzigmFdghrTQqAQ')" }}

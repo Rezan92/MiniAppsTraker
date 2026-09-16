@@ -28,7 +28,7 @@ export const Join = () => {
 
   if (loading) {
     return (
-      <div className="bg-background min-h-screen flex items-center justify-center">
+      <div className="bg-background min-h-[100dvh] flex items-center justify-center">
         <div className="flex flex-col items-center gap-4 text-on-surface-variant">
           <span className="material-symbols-outlined animate-spin" style={{ fontSize: '32px' }}>progress_activity</span>
           <p className="font-body-md">Validating invitation...</p>
@@ -39,7 +39,7 @@ export const Join = () => {
 
   if (error) {
     return (
-      <div className="bg-background min-h-screen flex items-center justify-center p-4">
+      <div className="bg-background min-h-[100dvh] flex items-center justify-center p-4">
         <div className="bg-surface-container-lowest border border-outline-variant rounded-xl p-lg shadow-level-3 max-w-[28rem] w-full text-center">
           <div className="w-16 h-16 bg-error-container text-on-error-container rounded-full flex items-center justify-center mx-auto mb-4">
             <span className="material-symbols-outlined" style={{ fontSize: '32px' }}>error</span>
@@ -57,7 +57,7 @@ export const Join = () => {
   const isEmailMismatch = session && user?.email !== inviteData.email;
 
   return (
-    <div className="bg-background min-h-screen flex items-center justify-center relative overflow-hidden font-sans antialiased text-on-surface p-4">
+    <div className="bg-background min-h-[100dvh] flex items-center justify-center relative overflow-hidden font-sans antialiased text-on-surface p-4">
       <div 
         className="absolute inset-0 z-0 bg-cover bg-center opacity-20 pointer-events-none" 
         style={{ backgroundImage: "url('https://lh3.googleusercontent.com/aida-public/AB6AXuCDC784Zr_DabjzbUHfBfQXKGVxcVgU4KL7VZU9haoKQpKkB30Oh1HqVckdIcbEHIvsPxzWiMMMIf5m6F8RsRzbpKkOB1A_I3beRYM2oyPpOn69kPUAE1cQxbRua1b3RrWZgnkmNogP8EAs8VKQU_2XFUrw7sllGFhtgQSUR2t2YLjKpG2JjH2QpqI7Ri3JT0ieArMB2lbpieuP8qfZKaFRA_3tH2-CMvNjQ9N5ulTCzigmFdghrTQqAQ')" }}

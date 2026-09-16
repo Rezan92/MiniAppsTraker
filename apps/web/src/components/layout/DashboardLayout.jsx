@@ -6,6 +6,7 @@ import { useWorkspace } from '../../contexts/WorkspaceContext';
 import { CreateWorkspaceModal } from './CreateWorkspaceModal';
 import { AiCopilotWidget } from '../ai/AiCopilotWidget';
 import { Tooltip } from '../common/Tooltip';
+import { NetworkBanner } from './NetworkBanner';
 
 export const DashboardLayout = ({ children }) => {
   const { user, userData } = useAuth();
@@ -19,6 +20,8 @@ export const DashboardLayout = ({ children }) => {
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const [createModalOpen, setCreateModalOpen] = useState(false);
+  const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
+  const [mobileWsOpen, setMobileWsOpen] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(() => {
     try {
       return localStorage.getItem('sidebar_collapsed') === 'true';
@@ -65,6 +68,11 @@ export const DashboardLayout = ({ children }) => {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
+  // Automatically close mobile navigation drawer on route change
+  useEffect(() => {
+    setMobileDrawerOpen(false);
+  }, [location.pathname]);
+
   const handleSwitchWorkspace = async (targetId) => {
     if (targetId === activeTenantId) {
       setDropdownOpen(false);
@@ -78,7 +86,7 @@ export const DashboardLayout = ({ children }) => {
   const tenantSubtitle = currentWorkspace?.role === 'admin' ? "Business Admin" : "Employee";
 
   return (
-    <div className="antialiased min-h-screen flex font-body-md text-body-md text-on-surface bg-background">
+    <div className="antialiased min-h-[100dvh] flex font-body-md text-body-md text-on-surface bg-background">
       {/* SideNavBar */}
       <nav className={`hidden md:flex bg-inverse-surface text-white font-body-md text-body-md docked left-0 h-full ${
         isCollapsed ? 'w-[80px]' : 'w-[280px]'
@@ -254,17 +262,28 @@ export const DashboardLayout = ({ children }) => {
       </nav>
 
       {/* Main Content Area */}
-      <main className={`flex-1 ${isCollapsed ? 'md:ml-[80px]' : 'md:ml-[280px]'} flex flex-col h-screen bg-surface-bright relative overflow-hidden transition-all duration-300 ease-in-out`}>
+      <main className={`flex-1 ${isCollapsed ? 'md:ml-[80px]' : 'md:ml-[280px]'} flex flex-col min-h-[100dvh] h-[100dvh] bg-surface-bright relative overflow-hidden transition-all duration-300 ease-in-out`}>
+        <NetworkBanner />
         
         {/* TopAppBar */}
-        <header className="bg-white border-b border-gray-200 flex justify-between items-center px-6 py-4 sticky top-0 z-40">
-          <div className="flex items-center gap-4 relative" ref={dropdownRef}>
+        <header className="bg-white border-b border-gray-200 flex justify-between items-center px-4 py-3 md:px-6 md:py-4 sticky top-0 z-30">
+          <div className="flex items-center gap-2 md:gap-4 relative" ref={dropdownRef}>
+            {/* Mobile Hamburger Drawer Trigger */}
+            <button
+              type="button"
+              onClick={() => setMobileDrawerOpen(true)}
+              aria-label="Open navigation menu"
+              className="md:hidden min-h-[44px] min-w-[44px] flex items-center justify-center -ml-2 rounded-lg text-gray-700 hover:bg-gray-100 active:bg-gray-200 cursor-pointer"
+            >
+              <span className="material-symbols-outlined text-[24px]">menu</span>
+            </button>
+
             {/* Workspace Switcher */}
             <div 
-              className="flex items-center gap-2 cursor-pointer p-2 -ml-2 rounded-lg transition-colors hover:bg-gray-100"
+              className="flex items-center gap-2 cursor-pointer p-2 -ml-1 md:-ml-2 rounded-lg transition-colors hover:bg-gray-100"
               onClick={() => setDropdownOpen(!dropdownOpen)}
             >
-              <h2 className="font-headline-md text-headline-md font-bold text-gray-900">{tenantName}</h2>
+              <h2 className="font-headline-md text-base md:text-headline-md font-bold text-gray-900 truncate max-w-[150px] sm:max-w-[240px] md:max-w-none">{tenantName}</h2>
               <span className={`material-symbols-outlined text-gray-500 transition-transform ${dropdownOpen ? 'rotate-180' : ''}`}>expand_more</span>
             </div>
 
@@ -303,8 +322,8 @@ export const DashboardLayout = ({ children }) => {
             )}
           </div>
           
-          <div className="flex justify-end items-center gap-4">
-            <button className="p-2 text-gray-500 hover:text-gray-900 transition-colors">
+          <div className="flex justify-end items-center gap-2 md:gap-4">
+            <button className="min-h-[44px] min-w-[44px] flex items-center justify-center p-2 text-gray-500 hover:text-gray-900 transition-colors cursor-pointer">
               <span className="material-symbols-outlined">notifications</span>
             </button>
             
@@ -312,9 +331,10 @@ export const DashboardLayout = ({ children }) => {
             <div className="relative" ref={profileRef}>
               <button 
                 onClick={() => setProfileOpen(!profileOpen)}
-                className="w-8 h-8 rounded-full overflow-hidden border border-gray-200 hover:border-primary transition-colors bg-gray-100 flex items-center justify-center cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
+                aria-label="User Profile"
+                className="w-9 h-9 md:w-8 md:h-8 rounded-full overflow-hidden border border-gray-200 hover:border-primary transition-colors bg-gray-100 flex items-center justify-center cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
               >
-                 <span className="material-symbols-outlined text-gray-500">person</span>
+                 <span className="material-symbols-outlined text-gray-500 text-lg md:text-base">person</span>
               </button>
 
               {profileOpen && (
@@ -342,12 +362,189 @@ export const DashboardLayout = ({ children }) => {
         </header>
 
         {/* Canvas */}
-        <div className={`flex-1 ${isCalendar ? 'overflow-hidden p-2 md:p-3 flex flex-col min-h-0 relative z-0' : 'overflow-auto p-4 md:p-8'}`}>
+        <div className={`flex-1 ${isCalendar ? 'overflow-hidden p-2 md:p-3 flex flex-col min-h-0 relative z-0' : 'overflow-auto p-4 md:p-8'} pb-[calc(5rem+var(--sab,0px))] md:pb-8`}>
           <div className={isCalendar ? 'w-full flex-1 flex flex-col min-h-0' : 'max-w-[1440px] mx-auto'}>
             {children || <Outlet />}
           </div>
         </div>
       </main>
+
+      {/* Mobile Bottom Navigation Dock */}
+      <nav 
+        aria-label="Mobile Bottom Navigation"
+        className="md:hidden fixed bottom-0 inset-x-0 z-40 bg-white border-t border-gray-200 pb-[calc(0.5rem+var(--sab,0px))] pt-1 px-1 flex justify-around items-center shadow-lg"
+      >
+        {[
+          { to: '/', label: 'Home', icon: 'dashboard', end: true },
+          { to: '/clients', label: 'Clients', icon: 'group', end: false },
+          { to: '/jobs', label: 'Jobs', icon: 'work', end: false },
+          { to: '/calendar', label: 'Calendar', icon: 'calendar_month', end: false },
+          { to: '/invoices', label: 'Invoices', icon: 'receipt_long', end: false },
+        ].map((tab) => (
+          <NavLink
+            key={tab.to}
+            to={tab.to}
+            end={tab.end}
+            className={({ isActive }) => `flex flex-col items-center justify-center min-h-[44px] min-w-[44px] flex-1 py-1 px-1 rounded-lg transition-colors ${
+              isActive ? 'text-primary font-bold' : 'text-gray-500 hover:text-gray-900 font-medium'
+            }`}
+          >
+            {({ isActive }) => (
+              <>
+                <span 
+                  className="material-symbols-outlined text-[22px]" 
+                  style={{ fontVariationSettings: isActive ? "'FILL' 1" : "'FILL' 0" }}
+                >
+                  {tab.icon}
+                </span>
+                <span className="text-[10px] sm:text-[11px] leading-tight mt-0.5 tracking-tight font-body-md">{tab.label}</span>
+              </>
+            )}
+          </NavLink>
+        ))}
+      </nav>
+
+      {/* Off-Canvas Mobile Navigation Drawer */}
+      {mobileDrawerOpen && (
+        <div className="md:hidden fixed inset-0 z-50 flex">
+          {/* Backdrop */}
+          <div 
+            className="fixed inset-0 bg-black/60 backdrop-blur-xs transition-opacity"
+            onClick={() => setMobileDrawerOpen(false)}
+            aria-hidden="true"
+          />
+
+          {/* Drawer Panel */}
+          <div className="relative w-[285px] max-w-[85vw] bg-inverse-surface text-white flex flex-col p-4 shadow-2xl overflow-y-auto pt-[calc(1rem+var(--sat,0px))] pb-[calc(1rem+var(--sab,0px))] z-10 animate-in slide-in-from-left duration-250 ease-out">
+            
+            {/* Drawer Header */}
+            <div className="flex items-center justify-between pb-4 border-b border-gray-700/80 mb-4">
+              <div className="flex items-center min-w-0">
+                <div className="w-10 h-10 bg-primary rounded flex items-center justify-center font-headline-md font-bold text-black shrink-0">
+                  {tenantName.charAt(0).toUpperCase() || 'P'}
+                </div>
+                <div className="ml-3 min-w-0">
+                  <h1 className="font-headline-md text-headline-md font-bold tracking-tight text-white leading-tight truncate">{tenantName}</h1>
+                  <span className="font-label-caps text-label-caps text-gray-400 block truncate">{tenantSubtitle}</span>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setMobileDrawerOpen(false)}
+                aria-label="Close navigation menu"
+                className="min-h-[44px] min-w-[44px] flex items-center justify-center -mr-2 text-gray-400 hover:text-white rounded-lg cursor-pointer transition-colors"
+              >
+                <span className="material-symbols-outlined text-[24px]">close</span>
+              </button>
+            </div>
+
+            {/* Workspace Switcher Accordion */}
+            <div className="mb-4">
+              <button
+                type="button"
+                onClick={() => setMobileWsOpen(prev => !prev)}
+                className="w-full flex items-center justify-between p-2.5 rounded-lg bg-gray-800/80 hover:bg-gray-800 text-gray-200 text-sm font-medium transition-colors min-h-[44px]"
+              >
+                <div className="flex items-center gap-2 truncate">
+                  <span className="material-symbols-outlined text-primary text-[20px]">domain</span>
+                  <span className="truncate">{tenantName}</span>
+                </div>
+                <span className={`material-symbols-outlined text-gray-400 text-[18px] transition-transform ${mobileWsOpen ? 'rotate-180' : ''}`}>
+                  expand_more
+                </span>
+              </button>
+
+              {mobileWsOpen && (
+                <div className="mt-2 space-y-1 bg-gray-900/60 p-2 rounded-lg border border-gray-800">
+                  {workspaces.map(ws => (
+                    <button
+                      key={ws.tenant_id}
+                      onClick={() => {
+                        handleSwitchWorkspace(ws.tenant_id);
+                        setMobileDrawerOpen(false);
+                      }}
+                      disabled={isSwitching}
+                      className={`w-full text-left px-3 py-2.5 rounded-md flex items-center justify-between text-xs transition-colors min-h-[40px] ${
+                        ws.tenant_id === activeTenantId ? 'bg-primary/20 text-primary font-bold' : 'hover:bg-gray-800 text-gray-300'
+                      }`}
+                    >
+                      <span className="truncate">{ws.name}</span>
+                      {ws.tenant_id === activeTenantId && (
+                        <span className="material-symbols-outlined text-primary text-[16px]">check</span>
+                      )}
+                    </button>
+                  ))}
+                  <button
+                    onClick={() => {
+                      setMobileDrawerOpen(false);
+                      setCreateModalOpen(true);
+                    }}
+                    className="w-full text-left px-3 py-2.5 rounded-md flex items-center gap-2 text-xs text-primary hover:bg-gray-800 transition-colors font-medium border-t border-gray-800 mt-1 pt-2 min-h-[40px]"
+                  >
+                    <span className="material-symbols-outlined text-[16px]">add</span>
+                    Create New Workspace
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* Drawer Navigation Links */}
+            <div className="space-y-1 flex-1">
+              <NavLink
+                to="/settings"
+                onClick={() => setMobileDrawerOpen(false)}
+                className={({ isActive }) => `flex items-center h-11 px-3 rounded-lg transition-colors min-h-[44px] ${
+                  isActive ? 'bg-gray-800 text-white font-bold' : 'text-gray-300 hover:bg-gray-800 hover:text-white'
+                }`}
+              >
+                <span className="material-symbols-outlined text-[20px] text-gray-400 mr-3">settings</span>
+                <span className="text-sm">Settings</span>
+              </NavLink>
+
+              <NavLink
+                to="/profile"
+                onClick={() => setMobileDrawerOpen(false)}
+                className={({ isActive }) => `flex items-center h-11 px-3 rounded-lg transition-colors min-h-[44px] ${
+                  isActive ? 'bg-gray-800 text-white font-bold' : 'text-gray-300 hover:bg-gray-800 hover:text-white'
+                }`}
+              >
+                <span className="material-symbols-outlined text-[20px] text-gray-400 mr-3">person</span>
+                <span className="text-sm">My Profile</span>
+              </NavLink>
+
+              <a
+                href="#"
+                onClick={() => setMobileDrawerOpen(false)}
+                className="flex items-center h-11 px-3 text-gray-300 hover:bg-gray-800 hover:text-white transition-colors rounded-lg min-h-[44px]"
+              >
+                <span className="material-symbols-outlined text-[20px] text-gray-400 mr-3">help</span>
+                <span className="text-sm">Support</span>
+              </a>
+            </div>
+
+            {/* Quick Add Job Button */}
+            <button
+              onClick={() => {
+                setMobileDrawerOpen(false);
+                navigate('/jobs');
+              }}
+              className="w-full h-11 flex items-center justify-center px-3 bg-primary hover:bg-opacity-90 text-black rounded-lg font-body-md font-bold transition-all shadow-[0_0_15px_rgba(245,158,11,0.2)] active:scale-95 duration-150 cursor-pointer min-h-[44px] mb-4"
+            >
+              <span className="material-symbols-outlined text-black text-xl mr-2">add</span>
+              Add Job
+            </button>
+
+            {/* User Info & Sign Out Footer */}
+            <div className="pt-4 border-t border-gray-700/80">
+              <div className="mb-3 px-1">
+                <p className="text-sm font-medium text-white truncate">{user?.user_metadata?.full_name || 'User'}</p>
+                <p className="text-xs text-gray-400 truncate">{user?.email}</p>
+              </div>
+              <AuthContextLogoutButton />
+            </div>
+          </div>
+        </div>
+      )}
 
       <CreateWorkspaceModal 
         isOpen={createModalOpen} 
